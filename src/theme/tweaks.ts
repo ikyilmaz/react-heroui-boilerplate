@@ -31,7 +31,117 @@ export interface ThemeTweaks {
   fontSize: number
   /** Devre dışı bileşenlerin opaklığı. */
   disabledOpacity: number
+  /**
+   * Onay akışının yerleşimi: renk değil, bilgi hiyerarşisi ve etkileşim modeli. Renk hazır
+   * ayarlarından bağımsızdır; hazır ayar seçmek yerleşimi değiştirmez.
+   */
+  layout: LayoutId
+  /** Yumuşak kabuk sayfalarının zemin gradyanı (`backgrounds` içindeki id). */
+  background: string
 }
+
+/* -------------------------------------------------------------------------------------------------
+ * Zemin gradyanları
+ *
+ * Her birinin açık ve koyu mod hâli var. `applyTweaks` seçileni `--canvas-light` / `--canvas-dark`
+ * olarak köke yazar; `.soft-canvas` bunları kullanır. Panel önizlemeleri de aynı dizelerden
+ * çizilir. Tonlar bilerek düşük doygunlukta: yarı saydam yüzeyler ve metin okunur kalmalı.
+ * ------------------------------------------------------------------------------------------------- */
+
+export interface BackgroundOption {
+  id: string
+  name: string
+  light: string
+  dark: string
+}
+
+/** Köşelerde renkli ışık lekeleri, ortası nötr ("mesh" gradyan). */
+const mesh = (base: string, a: string, b: string, c: string) =>
+  `radial-gradient(at 12% 18%, ${a} 0, transparent 50%), radial-gradient(at 88% 8%, ${b} 0, transparent 45%), radial-gradient(at 72% 92%, ${c} 0, transparent 55%), linear-gradient(${base}, ${base})`
+
+export const backgrounds: BackgroundOption[] = [
+  {
+    id: 'sis',
+    name: 'Sis',
+    light: 'linear-gradient(to bottom right, #e8ebf1, #dce2ed 50%, #c6d0e6)',
+    dark: 'linear-gradient(to bottom right, #12151c, #171b25 50%, #1d2436)',
+  },
+  {
+    id: 'safak',
+    name: 'Şafak',
+    light: 'linear-gradient(135deg, #fbe9df, #f2dff0 50%, #d9ddf6)',
+    dark: 'linear-gradient(135deg, #1d1518, #211828 50%, #1a1d33)',
+  },
+  {
+    id: 'nane',
+    name: 'Nane',
+    light: 'linear-gradient(160deg, #e5f5ee, #dcefef 50%, #cfe2f0)',
+    dark: 'linear-gradient(160deg, #0f1a17, #11201f 50%, #13202b)',
+  },
+  {
+    id: 'okyanus',
+    name: 'Okyanus',
+    light: 'linear-gradient(180deg, #e0f2f8, #cfe2f5 55%, #c2cbef)',
+    dark: 'linear-gradient(180deg, #0b1620, #0e1a2b 55%, #121a36)',
+  },
+  {
+    id: 'lavanta',
+    name: 'Lavanta',
+    light: 'linear-gradient(135deg, #f0eaf8, #e3ddf3 50%, #d2d2ef)',
+    dark: 'linear-gradient(135deg, #16131f, #1b1728 50%, #1b1b30)',
+  },
+  {
+    id: 'gun-batimi',
+    name: 'Gün batımı',
+    light: 'linear-gradient(200deg, #fdebd8, #f9d6d2 50%, #e8c9e4)',
+    dark: 'linear-gradient(200deg, #1f1612, #25171a 50%, #231929)',
+  },
+  {
+    id: 'kum',
+    name: 'Kum',
+    light: 'linear-gradient(135deg, #f5f0e7, #ede4d6 50%, #dfd7cc)',
+    dark: 'linear-gradient(135deg, #1a1714, #1f1b17 50%, #221e1b)',
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    light: mesh('#eef1f6', '#d4f4e6', '#e2dafb', '#cde4fb'),
+    dark: mesh('#12151c', '#123028', '#231d3d', '#12263d'),
+  },
+  {
+    id: 'seftali',
+    name: 'Şeftali',
+    light: mesh('#f6f1ee', '#fde0cf', '#f8d9e6', '#e7e1f7'),
+    dark: mesh('#17141a', '#33201a', '#2e1a26', '#1f1d33'),
+  },
+  {
+    id: 'duz',
+    name: 'Düz',
+    light: 'linear-gradient(#e6e9ef, #e6e9ef)',
+    dark: 'linear-gradient(#14171e, #14171e)',
+  },
+]
+
+/* -------------------------------------------------------------------------------------------------
+ * Yerleşimler
+ *
+ * "İş Akış Yönetimi" kutu sayfasının iki UX kurgusu. Aynı veri, farklı hiyerarşi: süreç mi önce
+ * gelir, talep mi?
+ * ------------------------------------------------------------------------------------------------- */
+
+export type LayoutId = 'pano' | 'gelen-kutusu'
+
+export interface LayoutOption {
+  id: LayoutId
+  name: string
+  /** Panelde gösterilen tek satırlık fikir. */
+  idea: string
+}
+
+export const layouts: LayoutOption[] = [
+  { id: 'pano', name: 'Pano', idea: 'Süreç önce: süreç kartları, tıklayınca popover içinde talepler.' },
+  { id: 'gelen-kutusu', name: 'Gelen Kutusu', idea: 'E-posta gibi üç sütun: kutular · talepler · detay. Sayfa değişmez.' },
+]
 
 /* -------------------------------------------------------------------------------------------------
  * Yazı tipleri
@@ -66,7 +176,7 @@ export const fonts: FontOption[] = [
  * Hazır ayarlar
  * ------------------------------------------------------------------------------------------------- */
 
-export interface Preset extends Omit<ThemeTweaks, 'preset'> {
+export interface Preset extends Omit<ThemeTweaks, 'preset' | 'layout' | 'background'> {
   id: string
   name: string
 }
@@ -153,6 +263,20 @@ export const presets: Preset[] = [
     spacing: 0.26,
     font: 'poppins',
   },
+  {
+    // CLAUDE.md › Design language: siyah vurgu, mavi/mercan durum renkleri, çok yuvarlak köşeler
+    ...base,
+    id: 'buzlu-cam',
+    name: 'Buzlu Cam',
+    accent: '#0b0b0c',
+    success: '#7e9bdb',
+    danger: '#e0605a',
+    radius: 1,
+    borderWidth: 1,
+    fieldBorderWidth: 1,
+    font: 'manrope',
+  },
+
 ]
 
 /** Vurgu rengi için hızlı seçim paleti. */
@@ -169,7 +293,7 @@ export const accentSwatches = [
   '#64748b',
 ]
 
-export const defaultTweaks: ThemeTweaks = { preset: presets[0].id, ...presets[0] }
+export const defaultTweaks: ThemeTweaks = { preset: presets[0].id, ...presets[0], layout: 'pano', background: 'sis' }
 
 /* -------------------------------------------------------------------------------------------------
  * Uygulama
@@ -220,6 +344,11 @@ export function applyTweaks(t: ThemeTweaks) {
   s.fontFamily = font.stack
   s.fontSize = `${t.fontSize}px`
   loadFont(font)
+
+  const bg = backgrounds.find((b) => b.id === t.background) ?? backgrounds[0]
+  s.setProperty('--canvas-light', bg.light)
+  s.setProperty('--canvas-dark', bg.dark)
+
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -232,7 +361,10 @@ function load(): ThemeTweaks {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultTweaks
     // Eksik/eski alanlar varsayılandan tamamlanır
-    return { ...defaultTweaks, ...(JSON.parse(raw) as Partial<ThemeTweaks>) }
+    const saved = { ...defaultTweaks, ...(JSON.parse(raw) as Partial<ThemeTweaks>) }
+    // Kaldırılan yerleşimler (odak, kanban, zaman tüneli) kayıtlıysa varsayılana dön
+    if (!layouts.some((l) => l.id === saved.layout)) saved.layout = defaultTweaks.layout
+    return saved
   } catch {
     return defaultTweaks
   }
@@ -264,7 +396,8 @@ export function applyPreset(id: string) {
   const preset = presets.find((p) => p.id === id)
   if (!preset) return
   const { id: _id, name: _name, ...values } = preset
-  commit({ preset: id, ...values })
+  // Yerleşim ve zemin renk hazır ayarının parçası değil; olduğu gibi kalır
+  commit({ preset: id, ...values, layout: state.layout, background: state.background })
 }
 
 export function resetTweaks() {

@@ -13,14 +13,14 @@ import {
   type Selection,
 } from '@heroui/react'
 
-import { FIELD_ICON_BUTTON, FIELD_ICON_SIZE } from '@/components/fieldIconButton'
+import {
+  FIELD_ICON_BUTTON,
+  FIELD_ICON_SIZE,
+  LIST_ITEM_SELECTED,
+} from '@/components/fieldIconButton'
 
 /** Typography varsayılan olarak <p> basar; satır içi metinlerde <span> gerekir. */
 const inlineText = { elementType: 'span', slot: null } as unknown as Record<string, never>
-
-/** HeroUI ListBox seçili durum için arka plan tanımlamaz; burada veriyoruz. */
-const selectedItemClass =
-  'data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent-soft-foreground'
 
 /* -------------------------------------------------------------------------------------------------
  * Types
@@ -258,8 +258,9 @@ function TransferList({
   return (
     <Surface
       className={cn(
-        // `basis-56 flex-1 min-w-0`: iki liste kabı paylaşır; sabit genişlikte kartın dışına taşıyordu
-        'flex h-72 min-w-0 flex-1 basis-56 flex-col overflow-hidden rounded-xl border border-border',
+        // `basis-56 flex-1 min-w-0`: the two list panels share the width; a fixed one overflowed the card.
+        // `max-w-[230px]`: an upper bound on growth — in a narrow container they still shrink together.
+        'flex h-72 min-w-0 max-w-[230px] flex-1 basis-56 flex-col overflow-hidden rounded-xl border border-border',
         isDisabled && 'opacity-50',
         className,
       )}
@@ -340,7 +341,7 @@ function TransferList({
             key={item.key}
             id={item.key}
             textValue={item.title}
-            className={selectedItemClass}
+            className={LIST_ITEM_SELECTED}
           >
             {render ? (
               render(item)

@@ -40,6 +40,32 @@ export const fieldIconButton = cn(
 )
 
 /**
+ * Add-on for an icon button sitting INSIDE a row that is itself hoverable (e.g. the expand/collapse
+ * chevron in TreeSelect's dropdown).
+ *
+ * The rule above does not hold here: the `ghost` variant's hover background is `var(--default)`
+ * and so is `.list-box-item`'s. Stacked on each other, the button's circle disappeared into the
+ * row and no longer read as something clickable.
+ *
+ * The fix is not a fixed color but a foreground tint that **composites over whatever is beneath**:
+ * it separates from any background, darkening in the light theme and lightening in the dark one.
+ * The icon going to full color on hover is a second cue — a deliberate exception to `ICON_MUTED`'s
+ * color lock.
+ */
+export const ROW_ICON_BUTTON = cn(
+  '[--button-bg-hover:color-mix(in_oklab,var(--default-foreground)_14%,transparent)]',
+  '[--button-bg-pressed:color-mix(in_oklab,var(--default-foreground)_24%,transparent)]',
+  'hover:text-foreground',
+)
+
+/**
+ * Seçili liste satırı vurgusu. HeroUI ListBox seçili durum için arka plan tanımlamaz; Transfer,
+ * Combobox ve TreeSelect açılır listelerinde seçili satırlar aynı görünsün diye buradan veriliyor.
+ */
+export const LIST_ITEM_SELECTED =
+  'data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent-soft-foreground'
+
+/**
  * Önek/sonek kabı: kenardan 4px, düğmeler arasından 4px. Bütün alanlarda aynı olsun diye
  * buradan veriliyor.
  */

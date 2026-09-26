@@ -1,0 +1,12 @@
+export type StoreEventName =
+  | 'loading'
+  | 'loaded'
+  | 'inserting'
+  | 'inserted'
+  | 'updating'
+  | 'updated'
+  | 'removing'
+  | 'removed'
+  | 'modifying'
+  | 'modified'
+  | 'push'

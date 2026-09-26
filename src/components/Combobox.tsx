@@ -14,7 +14,12 @@ import {
   cn,
 } from '@heroui/react'
 
-import { FIELD_ICON_BUTTON, FIELD_ICON_SIZE, fieldIconButton } from '@/components/fieldIconButton'
+import {
+  FIELD_ICON_BUTTON,
+  FIELD_ICON_SIZE,
+  LIST_ITEM_SELECTED,
+  fieldIconButton,
+} from '@/components/fieldIconButton'
 
 /** Typography varsayılan olarak <p> basar; satır içi metinlerde <span> gerekir. */
 const inlineText = { elementType: 'span', slot: null } as unknown as Record<string, never>
@@ -180,7 +185,12 @@ export function Combobox({
           )}
         >
           {options.map((o) => (
-            <ListBox.Item key={o.value} id={o.value} textValue={o.label}>
+            <ListBox.Item
+              key={o.value}
+              id={o.value}
+              textValue={o.label}
+              className={LIST_ITEM_SELECTED}
+            >
               {o.icon && (
                 <Typography
                   color="muted"

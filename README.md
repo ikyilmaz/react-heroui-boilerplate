@@ -44,8 +44,18 @@ src/
 │   ├── TreeSelect.tsx         # antd tarzı ağaç seçici (HeroUI ComboBox motoru)
 │   ├── Combobox.tsx           # antd tarzı arama + seçim (showSearch, allowClear, ikon)
 │   ├── Transfer.tsx           # antd tarzı iki listeli seçim
-│   ├── DataGrid.tsx           # sunum amaçlı veri tablosu
-│   ├── useDataGrid.ts         # tablonun durum makinesi + tipleri
+│   ├── DataGrid/              # DevExtreme DataGrid API'li tablo (bkz. "DataGrid — DevExtreme API")
+│   │   ├── index.ts           # dışa açık API
+│   │   ├── DataGrid.tsx       # bileşen (controller'lar + görünüm)
+│   │   ├── data/              # ArrayStore, CustomStore, filtre ifadesi / sorgu motoru
+│   │   ├── localization/      # locale, loadMessages, formatMessage, config + tr/en metinler
+│   │   ├── hooks/             # columns / data / selection / editing controller'ları
+│   │   ├── components/        # başlıklar, filtre satırı, satırlar, editörler, araç çubuğu, pager
+│   │   ├── functions/         # saf fonksiyonlar (kolon normalizasyonu, format, arama, sıralama…)
+│   │   ├── types/             # her tip kendi dosyasında (options/, events/, templates/)
+│   │   └── constants/         # varsayılan sınıflar, işlem ikonları, anahtarlar
+│   ├── useDebounced.ts        # "kullanıcı durunca yap" zamanlayıcısı (run / flush / cancel)
+│   ├── useBufferedValue.ts    # kontrollü alan ↔ dış durum arasında yazılanı bekleten tampon
 │   ├── NumberBox.tsx          # adımlı, biçimli sayı alanı
 │   ├── TextBox.tsx            # sonekli metin alanı + çeviri popover'ı
 │   ├── fieldIconButton.ts     # alan içi ikon düğmelerinin ortak ölçüleri
@@ -56,6 +66,8 @@ src/
 │   └── tweaks.ts              # tema modeli, hazır ayarlar, yazı tipleri, depolama
 ├── pages/
 │   ├── ShowcasePage.tsx       # `/` — bileşen vitrini (Tabs ile slayt gösterisi)
+│   ├── requests/              # vitrindeki istek tablosu: kayıt tipi, kolonlar, widget, store'lar
+│   ├── dataGridShowcase/      # DataGrid slaytının örnekleri (sekmeli)
 │   └── NotFoundPage.tsx
 ├── App.tsx          # RouterProvider
 ├── router.tsx       # Rota tanımları
@@ -76,8 +88,10 @@ src/
   (`bg-field`), beyaz kartta kayboluyorlardı; sayfa zemini de daha açık olduğu için kart hem
   sayfadan hem içindeki alanlardan ayrışıyor.
 
-  **DataGrid** ve **DataGrid2** aynı `RequestsWidget`ı kullanır (ikincisi `showEditorAlways` ile);
-  widget kendi iki kartını zaten kurduğu için o slaytlarda örnek kartı eklenmez. Sayfa genişliği
+  **DataGrid** slaytında örnekler kendi sekme şeridindedir (`src/pages/dataGridShowcase/`):
+  satır düzenleme, hücre düzenleme, sıralama ve filtre, uzak veri (`CustomStore`), olaylar ve API,
+  otomatik kolonlar. Her örneğin store'u modül düzeyindedir, sekme değişince düzenlemeler kalır;
+  örnekler kendi kartlarını kurduğu için bu slaytta ayrıca örnek kartı eklenmez. Sayfa genişliği
   `md`'den itibaren %92, `2xl`'de %88 — tablonun daha çok kolonu ekrana sığsın diye. Sayfa genişliği `md`'den itibaren ekranın %80'i.
 
 ## Tarih / Saat Seçiciler
@@ -121,17 +135,117 @@ tire ile yer tutucu gösterir.
 **Uzun okunuş** (`formatOptions`) ayrı bir seçenek: alanı değiştirmeden, değerin uzun hâlini
 React Aria'nın kendi `state.formatValue()` motoruyla üretip açıklama satırı olarak basar.
 
+## DataGrid — DevExtreme API
+
+`@/components/DataGrid`, DevExtreme DataGrid'in seçenek, olay, metot ve tip adlarını ve veri
+modelini izler; çizim HeroUI / React Aria ile yapılır. Vitrindeki istek tablosu
+(`src/pages/requests/`) bir tüketicidir.
+
+```tsx
+import { useRef } from 'react'
+import { ArrayStore, DataGrid, type Column, type DataGridRef } from '@/components/DataGrid'
+
+const columns: Column<Order>[] = [
+  { type: 'buttons', buttons: ['edit', 'delete', 'save', 'cancel'] },
+  { dataField: 'no', dataType: 'number', format: 'decimal' },
+  { dataField: 'customer' },
+  { dataField: 'state', lookup: { dataSource: states, valueExpr: 'id', displayExpr: 'name' } },
+  { dataField: 'date', dataType: 'date', sortOrder: 'desc' },
+  { dataField: 'total', dataType: 'number', format: { type: 'currency', precision: 2 }, selectedFilterOperation: '>=' },
+]
+
+const grid = useRef<DataGridRef<Order>>(null)
+<DataGrid
+  ref={grid}
+  dataSource={orders}               // dizi → ArrayStore; ya da new ArrayStore(...) / new CustomStore(...)
+  keyExpr="id"
+  columns={columns}
+  filterRow={{ visible: true }}
+  searchPanel={{ visible: true }}
+  selection={{ mode: 'multiple' }}
+  paging={{ pageSize: 20 }}
+  pager={{ showPageSizeSelector: true, showInfo: true, showNavigationButtons: true }}
+  editing={{ mode: 'row', allowAdding: true, allowUpdating: true, allowDeleting: true }}
+  onInitNewRow={(e) => (e.data.date = new Date())}
+  onRowUpdated={(e) => api.save(e.key, e.data)}
+  aria-label="Siparişler"
+/>
+grid.current?.instance().addRow()
+```
+
+**Karşılıkları olan parçalar**
+
+| Alan        | Adlar                                                                                                                                                                                                                                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Veri        | `dataSource` (dizi / `ArrayStore` / `CustomStore`), `keyExpr`, `remoteOperations` (`filtering`, `sorting`, `paging`), `filterValue`; store: `load` (`filter`, `sort`, `skip`, `take`, `requireTotalCount`), `byKey`, `insert`, `update`, `remove`, `push`, `on('modified')`; `loadMode: 'raw'`                                                                  |
+| Kolon       | `dataField`, `caption`, `dataType` (`string` / `number` / `date` / `datetime` / `boolean`, verilmezse ilk satırdan), `format`, `alignment`, `width`, `visible`, `visibleIndex`, `cssClass`, `allow*`, `sortOrder`, `sortIndex`, `sortingMethod`, `filterValue`, `selectedFilterOperation`, `filterOperations`, `calculateCellValue`, `calculateDisplayValue`, `calculateSortValue`, `calculateFilterExpression` (`this.defaultCalculateFilterExpression`), `setCellValue`, `customizeText`, `lookup`, `editorOptions`, `showEditorAlways`, `trueText` / `falseText`, `cellRender`, `editCellRender`, `headerCellRender`, `type: 'buttons' \| 'selection'`, `buttons` |
+| Format      | ön tanımlılar (`currency`, `fixedPoint`, `decimal`, `percent`, `largeNumber`, `thousands`…, `shortDate`, `shortDateShortTime`, `monthAndYear`…), `{ type, precision, currency, formatter, parser }`, fonksiyon, LDML kalıbı (`'#,##0.00'`, `'dd.MM.yyyy HH:mm'`, tırnaklı sabitler `"'#'0"`)                                                                     |
+| Seçenekler  | `filterRow` (`applyFilter: 'auto' \| 'onClick'`, `showOperationChooser`, `operationDescriptions`, `resetOperationText`, `showAllText`, `between*Text`), `searchPanel`, `paging` (`pageIndex` 0 tabanlı), `pager` (`allowedPageSizes: 'auto'`, `infoText` `{0} {1} {2}`), `selection` (`mode`, `selectAllMode`, `showCheckBoxesMode`, `allowSelectAll`), `selectedRowKeys` / `defaultSelectedRowKeys`, `sorting` (`mode: 'multiple'`, `showSortIndexes`), `editing` (`mode: 'row' \| 'cell'`, `allow*`, `confirmDelete`, `newRowPosition`, `startEditAction`, `texts`, `changes`, `editRowKey`, `editColumnName`), `toolbar` (`searchPanel`, `addRowButton`, `applyFilterButton`, `widget: 'dxButton'`, `render`), `loadPanel`, `noDataText`, `hoverStateEnabled`, `showBorders`, `showColumnLines`, `showRowLines`, `rowAlternationEnabled`, `wordWrapEnabled`, `elementAttr` |
+| Olaylar     | `onInitialized`, `onContentReady`, `onOptionChanged` (`fullName`: `paging.pageIndex`, `columns[2].filterValue`…), `onSelectionChanged`, `onSelectedRowKeysChange`, `onInitNewRow`, `onEditingStart`, `onEditCanceling` / `onEditCanceled`, `onSaving` / `onSaved`, `onRowInserting` / `onRowInserted`, `onRowUpdating` / `onRowUpdated`, `onRowRemoving` / `onRowRemoved`, `onEditorPreparing`, `onDataErrorOccurred`; `cancel` boolean ya da Promise |
+| Metotlar    | `ref.current.instance()`: `addRow`, `editRow`, `editCell`, `closeEditCell`, `saveEditData`, `cancelEditData`, `deleteRow`, `cellValue`, `hasEditData`, `getVisibleRows`, `getRowIndexByKey`, `getKeyByRowIndex`, `keyOf`, `byKey`, `getSelectedRowKeys`, `getSelectedRowsData`, `selectRows`, `deselectRows`, `selectRowsByIndexes`, `selectAll`, `deselectAll`, `clearSelection`, `isRowSelected`, `filter`, `getCombinedFilter`, `clearFilter`, `searchByText`, `clearSorting`, `columnOption`, `columnCount`, `getVisibleColumns`, `pageIndex`, `pageSize`, `pageCount`, `totalCount`, `refresh`, `getDataSource` |
+| Yerelleştirme | `locale('tr')`, `loadMessages({ tr: { 'dxDataGrid-noDataText': '…' } })`, `formatMessage`, `config({ defaultCurrency })`; anahtarlar `dxDataGrid-*` / `dxPager-*` (Türkçe ve İngilizce hazır) |
+
+**Çekirdek mantık DevExtreme'in yolunu izler**
+
+- **Filtre ifadeleri**: filtre satırı her kolonda `calculateFilterExpression(filterValue,
+  selectedFilterOperation, 'filterRow')` çağırır (`['total', '>=', 90000]`), arama paneli
+  `'search'` hedefiyle; hepsi `getCombinedFilter()`'da birleşir ve sorgu motoruna (`data/`) ya da
+  uzak store'a gider. Tarihler gün aralığıyla karşılaştırılır (`=` 1 Mart → `>= 1 Mart and < 2
+  Mart`), `between` aralığa açılır.
+- **Arama**: metin kolonlarında `contains`; lookup kolonlarında görünen metni eşleşen değerlerin
+  `=`'i; sayı / tarih / boolean kolonlarında aranan metin kolonun tipine çevrilip `=` (çevrilemezse
+  kolon atlanır). Yani `₺48.500`, `%45`, `#152356`, `1.03.2026` aranabilir; sayının bir parçası
+  (`4850`) artık eşleşmez.
+- **Kolon durumu**: `sortOrder`, `sortIndex`, `filterValue`, `selectedFilterOperation`, `visible`,
+  `visibleIndex` kolonun çalışma zamanı seçenekleridir; `columnOption` ile okunup yazılır, prop
+  değişince prop kazanır. Tanımlar ile çalışma durumu ayrı tutulur ki bir filtreye yazmak diğer
+  hücreleri ve satırları render etmesin.
+- **Düzenleme**: değişiklikler `editing.changes` listesinde bekler (`{ type, key, data }`, `data`
+  yalnızca `setCellValue`'nun yazdığı alanlar). `saveEditData` → `onSaving` → satır başına
+  `onRowUpdating` → `store.update` → `onRowUpdated` → `onSaved`. Yeni satır kaydedilene kadar
+  yalnızca bir `insert` değişikliğidir: vazgeçilirse kaybolur, filtre / arama temizlenmez.
+  Kaydetmeler sırayla çalışır (hücre modunda alanın yazması ile Enter'ın `closeEditCell`'i aynı
+  değişikliği iki kez göndermez).
+- **Sıralama**: tek modda başlık tıklaması asc/desc arasında geçer; `multiple` modda Shift+tık
+  kolonu ekler, Ctrl/⌘+tık çıkarır. Boş değerler artan sırada başa gelir (DevExtreme gibi).
+- **Veri**: işlemler yerelse store bir kez yüklenir (ArrayStore eşzamanlı okunur ve `modified`
+  olayıyla izlenir), filtre → sıralama → sayfa yerelde uygulanır; `remoteOperations`'ta yalnızca
+  uzakta yapılanlar `load` seçeneklerine yazılır. Sayfa aralık dışına düşerse son sayfaya gelinir.
+
+**DevExtreme'de olmayan eklemeler**: `aria-label` (React Aria şart koşuyor), `rowLabelExpr`
+(satırın erişilebilir adı), `updateValueTimeout` (filtre ve arama yazımının bekleme süresi,
+varsayılan 300 ms), `classNames` (sınıf yuvaları), `filterCellRender`, `confirmDeleteTitle` /
+`confirmDeleteMessage` içinde satır adı için `{0}`, `ArrayStore.items()`. Olay nesneleri ve
+şablonlar `component` taşır; `editCellRender` ayrıca tuş işleyicilerini verir.
+
+**Farklar**: `ArrayStore` kendisine verilen diziyi değiştirmez, her değişiklikte yeni dizi üretir
+ve grid `modified` olayında kendiliğinden yenilenir (DevExtreme'de `refresh()` / `push`
+gerekirdi). Tarih kolonları `Date` değerleri bekler. Veri satırı editörleri alan bırakılınca ya da
+Enter'da yazar (`valueChangeEvent: 'change'`).
+
+**Henüz olmayanlar**: gruplama, özetler (`summary`), header filter, filter panel / builder,
+kolon seçici, yeniden boyutlandırma / sıralama / sabitleme, master-detail, dışa aktarma,
+`stateStoring`, sanal kaydırma, `batch` / `form` / `popup` düzenleme, `validationRules`,
+`keyboardNavigation` seçenekleri, `focusedRow*`, `onRowClick` / `onCellClick` /
+`onRowPrepared`.
+
+**Kimlik kararlılığı**: `columns` ve kolonlardaki fonksiyonlar modül düzeyinde ya da `useMemo`
+ile sabit tutulmalı (satırların ve filtre hücrelerinin `memo`su bunlara dayanıyor). Seçenek
+nesneleri (`paging={{ … }}`) satır içi yazılabilir; içerikleriyle karşılaştırılırlar.
+
+Aşağıdaki bölümler vitrindeki istek tablosunu anlatır.
+
 ## DataGrid
 
-Sunum amaçlı bir veri tablosu; durumu `useDataGrid` kancasında (filtre, sıralama, çoklu seçim,
-satır içi düzenleme, sayfalama). Tablo bulunduğu alanı kaplar, sütunlar sığmazsa yatay kaydırılır.
+Vitrindeki istek tablosu (`RequestsWidget`, kolonlar `requestColumns.tsx`). Tablo bulunduğu alanı
+kaplar, sütunlar sığmazsa yatay kaydırılır.
 
 Hücre düzenleyicileri alan tipine göre bileşenlerden gelir:
 
 | Kolon            | Görüntü       | Düzenleme                           | Filtre                     |
 | ---------------- | ------------- | ----------------------------------- | -------------------------- |
 | (seçim)          | `Checkbox`    | —                                   | —                          |
-| İşlemler         | düzenle + sil | kaydet + vazgeç                     | filtreleri temizle         |
+| İşlemler         | düzenle + sil | kaydet + vazgeç                     | —                          |
 | İstek No         | `#152512`     | `NumberBox`                         | `NumberBox`                |
 | Süreci Başlatan  | Avatar + ad   | `TextField`                         | `TextField`                |
 | Durum            | `Chip`        | `Select`                            | `Select`                   |
@@ -152,15 +266,19 @@ varsayılan gecikmesi hücrelerinkinden (500 ms) uzundur.
 
 Onay diyaloğu tablo düzeyinde tektir ve denetimlidir. Kökü (`AlertDialog`) atlamamak gerekiyor: `Header` / `Body` / `Footer` düzen sınıflarını kökün sağladığı context'ten alıyor, kök olmayınca başlıkla düğmeler üst üste biniyor. Kök aynı zamanda RAC'in `DialogTrigger`ı olduğu için ilk çocuğunun pressable olmasını bekliyor; gerçek tetikleyiciler satırlarda olduğundan köke gizli bir yer tutucu tetikleyici konuyor. Alt şeritteki düğmeler sıradan `Button`dır — `AlertDialog.CloseTrigger` köşedeki "×" düğmesidir (`absolute end-4 top-4`) ve alt şeritte kullanılınca iki düğme üst üste biniyordu.
 
-Silme `AlertDialog` ile onaylanır ("#152356 silinsin mi?" → Vazgeç / Sil). `useDataGrid.deleteRow`
-kaydı siler, seçimden düşürür, o satır düzenlemedeyse düzenlemeyi kapatır ve sabitlemeyi bırakır.
+Silme `AlertDialog` ile onaylanır ("#152356 silinsin mi?" → Vazgeç / Sil; `editing.texts` içinde
+`{0}`). `deleteRow` kaydı `onSaving` / `onRowRemoving` üzerinden store'dan siler, seçimden düşürür
+ve o satır düzenlemedeyse düzenlemeyi kapatır.
+
+Filtrelerin hepsini temizleme düğmesi filtre satırında değil, araç çubuğundadır
+(`instance.clearFilter()`); tek bir kolonun filtresi işlem seçicinin **Sıfırla** satırıyla sıfırlanır.
 
 ### Genel arama ve vurgulama
 
-Widget başlığındaki `SearchField` bütün kolonlarda arar ve eşleşen parçaları hücrede `<mark>` ile
-boyar. Arama ile vurgulama tek kaynaktan beslenir: `rowCells(row)` satırın hücrelerinde **görünen**
-metinleri döner, `matchesSearch` de aynı metinlere bakar. Böylece `₺48.500` ya da `%45` yazıp
-aratmak çalışır ve boyanan yer ile eşleşen yer hiç ayrışmaz.
+Araç çubuğundaki arama paneli (`searchPanel`) DevExtreme'in kuralıyla arar (bkz. yukarıda
+"Arama") ve aranan metni hücrelerde `<mark>` ile boyar (`highlightSearchText`). Vurgu `Highlight`
+bileşeniyle context'ten okunur; arama değiştiğinde satırların kendisi değil, yalnızca boyanan
+metinler render olur. Yazılan metin alanın içinde bekler, `updateValueTimeout` sonra uygulanır.
 
 Vurgulama Türkçe küçültmeye dikkat eder: `toLocaleLowerCase('tr')` bazı harflerde dizgi uzunluğunu
 değiştirebildiği için (ör. `İ`), uzunluk kaydıysa konumlar güvenilmez olur ve metin boyanmadan
@@ -172,12 +290,12 @@ Sayfa boyutu seçicisi `rounded-full`: sayfa düğmeleri `rounded-3xl` + `size-8
 yarıçapı (`--field-radius`) yanlarında tutarsız duruyordu. Sayfa boyutu (10 / 20 / 50) ve kayıt
 sayısı `Pagination.Summary` içinde solda, sayfa gezinmesi
 `Pagination.Content` ile sağdadır — `.pagination` zaten `w-full` + `justify-between` olduğu için ayrı
-bir sarmalayıcı gerekmiyor. Sayfa listesi `1 … 4 5 6 … 12` biçiminde pencerelenir, ilk ve son sayfa hep görünür. Durum `useDataGrid` içindedir
-(`page`, `totalPages`, `pageSize`); filtre, arama ya da sayfa boyutu değişince sayfa başa döner.
+bir sarmalayıcı gerekmiyor. Sayfa listesi `1 … 4 5 6 … 12` biçiminde pencerelenir, ilk ve son sayfa hep görünür. Durum
+`paging.pageIndex` / `paging.pageSize`'dır; filtre, arama ya da sayfa boyutu değişince sayfa başa döner.
 
-**Yeni satır** listenin başına eklenir ve sıralamadan bağımsız olarak orada tutulur (`pinnedId`).
-Aktif bir filtre ya da arama yeni satırı gizleyebileceği için `addRow` ikisini de temizler —
-aksi hâlde "yeni" düğmesi görünürde hiçbir şey yapmamış gibi olurdu.
+**Yeni satır** (`addRow`) sayfanın başında (`newRowPosition: 'pageTop'`) bir `insert` değişikliği
+olarak açılır; değerlerini `onInitNewRow` verir. Kaydedilince store'a eklenir ve sıralamadaki
+yerine gider, vazgeçilirse kaybolur.
 
 ### Filtre işlemleri
 
@@ -185,10 +303,14 @@ Her filtre hücresinin solunda bir **işlem seçici** var; kolonun tipine göre 
 
 | Tip   | İşlemler                                                                                  |
 | ----- | ----------------------------------------------------------------------------------------- |
-| Metin | İçerir · İçermez · İle başlar · İle biter · Eşittir                                       |
-| Sayı  | = · ≠ · > · ≥ · < · ≤                                                                     |
-| Tarih | Tarihinde · Sonrasında · Tarihinde veya sonrasında · Öncesinde · Tarihinde veya öncesinde |
-| Durum | = · ≠                                                                                     |
+| Metin | İçerir · İçermez · İle başlar · İle biter · Eşittir · Eşit değildir                       |
+| Sayı  | = · ≠ · < · > · ≤ · ≥ · Arasında                                                          |
+| Tarih | = · ≠ · < · > · ≤ · ≥ · Arasında (gün çözünürlüğünde)                                     |
+| Durum | = · ≠ (lookup)                                                                            |
+
+Kümeler DevExtreme'in `filterOperations` varsayılanlarıdır; adlar `operationDescriptions` ya da
+`dxDataGrid-filterRowOperation*` metinleriyle değişir. Listenin sonunda **Sıfırla** vardır.
+**Arasında** seçilince hücre aralığı gösterir, iki ucu açılır bir pencerede girilir.
 
 Seçici ikon boyunda bir `Select`'tir ve alanın **içinde**, kenarlığın gerisinde durur. Yan yana
 iki denetim yerine tek bir alan olduğu için odak halkası seçiciyi de kapsıyor:
@@ -223,16 +345,15 @@ _"A slot prop is required"_ hatasıyla alan çöküyor.
 `aria-labelledby` ile etiketten kurup içerideki metni okumadığı için seçili işlem erişilebilir
 ada yazılır: _"Tutar filtre işlemi: Büyük veya eşittir"_.
 
-Filtre durumu `{ op, value }` çiftidir (`Filters` / `FilterState`); eşleştirme `useDataGrid`
-içindeki `matchText` / `matchNumber` / `matchDate` / `matchEnum` fonksiyonlarında toplanır.
+Filtre durumu kolonun `filterValue` / `selectedFilterOperation` seçenekleridir; ifadeye
+`calculateFilterExpression` çevirir, eşleştirmeyi `data/` altındaki sorgu motoru
+(`compileCriteria`) yapar. Metin ve tarih alanlarına yazılanlar alanın kendisinde bekler ve
+listeye `updateValueTimeout` (varsayılan 300 ms) sonra uygulanır — bkz. _Performans_. Durum seçimi, sayı alanları (zaten odak çıkışında /
+Enter'da yazarlar) ve bütün işlem (`op`) değişiklikleri beklemeden uygulanır: tek hamlelik
+seçimleri geciktirmek yalnızca tepkiyi yavaşlatırdı. İşlem değişince alanda bekleyen metin de aynı
+anda gider.
 Tarih karşılaştırması gün çözünürlüğündedir (saat farkı sonucu etkilemez). İşlemi değiştirmek tek
-başına filtre saymaz; `activeFilterCount` yalnızca dolu değerleri sayar.
-
-Filtre ve satır içi düzenleme denetimlerinin tamamı aynı yükseklikte (2rem). ve
-yüksekliği alan grubunda taşıdığı için /'ın
-prop'u grubu da alçaltır; yalnızca iç input'u alçaltmak alanı bir tık yüksek bırakıyordu.
-İşlem seçicinin tetikleyicisi olduğu için konumlanmamış komşusunun odak
-halkasını örtüyordu; alanlar odaklanınca a çıkar.
+başına filtre saymaz; değer boşken ifade üretilmez.
 
 Filtre ve satır içi düzenleme denetimlerinin tamamı aynı yükseklikte (2rem). `NumberField` ve
 `DateInputGroup` yüksekliği alan grubunda taşıdığı için `NumberBox` / `DateTimePicker`'ın
@@ -252,17 +373,25 @@ bir pahalı fonksiyon değil **çok sayıda bileşenin boşuna render edilmesi**
 
 Yapılanlar:
 
-- **Bölüm bazlı `memo`**: `GridHeader`, `FilterRow`, `DataGridRow`, `GridFooter`. Sayfa değişimi
+- **Bölüm bazlı `memo`**: `ColumnHeaders`, `FilterRow`, `DataRow`, `Pager`. Sayfa değişimi
   ya da satır seçimi artık filtre alanlarını ve başlığı yeniden render etmiyor.
 - **Hücre bazlı filtre memo'su**: tek bir `FilterRow` yetmiyordu, çünkü bir alana yazmak
   `filters`ı değiştirip yedi alanı birden render ettiriyordu. Her hücre artık yalnızca kendi
   `{ op, value }` dilimini alıyor.
-- **Sabit geri çağrılar**: `useDataGrid` bütün handler'ları `useCallback` ile, `tableProps`ı
-  `useMemo` ile veriyor. Dışarıdan gelen `onRowsChange` / `onAnnounce` bir ref'te tutuluyor, yani
-  çağıran taraf onları sarmasa bile handler kimlikleri sabit kalıyor.
+- **Sabit geri çağrılar ve nesneler**: controller'lar handler'ları `useCallback` ile verir, olay
+  prop'ları ref'ten okunur (çağıran sarmasa bile kimlikler sabit), satır içi seçenek nesneleri
+  içerikleriyle karşılaştırılır (`useStableValue`), değişmeyen satır nesneleri korunur
+  (`useStableRows`), kolon tanımları çalışma durumundan ayrıdır.
 - **Bileşen kimliği kaçağı**: `sortableHeader(label)` her render'da _yeni bir bileşen türü_
   üretiyordu; React bunu farklı tip sayıp başlık hücrelerini söküp yeniden kuruyordu. Tek sabit
   `SortableHeader` bileşenine çevrildi.
+- **Yazılanı alanda bekletme (`useBufferedValue`)**: filtre satırının metin/tarih alanları ve
+  hücre düzenleyicileri yazılanı **kendi içlerinde** tutar; filtre satırı ve arama paneli ara
+  verilince (`updateValueTimeout`, varsayılan 300 ms), veri satırı editörleri alandan çıkınca
+  (blur) ya da Enter'da yazar. Aşağıda "her tuşta yukarı yaz, süzmeyi ertele" yaklaşımının neden
+  yetmediği anlatılıyor.
+- **`DataGrid` `memo`lu**: üst bileşenin başka bir sebeple (arama kutusuna yazmak gibi) render
+  olması tabloya dokunmaz.
 - **Satır başına tek yerine tablo başına tek diyalog**: her satır kendi `AlertDialog` ağacını
   kuruyordu (on satır = on diyalog). Artık tabloda tek bir denetimli diyalog var; tetikleyiciler
   satırlardaki çöp kutusu düğmeleri.
@@ -287,12 +416,108 @@ Denenip **geri alınan** bir şey: `useDeferredValue` ile aramayı ertelemek. Gi
 iyileştiriyor ama React her tuşta iki kez render ettiği için toplam iş neredeyse ikiye katlandı
 (273 → 484 ms). 64 satırda süzme zaten yeterince hızlı olduğu için geri alındı.
 
-### `showEditorAlways` — DataGrid2
+Sonradan eklenen bekletme bununla karışmamalı: `useDeferredValue` her tuşta **iki** render
+yapar (biri eski değerle), alanda bekletme ise tabloya duraklamaya kadar **hiç** dokunmaz.
+Yukarıdaki tablo bekletmeden öncedir. İlk deneme (`useDataGrid` içinde ertelenmiş sorgu +
+`DataGridRow`da satır düzeyi erteleme) süzme sayısını azalttı ama yazarkenki takılmayı gidermedi;
+sebebi aşağıda. Bekletmenin ikinci kazancı `onRowsChange`ın her tuşta değil duraklama başına (ya
+da alandan çıkışta) bir kez çağrılması — kaydı bir sunucuya yazan bir tüketici için fark buradadır.
 
-`showEditorAlways` modunda satır içi düzenleyiciler hep açık kalır. Bu modda taslak yoktur:
-değişiklikler `useDataGrid.updateRow` ile doğrudan kayda yazılır, düzenle / kaydet / vazgeç
-düğmeleri görünmez, işlemler kolonunda yalnızca silme kalır. Vitrindeki **DataGrid2** slaytı bunu
-gösterir; kendi veri kümesiyle çalışır ki iki slayt birbirinin kaydını değiştirmesin.
+#### Tuş başına tablo neden baştan kuruluyordu
+
+Satırlar `memo`lu, geri çağrılar sabit, filtre hücreleri kendi dilimini alıyor — yine de filtreye
+ya da hücre düzenleyiciye hızlı yazarken takılıyordu (dev derlemede tuş başına ~90 ms). CPU
+profili sebebi gösterdi: her tuşta tablonun **bütün** hücreleri (10 satır × 9) yeniden render
+oluyordu. Mekanizma React Aria'nın Table'ında:
+
+1. `Table.Row` / `Table.Cell` gerçek DOM'a değil, RAC'in **koleksiyon ağacına** render edilir;
+   görünen tablo bu koleksiyondan kurulur. Koleksiyon ağacındaki bir hücre bileşeni her render
+   olduğunda `setProps` çağrılır; bu, prop'lar aynı olsa bile düğümü "kirli" işaretler ve
+   koleksiyonu yeniden yayınlar (`@react-aria/collections`, `ElementNode.setProps`).
+2. Yeni koleksiyon `TableInner`ı render eder; `useTableState` her render'da yeni bir durum nesnesi
+   üretir ve context'le dağıtır. Context değiştiği için her `TableCell`, her seçim `Checkbox`ı ve
+   her başlık yeniden render olur — satırın `memo`su ya da önbelleklenmiş eleman kimlikleri buna
+   engel değildir.
+
+Yani tuş başına state değişikliğinin **nerede** olduğu belirleyici. Koleksiyon ağacındaki bir
+bileşende olursa (önceki `DataGridRow`ın `pending` state'i ya da `filters` prop'u üzerinden
+`FilterRow`) tablo baştan kurulur; gerçek DOM ağacındaki hücre içeriğinde olursa
+(`TextBoxEditor`, `DateBoxEditor`) yalnızca o alan render olur. Eski "anlık sorgu / uygulanan
+sorgu" ayrımı süzmeyi erteliyor ama filtre state'ini yine her tuşta değiştiriyordu.
+
+`useBufferedValue` dış yazımı (temizle, Escape, `clearFilter`) kolonun durum nesnesinin
+kimliğinden anlar; her filtre yazımı o kolon için yeni bir nesne üretir. Kendi yazdığının geri
+yansımasını ayrı tutar: zamanlayıcı dolup değer yukarı gittikten sonra, yansıma gelene kadar
+yazılmış harfler kaybolmaz. `saveEditData` değişiklikleri bir ref'ten okur ve `setCellValue`
+eşzamanlıysa değişiklik aynı olayda yazılır: Enter'da alan önce bekleyeni boşaltır (flush),
+aynı olaydaki kaydetme o değeri görür.
+
+Ölçüm (Chrome CDP, 11 karakter 60 ms arayla; tuş başına `input` olayından React işi bitip
+zamanlayıcıya dönene kadar geçen süre, ortalama):
+
+| Senaryo                             | önce (dev) | sonra (dev) | önce (üretim) | sonra (üretim) |
+| ----------------------------------- | ---------- | ----------- | ------------- | -------------- |
+| Filtre satırı, metin alanı          | 97 ms      | 9 ms        | 27 ms         | 7 ms           |
+| DataGrid2 hücre düzenleyici (metin) | 46 ms      | 10 ms       | 18 ms         | 9 ms           |
+
+Dev derlemesi (StrictMode çift render + React 19 geliştirme izleri) üretimin 3–4 katı; takılma en
+çok orada hissediliyordu. Kalan maliyet alanın kendi render'ı ve React Aria'nın olay katmanıdır,
+tablonun boyutuyla artık ölçeklenmez.
+
+#### Ölçüm 2 — neyi yanlış yapıyorduk
+
+Etkileşimler (özellikle dokunmatikte) ağır hissettiriyordu. Ne değiştiğini görmek için her
+etkileşimde **hangi bileşenin kaç kez render olduğu** (React DevTools commit kancası üzerinden,
+react-scan'in yöntemi) ve **bileşen başına render süresi** (React'in profiling derlemesi,
+`selfBaseDuration`) ölçüldü. Tablonun kendisi dışında dört hata çıktı:
+
+1. **Duyurular bütün tabloyu iki kez render ediyordu.** Ekran okuyucu metni grid kökünün state'i
+   idi; her duyuru iki güncelleme (boşalt + yaz) → iki tam commit, her birinde 81 hücre (~1.300
+   render). Artık küçük bir store'da; yalnızca `StatusRegion` okuyor (`useStatusMessage`).
+2. **Her hücre metninde, çipte ve satır düğmesinde bir `Tooltip`.** Sayfa başına ~70 tetikleyici,
+   her biri ~7 bileşen ve kendi hover / focus kancaları; her commit'te ve her klavye ↔ fare kipi
+   değişiminde hepsi yeniden render oluyordu (bir filtreye ilk tuş: 473 render). Artık grid başına
+   **tek** HeroUI `Tooltip.Content` var, `triggerRef` ile üzerine gelinen öğeye bağlanıyor
+   (`GridTooltip`); öğeler `data-dx-tip` (düğme ipucu) ya da `data-dx-truncate` (yalnızca metin
+   kesildiyse) ile katılıyor.
+3. **Filtre işlem seçicileri `Select` idi.** Select, kapalıyken de seçenek koleksiyonunu ve bütün
+   seçenekleriyle gizli bir `<select>` kuruyor; filtre satırında yedi tane. Artık `Dropdown`:
+   menü yalnızca açıkken var.
+4. **Tablo, tablo dışı değişikliklerde de render oluyordu.** Silme diyaloğu, yükleme paneli,
+   araç çubuğu ya da satır içi seçenek nesneleriyle render olan bir üst bileşen grid kökünü render
+   edince React Aria tablosu da baştan render oluyordu. Tablo artık kendi `memo` sınırında
+   (`GridTable`); arama paneli de `memo`lu.
+
+Ölçüm (üretim derlemesi, 4× CPU yavaşlatma, 5 tur medyanı; INP = Event Timing etkileşim süresi,
+long task = ana iş parçacığını bloklayan süre):
+
+| Senaryo                   | önce INP / long task | sonra INP / long task |
+| ------------------------- | -------------------- | --------------------- |
+| DataGrid sekmesini aç     | 464 / 532 ms         | 368 / 331 ms          |
+| Satır seç                 | — / 121 ms           | — / 97 ms             |
+| Sırala                    | 208 / 195 ms         | 168 / 158 ms          |
+| Sonraki sayfa             | 192 / 177 ms         | 152 / 136 ms          |
+| Düzenlemeyi başlat        | 208 / 269 ms         | 176 / 165 ms          |
+| Düzenlemeden vazgeç       | — / 277 ms           | — / 161 ms            |
+| Hücre modu sekmesini aç   | 488 / 459 ms         | 384 / 352 ms          |
+| **Toplam (14 senaryo)**   | **2.016 / 3.017 ms** | **1.608 / 2.064 ms**  |
+
+Kalan maliyetin yarısından fazlası React Aria tablosunun kendisi: her hücre, satır ve kolon her
+tablo render'ında kendi kancalarını çalıştırıyor (`useGridCell`, `useSelectableItem`, `usePress`,
+`useLongPress`, `useFocusRing`), ve tablo odağı girip çıktığında, seçim ya da odaklanan hücre
+değiştiğinde bütün hücreler render oluyor. Bu HeroUI `Table`'ın mimarisidir; sonrasında satır
+başına iki `Button` ve bir seçim `Checkbox`ı, filtre / düzenleme satırında tarih alanlarının
+segmentleri geliyor.
+
+### Hücre modu + `showEditorAlways` — "Hücre düzenleme" örneği
+
+"Hücre düzenleme" örneği `editing.mode: 'cell'` ile çalışır ve veri kolonlarında `showEditorAlways: true` vardır
+(`requestColumnsAlwaysEditing.ts`): editörler hep açıktır, her değişiklik alandan çıkınca ya da
+Enter'da `onRowUpdating` → `store.update` → `onRowUpdated` ile hemen kaydedilir. Hücre modunda
+düzenle / kaydet / vazgeç düğmeleri yoktur, işlemler kolonunda yalnızca silme kalır. Satır
+sökülürse (sayfa değişimi, sıralama) bekleyen değer kaybolmadan yazılır. `showEditorAlways`
+olmayan kolonlarda hücreye tıklamak (`startEditAction`) o hücrenin editörünü açar. Her örneğin
+kendi `ArrayStore`'u vardır ki örnekler birbirinin kaydını değiştirmesin.
 
 ### Widget kartı
 

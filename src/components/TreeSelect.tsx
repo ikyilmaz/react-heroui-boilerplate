@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useMemo, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
 
 import {
@@ -21,6 +21,8 @@ import {
   FIELD_ICON_BUTTON,
   FIELD_ICON_SIZE,
   ICON_MUTED,
+  LIST_ITEM_SELECTED,
+  ROW_ICON_BUTTON,
   fieldIconButton,
 } from '@/components/fieldIconButton'
 
@@ -83,6 +85,9 @@ export type TreeSelectProps = TreeSelectSingleProps | TreeSelectMultipleProps
 
 /** Typography varsayılan olarak <p> basar; satır içi metinlerde <span> gerekir. */
 const inlineText = { elementType: 'span', slot: null } as unknown as Record<string, never>
+
+/** Stops the event before it reaches the ListBox row; no `preventDefault`, `click` must survive. */
+const stopPress = (e: SyntheticEvent) => e.stopPropagation()
 
 /* -------------------------------------------------------------------------------------------------
  * Ağaç yardımcıları
@@ -556,28 +561,42 @@ export function TreeSelect(props: TreeSelectProps) {
                 textValue={titleText(row.node.title) || row.id}
                 // Yapraklarda chevron yok; yerini dolgu tutar (24px düğme + 4px aralık)
                 style={{ paddingInlineStart: 10 + row.level * 20 + (row.hasChildren ? 0 : 28) }}
-                className="gap-1"
+                className={cn('gap-1', LIST_ITEM_SELECTED)}
               >
                 {({ isSelected }) => (
                   <>
                     {row.hasChildren && (
                       /*
-                        Satır `role="option"`; içine düğme konulamaz. Chevron sunumsaldır
-                        (aria-hidden), klavye karşılığı input'taki ←/→ tuşlarıdır.
+                        The row is `role="option"`, so no button may go inside it. The chevron is
+                        presentational (aria-hidden); its keyboard equivalent is ←/→ in the input.
 
-                        `Pressable` kullanılmıyor: React Aria'nın basma olayları iç içe
-                        geçince dışarıya da ulaşıyor ve satır seçiliyordu. Bunun yerine
-                        işaretçi olayını satıra varmadan kesiyoruz — `preventDefault`
-                        satırın basma algısını başlatmasını engeller.
+                        `Pressable` is not used: React Aria's press events reach the outside too
+                        once they nest, and that selected the row. Instead we stop the pointer
+                        events before they arrive at the row.
+
+                        Stopping `pointerdown` alone is not enough — worse, it is the cause of the
+                        bug: in a dropdown, selection happens on press *up*
+                        (`allowsDifferentPressOrigin`: pressing on the trigger and releasing on a
+                        row selects it too). For that, `usePress` fires `onPressUp` from the row's
+                        `pointerup` even when no press ever started — and swallowing the press is
+                        exactly what creates that condition. So the release events must be stopped
+                        as well; `click` comes last in the sequence and is too late.
                       */
                       <Surface
                         aria-hidden
                         variant="transparent"
-                        className={cn(fieldIconButton, 'shrink-0')}
+                        className={cn(fieldIconButton, ROW_ICON_BUTTON, 'shrink-0')}
                         onPointerDown={(e) => {
+                          // preventDefault: keep focus in the input, don't let the row start a press
                           e.preventDefault()
                           e.stopPropagation()
                         }}
+                        onPointerUp={stopPress}
+                        // Without PointerEvent, usePress falls back to the mouse/touch path
+                        onMouseDown={stopPress}
+                        onMouseUp={stopPress}
+                        onTouchStart={stopPress}
+                        onTouchEnd={stopPress}
                         onClick={(e) => {
                           e.stopPropagation()
                           setExpand(row.id, !expanded.has(row.id))

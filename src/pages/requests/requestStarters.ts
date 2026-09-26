@@ -1,0 +1,17 @@
+export const REQUEST_STARTERS = [
+  'Zeynep Ertoy',
+  'Mert Kaya',
+  'Ayşe Demir',
+  'Burak Şahin',
+  'Elif Yıldız',
+  'Can Özkan',
+  'Deniz Arslan',
+  'Seda Korkmaz',
+  'Emre Çetin',
+  'Gizem Aydın',
+  'Ömer Faruk Tan',
+  'Nazlı Güneş',
+  'Form Team',
+  'İnsan Kaynakları',
+  'Satınalma Ekibi',
+]

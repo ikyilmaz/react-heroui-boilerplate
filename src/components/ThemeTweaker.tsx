@@ -22,12 +22,15 @@ import {
 import { FieldSelectIndicator } from '@/components/FieldSelectIndicator'
 import {
   accentSwatches,
+  backgrounds,
   applyPreset,
   fonts,
+  layouts,
   presets,
   resetTweaks,
   setTweak,
   useThemeTweaks,
+  type LayoutId,
 } from '@/theme/tweaks'
 
 /** Typography varsayılan olarak <p> basar; satır içi metinlerde <span> gerekir. */
@@ -44,14 +47,15 @@ const selectedItemClass =
  * değişkeni yazar (bkz. `@/theme/tweaks`). Değişiklikler anında ve tüm bileşenlere yayılır.
  * ------------------------------------------------------------------------------------------------- */
 
-export function ThemeTweaker() {
+/** `className` tetikleyici düğmeye uygulanır (kabuklar kendi görünümünü verebilsin diye). */
+export function ThemeTweaker({ className }: { className?: string } = {}) {
   const t = useThemeTweaks()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
   const [open, setOpen] = useState(false)
 
   return (
     <Drawer.Root isOpen={open} onOpenChange={setOpen}>
-      <Drawer.Trigger aria-label="Tema ayarları" className="inline-flex">
+      <Drawer.Trigger aria-label="Tema ayarları" className={className ?? 'inline-flex'}>
         <Palette size={18} aria-hidden />
       </Drawer.Trigger>
 
@@ -93,6 +97,35 @@ export function ThemeTweaker() {
 
             <Separator />
 
+            <Row label="Yerleşim · İş akışları">
+              <ListBox
+                aria-label="Yerleşim"
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={[t.layout]}
+                onSelectionChange={(keys) => {
+                  const k = [...keys][0]
+                  if (k) setTweak('layout', k as LayoutId)
+                }}
+              >
+                {layouts.map((l) => (
+                  <ListBox.Item key={l.id} id={l.id} textValue={l.name} className={selectedItemClass}>
+                    <Surface variant="transparent" className="flex min-w-0 flex-1 flex-col bg-transparent text-inherit">
+                      <Typography type="body-sm" weight="medium" {...inlineText}>
+                        {l.name}
+                      </Typography>
+                      <Typography type="body-xs" color="muted" {...inlineText}>
+                        {l.idea}
+                      </Typography>
+                    </Surface>
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            </Row>
+
+            <Separator />
+
             <Row label="Görünüm">
               <ToggleButtonGroup
                 aria-label="Görünüm"
@@ -114,6 +147,42 @@ export function ThemeTweaker() {
                 <ToggleButton id="system" aria-label="Sistem">
                   <SunMoon size={16} aria-hidden />
                 </ToggleButton>
+              </ToggleButtonGroup>
+            </Row>
+
+            <Row label="Zemin · İş akışları">
+              <ToggleButtonGroup
+                aria-label="Zemin gradyanı"
+                selectionMode="single"
+                disallowEmptySelection
+                isDetached
+                selectedKeys={[t.background]}
+                onSelectionChange={(keys) => {
+                  const k = [...keys][0]
+                  if (k) setTweak('background', String(k))
+                }}
+                className="grid grid-cols-5 gap-2"
+              >
+                {backgrounds.map((b) => (
+                  <ToggleButton
+                    key={b.id}
+                    id={b.id}
+                    aria-label={b.name}
+                    className="h-auto w-full min-w-0 flex-col gap-1 rounded-xl bg-transparent p-1 data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent-soft-foreground"
+                  >
+                    {/* Önizleme etkin moda göre: koyu moddaysa koyu hâli */}
+                    <Surface
+                      variant="transparent"
+                      className="h-10 w-full rounded-lg ring-1 ring-border"
+                      style={{ backgroundImage: resolvedTheme === 'dark' ? b.dark : b.light }}
+                    >
+                      {null}
+                    </Surface>
+                    <Typography type="body-xs" className="w-full truncate text-center text-[0.6875rem]" {...inlineText}>
+                      {b.name}
+                    </Typography>
+                  </ToggleButton>
+                ))}
               </ToggleButtonGroup>
             </Row>
 

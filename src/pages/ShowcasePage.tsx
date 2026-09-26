@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Button,
-  ButtonGroup,
   Card,
   Chip,
   Input,
-  SearchField,
   Surface,
   Switch,
   Tabs,
   TextField,
   Toolbar,
-  Tooltip,
   Typography,
   cn,
 } from '@heroui/react'
@@ -21,23 +18,17 @@ import {
   ArrowLeftRight,
   ArrowRight,
   CalendarClock,
-  CheckCheck,
   CircleCheck,
   CircleDashed,
   CircleX,
-  FilterX,
   Hash,
   ListTree,
   Loader,
-  PencilLine,
-  Plus,
   Search,
   Sparkles,
   Table2,
   Type,
-  X,
 } from 'lucide-react'
-import { FIELD_ICON_BUTTON, FIELD_ICON_SIZE } from '@/components/fieldIconButton'
 import { Combobox, type ComboboxOption } from '@/components/Combobox'
 import { DateTimePicker } from '@/components/DateTimePicker'
 import { NumberBox } from '@/components/NumberBox'
@@ -45,8 +36,7 @@ import { TextBox } from '@/components/TextBox'
 import { TimePicker } from '@/components/TimePicker'
 import { Transfer, type TransferItem } from '@/components/Transfer'
 import { TreeSelect, type TreeSelectNode } from '@/components/TreeSelect'
-import { DataGrid } from '@/components/DataGrid'
-import { useDataGrid, type Request, type Status } from '@/components/useDataGrid'
+import { DataGridShowcase } from '@/pages/dataGridShowcase/DataGridShowcase'
 
 /**
  * Typography varsayılan olarak <p> basar; buton/etiket/satır içi kullanımda <span> gerekir.
@@ -77,7 +67,6 @@ const slides: SlideMeta[] = [
   { id: 'transfer', label: 'Transfer', icon: <ArrowLeftRight size={16} aria-hidden /> },
   { id: 'textbox', label: 'TextBox', icon: <Type size={16} aria-hidden /> },
   { id: 'table', label: 'DataGrid', icon: <Table2 size={16} aria-hidden /> },
-  { id: 'table2', label: 'DataGrid2', icon: <PencilLine size={16} aria-hidden /> },
   { id: 'basics', label: 'HeroUI', icon: <Sparkles size={16} aria-hidden /> },
 ]
 
@@ -162,61 +151,6 @@ const formatSamples: { format: string; locale?: string }[] = [
   { format: 'YYYY-MM-DD[T]HH:mm:ss' },
 ]
 
-const STARTERS = [
-  'Zeynep Ertoy',
-  'Mert Kaya',
-  'Ayşe Demir',
-  'Burak Şahin',
-  'Elif Yıldız',
-  'Can Özkan',
-  'Deniz Arslan',
-  'Seda Korkmaz',
-  'Emre Çetin',
-  'Gizem Aydın',
-  'Ömer Faruk Tan',
-  'Nazlı Güneş',
-  'Form Team',
-  'İnsan Kaynakları',
-  'Satınalma Ekibi',
-]
-
-const STATUSES: Status[] = ['waiting', 'urgent', 'info', 'approved']
-
-/**
- * Vitrin verisi. Deterministik sözde-rastgele üretilir (sabit tohumlu LCG): sayfalama ve
- * arama denenebilsin diye çok satır gerekiyor ama her açılışta aynı tablo gelsin istiyoruz.
- */
-function makeRequests(count: number): Request[] {
-  let seed = 20260920
-  const next = () => {
-    seed = (seed * 1103515245 + 12345) % 2147483648
-    return seed / 2147483648
-  }
-  const pick = <T,>(list: readonly T[]) => list[Math.floor(next() * list.length)]
-
-  return Array.from({ length: count }, (_, i) => {
-    const month = 3 + Math.floor(next() * 7)
-    const day = 1 + Math.floor(next() * 28)
-    const status = pick(STATUSES)
-    return {
-      id: `r${i + 1}`,
-      requestNo: 152512 - i * 7 - Math.floor(next() * 5),
-      starter: pick(STARTERS),
-      processStart: new CalendarDateTime(
-        2026,
-        month,
-        day,
-        8 + Math.floor(next() * 10),
-        Math.floor(next() * 12) * 5,
-      ),
-      requestDate: new CalendarDateTime(2026, month, day, 0, 0),
-      amount: (1 + Math.floor(next() * 400)) * 250,
-      progress: status === 'approved' ? 100 : Math.floor(next() * 20) * 5,
-      status,
-    }
-  })
-}
-
 /** TextBox çeviri örneği için diller; ilki ana alandır. */
 const DILLER = [
   { code: 'tr', label: 'Türkçe' },
@@ -225,134 +159,10 @@ const DILLER = [
   { code: 'fr', label: 'Français' },
 ]
 
-const initialShowcaseRequests: Request[] = makeRequests(64)
-/** DataGrid2 için ayrı bir küme; hep-açık düzenleme modunda kayıtlar sürekli değişiyor. */
-const initialShowcaseRequests2: Request[] = makeRequests(24)
-
-/**
- * Yumuşak vurgu butonu. HeroUI'de `accent-soft` diye bir buton varyantı yok ama varyantlar
- * zeminlerini `--button-bg` / `--button-fg` üzerinden kuruyor (bkz. `.button--danger-soft`);
- * biz de aynı token'ları besliyoruz — hover ve basılı durumlar olduğu gibi çalışıyor.
- */
-const ACCENT_SOFT_BUTTON = cn(
-  '[--button-bg:var(--accent-soft)]',
-  '[--button-bg-hover:var(--accent-soft-hover)]',
-  '[--button-bg-pressed:var(--accent-soft-hover)]',
-  '[--button-fg:var(--accent-soft-foreground)]',
-)
 
 /* -------------------------------------------------------------------------------------------------
  * Sayfa
  * ------------------------------------------------------------------------------------------------- */
-
-/**
- * İstek tablosu widget'ı. İki slayt da (DataGrid ve DataGrid2) bunu kullanıyor; tek fark
- * `showEditorAlways`: hep-açık modda satır içi düzenleyiciler kapanmaz.
- */
-function RequestsWidget({
-  table,
-  showEditorAlways = false,
-}: {
-  table: ReturnType<typeof useDataGrid>
-  showEditorAlways?: boolean
-}) {
-  /*
-     Widget: dış kart araç çubuğunu, iç kart tabloyu taşır.
-
-     Tonlar: sayfa (0.970) → dış kart `tertiary` (0.937) → başlık şeridi
-     `surface-secondary` (0.952) → iç kart `default` (beyaz). Dış kart önce
-     `secondary` idi; başlık şeridiyle birebir aynı ton olduğu için şerit
-     kayboluyordu. Koyu temada sıralama tersine dönüp "kuyu" etkisi veriyor.
-     `.card`ın kenarlığı yok, yalnızca zemini var; aynı varyant iç içe gelirse
-     kartlar birbirinin içinde kaybolur.
-   */
-  return (
-    <Card variant="tertiary" className="w-full">
-      <Card.Header className="flex-row items-center justify-between gap-3">
-        <SearchField
-          aria-label="Tabloda ara"
-          className="w-72 max-w-full"
-          value={table.search}
-          onChange={table.changeSearch}
-        >
-          <SearchField.Group className="h-8">
-            <SearchField.SearchIcon>
-              <Search size={16} aria-hidden />
-            </SearchField.SearchIcon>
-            <SearchField.Input placeholder="Ara" className="min-w-0 py-1" />
-            <SearchField.ClearButton aria-label="Temizle" className={cn('me-1', FIELD_ICON_BUTTON)}>
-              <X size={FIELD_ICON_SIZE} aria-hidden />
-            </SearchField.ClearButton>
-          </SearchField.Group>
-        </SearchField>
-
-        {/*
-              ButtonGroup çocuklarını klonlayıp "grup çocuğu" işareti koyuyor; Tooltip
-              sarmalayıcısı bu işareti yutuyor, yani butonlar size/variant'ı context'ten
-              almıyor — o yüzden her butona tek tek veriyoruz. Birleşik görünüm CSS'ten
-              (`.button-group .button`) geldiği için Tooltip'ten etkilenmiyor.
-
-              Nötr butonlar yumuşak vurgu renginde: `secondary`nin zemini (0.94) dış
-              kartınkine (0.937) neredeyse eşit olduğu için butonlar görünmüyordu. Grup
-              artık yumuşak vurgu + dolu vurgu olarak okunuyor.
-            */}
-        <ButtonGroup aria-label="Tablo araçları">
-          <Tooltip>
-            <Button
-              size="sm"
-              variant="secondary"
-              className={ACCENT_SOFT_BUTTON}
-              isIconOnly
-              aria-label="Seçilenleri onayla"
-              isDisabled={table.selectedCount === 0}
-              onPress={table.approveSelected}
-            >
-              <CheckCheck size={16} aria-hidden />
-            </Button>
-            <Tooltip.Content>
-              Seçilenleri onayla{table.selectedCount ? ` (${table.selectedCount})` : ''}
-            </Tooltip.Content>
-          </Tooltip>
-          <Tooltip>
-            <Button
-              size="sm"
-              variant="secondary"
-              className={ACCENT_SOFT_BUTTON}
-              isIconOnly
-              aria-label="Filtreyi temizle"
-              isDisabled={table.activeFilterCount === 0}
-              onPress={table.clearFilters}
-            >
-              <FilterX size={16} aria-hidden />
-            </Button>
-            <Tooltip.Content>Filtreyi temizle</Tooltip.Content>
-          </Tooltip>
-          <Tooltip>
-            <Button
-              size="sm"
-              variant="primary"
-              isIconOnly
-              aria-label="Yeni istek"
-              onPress={table.addRow}
-            >
-              <Plus size={16} aria-hidden />
-            </Button>
-            <Tooltip.Content>Yeni istek</Tooltip.Content>
-          </Tooltip>
-        </ButtonGroup>
-      </Card.Header>
-      <Card.Content>
-        <Card variant="default" className="min-w-0 border border-border p-2">
-          <DataGrid
-            {...table.tableProps}
-            showEditorAlways={showEditorAlways}
-            aria-label="Örnek istekler"
-          />
-        </Card>
-      </Card.Content>
-    </Card>
-  )
-}
 
 export function ShowcasePage() {
   const [slide, setSlide] = useState(slides[0].id)
@@ -369,7 +179,6 @@ export function ShowcasePage() {
   const [count, setCount] = useState(0)
   const [name, setName] = useState('')
   const [notifications, setNotifications] = useState(true)
-  const [requests, setRequests] = useState(initialShowcaseRequests)
   const [announcement, setAnnouncement] = useState('')
 
   const announce = useCallback((msg: string) => {
@@ -378,13 +187,6 @@ export function ShowcasePage() {
     requestAnimationFrame(() => setAnnouncement(msg))
   }, [])
 
-  const table = useDataGrid({
-    rows: requests,
-    onRowsChange: setRequests,
-    onAnnounce: announce,
-    // Sunumda tablo + araç çubuğu + sayfalama tek ekrana sığsın
-    defaultPageSize: 8,
-  })
 
   const [baslik, setBaslik] = useState('')
   const [aciklama, setAciklama] = useState('Talep formu')
@@ -395,14 +197,6 @@ export function ShowcasePage() {
   const [notMetni, setNotMetni] = useState('')
   const [notCevirileri, setNotCevirileri] = useState<Record<string, string>>({})
 
-  /** DataGrid2 kendi verisiyle çalışsın ki iki slayt birbirinin kaydını değiştirmesin. */
-  const [requests2, setRequests2] = useState<Request[]>(initialShowcaseRequests2)
-  const table2 = useDataGrid({
-    rows: requests2,
-    onRowsChange: setRequests2,
-    onAnnounce: announce,
-    defaultPageSize: 5,
-  })
 
   useEffect(() => {
     document.title = 'Vitrin'
@@ -793,19 +587,10 @@ export function ShowcasePage() {
 
           {/* ------------------------------ DataGrid ------------------------------ */}
           <Tabs.Panel id="table">
-            <Slide title="DataGrid" subtitle="Filtre, sıralama, seçim ve satır içi düzenleme">
-              {/* Widget kendi başlığını ve kartlarını kuruyor; üstüne bir kat daha eklemiyoruz */}
+            <Slide title="DataGrid" subtitle="DevExtreme API'li veri tablosu — örnekler">
+              {/* Örnekler kendi kartlarını kuruyor; üstüne bir kat daha eklemiyoruz */}
               <Surface variant="transparent" className="col-span-full min-w-0">
-                <RequestsWidget table={table} />
-              </Surface>
-            </Slide>
-          </Tabs.Panel>
-
-          {/* ------------------------------ DataGrid2 (hep açık düzenleme) ------------------------------ */}
-          <Tabs.Panel id="table2">
-            <Slide title="DataGrid2" subtitle="Satır içi düzenleyiciler hep açık">
-              <Surface variant="transparent" className="col-span-full min-w-0">
-                <RequestsWidget table={table2} showEditorAlways />
+                <DataGridShowcase onAnnounce={announce} />
               </Surface>
             </Slide>
           </Tabs.Panel>
