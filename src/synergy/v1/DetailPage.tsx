@@ -1,8 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
-import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
-import { Avatar, Button, Card, Chip, ScrollShadow, Tabs, Tooltip, Typography, cn } from '@heroui/react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Files,
+  History,
+  Info,
+  PanelRightClose,
+  PanelRightOpen,
+  Trash2,
+  X,
+} from 'lucide-react'
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  ScrollShadow,
+  Separator,
+  Tabs,
+  Typography,
+  cn,
+} from '@heroui/react'
 import {
   deleteDraft,
   markDocumentViewed,
@@ -15,28 +36,32 @@ import {
   DELETE_CONFIRM,
   DOCUMENT_LABELS,
   VIEWER_LABELS,
-  avatarColor,
   documentsOf,
   eventsFor,
   findBox,
   findProcess,
   findRequest,
-  formatDateTime,
-  initials,
   processCaption,
   propertiesOf,
-  relative,
   type BoxId,
   type DetailNavState,
   type FlowDocument,
   type FlowEvent,
+  type Process,
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import { useHistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT, statusColor } from '@/synergy/shared/flowLabels'
-import { card, timeOf } from '@/synergy/shared/tokens'
+import { card } from '@/synergy/shared/tokens'
 import { Box } from '@/synergy/shared/ui'
-import { START_CRUMB, WF_CRUMB, boxLink, processLink, requestLink, useFrame } from '@/synergy/v1/paths'
+import {
+  START_CRUMB,
+  WF_CRUMB,
+  boxLink,
+  processLink,
+  requestLink,
+  useFrame,
+} from '@/synergy/v1/paths'
 import { IC, SOFT_BAND, TintIcon, Tip } from '@/synergy/v1/parts'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { KaroConfirm, useKaroFlow } from '@/synergy/v1/flow'
@@ -105,6 +130,7 @@ export function DetailPage() {
     <Viewer
       key={r.id}
       r={r}
+      process={process}
       caption={processCaption(process)}
       position={index >= 0 ? `${index + 1} / ${ids.length}` : null}
       prev={index > 0 ? () => go(ids[index - 1]) : undefined}
@@ -117,6 +143,23 @@ export function DetailPage() {
 
 type SideTab = 'props' | 'history' | 'docs'
 
+const SIDE_TABS: { id: SideTab; label: string; icon: LucideIcon }[] = [
+  { id: 'props', label: 'Özellikler', icon: Info },
+  { id: 'history', label: 'Tarihçe', icon: History },
+  { id: 'docs', label: DOCUMENT_LABELS.title, icon: Files },
+]
+
+/** Yan panelin sağa katlanma tercihi (geniş ekranda; saklanır). */
+const SIDE_KEY = 'synergy-detail-side-v1'
+
+function loadSideCollapsed() {
+  try {
+    return localStorage.getItem(SIDE_KEY) === '0'
+  } catch {
+    return false
+  }
+}
+
 /** Başlık bandı: diğer karolar gibi beyaz, çerçeveli; dolu öğe birincil renkte, çizgili öğe nötr. */
 const BAND = cn('bg-surface text-foreground', card)
 const ON_BAND = 'bg-accent text-accent-foreground hover:bg-accent/90'
@@ -124,7 +167,8 @@ const OUTLINE_ON_BAND = 'border-border bg-surface text-foreground hover:bg-surfa
 /** Kaydırınca beliren şerit: dolu birincil renk; üstünde dolu öğe beyaz, çizgili öğe rengini şeritten alır. */
 const STRIP = 'bg-accent text-accent-foreground'
 const ON_STRIP = 'bg-accent-foreground text-accent hover:bg-accent-foreground/90'
-const OUTLINE_ON_STRIP = 'border-current/40 bg-transparent text-current hover:bg-accent-foreground/10'
+const OUTLINE_ON_STRIP =
+  'border-current/40 bg-transparent text-current hover:bg-accent-foreground/10'
 /** Band metni: Typography rengini ezip bandın rengini izler. */
 const FAINT = 'text-current! opacity-75'
 /** Beyaz karo. */
@@ -134,6 +178,7 @@ const SPLIT = 'flex flex-wrap items-center justify-between gap-3'
 
 function Viewer({
   r,
+  process,
   caption,
   position,
   prev,
@@ -142,6 +187,7 @@ function Viewer({
   onDeleted,
 }: {
   r: WorkRequest
+  process: Process
   caption: string
   position: string | null
   prev?: () => void
@@ -154,7 +200,6 @@ function Viewer({
   const viewed = useViewedDocuments(r.id)
   const events = eventsFor(r)
   const isDraft = r.status === 'Taslak'
-  const when = isDraft ? r.createdAt : r.requestDate
   const status = statusColor(r.status)
 
   const [view, setView] = useState<'form' | 'history'>('form')
@@ -165,6 +210,22 @@ function Viewer({
   const [sideTab, setSideTab] = useState<SideTab>('props')
   const [historyOptions, setHistoryOptions] = useHistoryViewOptions()
   const phone = useMediaQuery('(max-width: 639px)')
+  // Yan panel geniş ekranda sağa katlanır; form tam genişliğe yayılır
+  const wide = useMediaQuery('(min-width: 1024px)')
+  const [sideCollapsed, setSideCollapsed] = useState(loadSideCollapsed)
+  const collapsed = wide && sideCollapsed
+  const setCollapsed = (v: boolean) => {
+    setSideCollapsed(v)
+    try {
+      localStorage.setItem(SIDE_KEY, v ? '0' : '1')
+    } catch {
+      // Depolama kapalıysa tercih yalnızca bu oturumda
+    }
+  }
+  const openSide = (tab: SideTab) => {
+    setSideTab(tab)
+    setCollapsed(false)
+  }
   // Vurgu gücü: varsayılan beyaz bant, hafif açık ton, dolu birincil renk (öğeler şerit gibi ters renkte)
   const accent = useLook().accent
   const solid = accent === 'solid'
@@ -174,7 +235,7 @@ function Viewer({
   const flow = useKaroFlow(r, {
     onDocsRequired: () => {
       setDocsWarning(true)
-      setSideTab('docs')
+      openSide('docs')
     },
     onDecided: (event) => {
       setDocsWarning(false)
@@ -223,9 +284,13 @@ function Viewer({
           <ScrollShadow className="max-h-104 pe-1">
             <HistoryTimeline r={r} options={historyOptions} compact />
           </ScrollShadow>
-          <Button variant="secondary" fullWidth onPress={() => setView('history')}>
-            {VIEWER_LABELS.showFullHistory}
-          </Button>
+          {/* Görünüm seçenekleri (bilgilendirmeler, ham tarih) tam tarihçe düğmesinin yanında */}
+          <Box className="flex items-center gap-2">
+            <Button variant="secondary" onPress={() => setView('history')} className="flex-1">
+              {VIEWER_LABELS.showFullHistory}
+            </Button>
+            {historyMenu}
+          </Box>
         </Box>
       ) : (
         <Typography type="body-sm" color="muted">
@@ -243,31 +308,52 @@ function Viewer({
           className={cn(
             STRIP,
             card,
-            'absolute inset-x-0 h-16 flex-row items-center gap-4 py-0 transition',
-            !scrolled && 'pointer-events-none -translate-y-3 opacity-0',
+            // Şerit yukarıdan kayarak iner, çıkarken yukarı kaçar
+            'absolute inset-x-0 h-16 flex-row items-center gap-4 py-0 transition duration-[calc(320ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
+            !scrolled && 'pointer-events-none -translate-y-[calc(100%+1rem)] opacity-0',
           )}
         >
-          <Typography truncate data-item-title className={`${TITLE} flex-1 text-current!`}>
-            {r.template.title}
-          </Typography>
+          {/* Konu her formda olmayabilir: şeritte süreç adı ve talep numarası */}
+          <Box className="min-w-0 flex-1">
+            <Typography truncate className={`${TITLE} text-current!`}>
+              {caption}
+            </Typography>
+            <Typography type="body-xs" truncate className={`font-mono ${FAINT}`}>
+              {r.no}
+            </Typography>
+          </Box>
           {!phone && scrolled && <Box className={cn(ROW, 'shrink-0')}>{actions(true)}</Box>}
         </Card>
       </Box>
 
       {/* --- Band ---------------------------------------------------------------------------- */}
+      {/*
+       * Başlık bandı: solda süreç ikonu, proje ve süreç adı (sayfa başlığı) ile durum; sağda sıra ve
+       * Geri / İleri. Altında olaylar.
+       */}
       <Card className={cn(band, 'gap-5 p-6')}>
-        <Box className={SPLIT}>
-          <Box className="flex min-w-0 items-center gap-3">
-            <Avatar size="sm" color={avatarColor(r.requester.name)} aria-hidden>
-              <Avatar.Fallback>{initials(r.requester.name)}</Avatar.Fallback>
-            </Avatar>
+        <Box className="flex flex-wrap items-start justify-between gap-4">
+          <Box className="flex min-w-0 flex-1 items-center gap-4">
+            <Box aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-current/10">
+              <process.icon {...IC} size={22} />
+            </Box>
             <Box className="min-w-0">
-              <Typography type="body-sm" weight="medium" truncate className="text-current!">
-                {caption}
+              <Typography type="body-sm" truncate className={FAINT}>
+                {process.project}
               </Typography>
-              <Typography type="body-xs" truncate className={FAINT}>
-                {r.requester.name} · {r.requester.department}
-              </Typography>
+              <Box className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                <Typography.Heading
+                  level={1}
+                  truncate
+                  title={caption}
+                  className="min-w-0 font-display text-2xl font-bold text-current! sm:text-[1.75rem]"
+                >
+                  {isDraft ? process.form : process.name}
+                </Typography.Heading>
+                <Chip size="sm" variant="primary" color={status}>
+                  {r.status}
+                </Chip>
+              </Box>
             </Box>
           </Box>
           <Box className={ROW}>
@@ -276,33 +362,18 @@ function Viewer({
                 {position}
               </Typography>
             )}
-            <NavButton label={VIEWER_LABELS.prev} icon={ChevronLeft} onPress={prev} onStrip={solid} />
-            <NavButton label={VIEWER_LABELS.next} icon={ChevronRight} onPress={next} onStrip={solid} />
-          </Box>
-        </Box>
-
-        <Box className="flex flex-col gap-2">
-          <Typography.Heading
-            level={1}
-            data-item-title
-            className="font-display text-3xl font-bold text-current!"
-          >
-            {r.template.title}
-          </Typography.Heading>
-          <Box className={ROW}>
-            <Typography type="body-sm" weight="medium" data-item-title className={`font-mono ${FAINT}`}>
-              {r.no} · {FLOW_TEXT.processNo} {r.processNo}
-            </Typography>
-            <Chip size="sm" variant="primary" color={status}>
-              {r.status}
-            </Chip>
-            <Tip label={formatDateTime(when)}>
-              <Tooltip.Trigger>
-                <Typography type="body-sm" {...timeOf(when)} className={FAINT}>
-                  {relative(when)}
-                </Typography>
-              </Tooltip.Trigger>
-            </Tip>
+            <NavButton
+              label={VIEWER_LABELS.prev}
+              icon={ChevronLeft}
+              onPress={prev}
+              onStrip={solid}
+            />
+            <NavButton
+              label={VIEWER_LABELS.next}
+              icon={ChevronRight}
+              onPress={next}
+              onStrip={solid}
+            />
           </Box>
         </Box>
 
@@ -319,10 +390,11 @@ function Viewer({
       </Card>
 
       {/* --- Bento ---------------------------------------------------------------------------- */}
-      <Box className="grid grid-cols-1 items-start gap-3 lg:grid-cols-12">
-        <Card className={cn(card, 'p-6 sm:p-8 lg:col-span-8')}>
+      <Box className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <Card className={cn(card, 'min-w-0 p-6 sm:p-8 lg:flex-1')}>
           {view === 'history' ? (
-            <Box className="flex flex-col gap-6">
+            // Form ↔ tarihçe geçişinde içerik yeniden belirir
+            <Box key="history" className="flex animate-rise flex-col gap-6">
               <Box className={SPLIT}>
                 <Box className="flex items-center gap-3">
                   <TintIcon icon={History} />
@@ -348,44 +420,106 @@ function Viewer({
               onOpenFile={openDocument}
             />
           ) : (
-            <FileBody doc={active} onShowForm={() => setActiveId(form.id)} />
+            <Box key={active.id} className="animate-rise">
+              <FileBody doc={active} onShowForm={() => setActiveId(form.id)} />
+            </Box>
           )}
         </Card>
 
-        {/* Yan bilgiler her genişlikte sekmelerde; geniş ekranda kaydırırken yapışık kalır (yapışkan şeridin altında) */}
-        <Card className={cn(card, 'p-5 lg:sticky lg:top-22 lg:col-span-4', docsWarning && 'ring-2 ring-warning')}>
-          <Tabs selectedKey={sideTab} onSelectionChange={(key) => setSideTab(key as SideTab)}>
-            <Box className="flex items-center gap-2">
-              <Tabs.ListContainer className="min-w-0 flex-1">
-                <Tabs.List aria-label="Ayrıntılar" className="w-full">
-                  {(
-                    [
-                      ['props', 'Özellikler'],
-                      ['history', 'Tarihçe'],
-                      ['docs', DOCUMENT_LABELS.title],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <Tabs.Tab key={id} id={id} className="flex-1 data-[selected=true]:text-accent-foreground">
-                      <Tabs.Indicator className="bg-accent" />
-                      {label}
-                    </Tabs.Tab>
-                  ))}
-                </Tabs.List>
-              </Tabs.ListContainer>
-              {sideTab === 'history' && <Box className="shrink-0">{historyMenu}</Box>}
-            </Box>
-            {(['props', 'history', 'docs'] as const).map((id) => (
-              <Tabs.Panel key={id} id={id} className="mt-2 p-0">
-                {side[id]}
-              </Tabs.Panel>
-            ))}
-          </Tabs>
+        {/*
+         * Yan bilgiler her genişlikte sekmelerde; geniş ekranda kaydırırken yapışık kalır (yapışkan
+         * şeridin altında) ve sağa katlanır: katlıyken dar bir rafta sekme ikonları, basınca açılır.
+         * Zorunlu doküman uyarısında kart açılır ve sallanır.
+         */}
+        <Card
+          className={cn(
+            card,
+            'shrink-0 transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-22',
+            collapsed ? 'items-center gap-1 p-2 lg:w-14' : 'p-5 lg:w-[calc((100%-0.5rem)/3)]',
+            docsWarning && 'animate-shake ring-2 ring-warning',
+          )}
+        >
+          {collapsed ? (
+            <>
+              <Tip label="Paneli aç" placement="left">
+                <Button
+                  isIconOnly
+                  variant="ghost"
+                  aria-label="Paneli aç"
+                  aria-expanded={false}
+                  onPress={() => setCollapsed(false)}
+                  className="text-muted"
+                >
+                  <PanelRightOpen {...IC} size={18} />
+                </Button>
+              </Tip>
+              <Separator className="my-1 w-6" />
+              {SIDE_TABS.map(({ id, label, icon: Icon }) => (
+                <Tip key={id} label={label} placement="left">
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    aria-label={label}
+                    onPress={() => openSide(id)}
+                    className={cn(id === sideTab && 'bg-accent-soft text-accent-soft-foreground')}
+                  >
+                    <Icon {...IC} size={18} />
+                  </Button>
+                </Tip>
+              ))}
+            </>
+          ) : (
+            <Tabs
+              selectedKey={sideTab}
+              onSelectionChange={(key) => setSideTab(key as SideTab)}
+              className="min-w-0 animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out_both]"
+            >
+              <Box className="flex items-center gap-2">
+                <Tabs.ListContainer className="min-w-0 flex-1">
+                  <Tabs.List aria-label="Ayrıntılar" className="w-full">
+                    {SIDE_TABS.map(({ id, label }) => (
+                      <Tabs.Tab
+                        key={id}
+                        id={id}
+                        className="flex-1 whitespace-nowrap data-[selected=true]:text-accent-foreground"
+                      >
+                        <Tabs.Indicator className="bg-accent" />
+                        {label}
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+                </Tabs.ListContainer>
+                {wide && (
+                  <Tip label="Paneli katla" placement="left">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Paneli katla"
+                      aria-expanded
+                      onPress={() => setCollapsed(true)}
+                      className="shrink-0 text-muted"
+                    >
+                      <PanelRightClose {...IC} size={18} />
+                    </Button>
+                  </Tip>
+                )}
+              </Box>
+              {SIDE_TABS.map(({ id }) => (
+                <Tabs.Panel key={id} id={id} className="mt-2 animate-rise p-0">
+                  {side[id]}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          )}
         </Card>
       </Box>
 
       {/* Telefonda olay şeridi altta sabit */}
       {phone && hasActions && (
-        <Card className={cn(band, ROW, card, 'fixed inset-x-3 bottom-3 z-30 flex-row p-3')}>
+        <Card
+          className={cn(band, ROW, card, 'fixed inset-x-3 bottom-3 z-30 animate-rise flex-row p-3')}
+        >
           {actions(solid)}
         </Card>
       )}
@@ -405,6 +539,13 @@ function Viewer({
     </Box>
   )
 }
+
+/** Karar çipinin halka rengi (durum rengi; nötr sonuçta birincil). */
+const HALO = {
+  success: '[--halo:var(--success)]',
+  danger: '[--halo:var(--danger)]',
+  default: '[--halo:var(--accent)]',
+} as const
 
 /** Olay şeridi; taslakta "Sil"; karardan sonra İleri / Kapat. */
 function Actions({
@@ -431,11 +572,26 @@ function Actions({
   const outline = onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND
   if (decided) {
     const k = decided.kind
-    const color = k === 'approve' ? 'success' : k === 'reject' || k === 'sendBack' ? 'danger' : 'default'
+    const color =
+      k === 'approve' ? 'success' : k === 'reject' || k === 'sendBack' ? 'danger' : 'default'
     return (
       <>
-        <Chip variant="primary" color={color} className={color === 'default' ? on : undefined}>
-          {decided.description}
+        {/* Karar sonucu: çip sıçrayarak gelir, çevresinde halka yayılır, ikon çizilir */}
+        <Chip
+          variant="primary"
+          color={color}
+          className={cn(
+            'animate-[pop_calc(0.42s*var(--motion-time,1))_cubic-bezier(0.34,1.56,0.64,1)_both,halo_calc(1.1s*var(--motion-time,1))_ease-out_0.2s_both]',
+            HALO[color],
+            color === 'default' && on,
+          )}
+        >
+          <decided.icon
+            {...IC}
+            size={14}
+            className="[&_*]:[stroke-dasharray:48] [&_*]:animate-draw"
+          />
+          <Chip.Label>{decided.description}</Chip.Label>
         </Chip>
         {onNext && (
           <Button onPress={onNext} className={on}>
@@ -483,7 +639,17 @@ function Actions({
   )
 }
 
-function NavButton({ label, icon: Icon, onPress, onStrip }: { label: string; icon: LucideIcon; onPress?: () => void; onStrip?: boolean }) {
+function NavButton({
+  label,
+  icon: Icon,
+  onPress,
+  onStrip,
+}: {
+  label: string
+  icon: LucideIcon
+  onPress?: () => void
+  onStrip?: boolean
+}) {
   return (
     <Tip label={label} placement="bottom">
       <Button

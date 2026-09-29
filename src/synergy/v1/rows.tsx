@@ -8,7 +8,16 @@ import { IC, Tip } from '@/synergy/v1/parts'
  * pasif; seçilen olay listenin olay hattına (`useKaroFlow`) gider. "Sil" (Taslaklar).
  */
 
-export function FastMenu({ request, onRun }: { request: WorkRequest; onRun: (eventId: number) => void }) {
+export function FastMenu({
+  request,
+  onRun,
+  placement = 'bottom end',
+}: {
+  request: WorkRequest
+  onRun: (eventId: number) => void
+  /** Menünün açıldığı yön (olaylar solda duruyorsa `bottom start`). */
+  placement?: 'bottom end' | 'bottom start'
+}) {
   const events = fastApprovalEvents(request)
   if (!events.length) return null
   const label = `Olaylar: ${request.template.title}`
@@ -18,13 +27,26 @@ export function FastMenu({ request, onRun }: { request: WorkRequest; onRun: (eve
         Olaylar
         <ChevronDown {...IC} size={14} />
       </Button>
-      <Dropdown.Popover placement="bottom end">
-        <Dropdown.Menu aria-label={label} disabledKeys={events.filter((e) => !e.enable).map((e) => String(e.id))} onAction={(key) => onRun(Number(key))}>
+      <Dropdown.Popover placement={placement}>
+        <Dropdown.Menu
+          aria-label={label}
+          disabledKeys={events.filter((e) => !e.enable).map((e) => String(e.id))}
+          onAction={(key) => onRun(Number(key))}
+        >
           {events.map((e) => {
             const Icon = e.icon
             return (
               <Dropdown.Item key={e.id} id={String(e.id)} textValue={e.description}>
-                <Icon {...IC} className={e.kind === 'reject' ? 'text-danger' : e.kind === 'approve' ? 'text-success' : 'text-muted'} />
+                <Icon
+                  {...IC}
+                  className={
+                    e.kind === 'reject'
+                      ? 'text-danger'
+                      : e.kind === 'approve'
+                        ? 'text-success'
+                        : 'text-muted'
+                  }
+                />
                 {e.description}
               </Dropdown.Item>
             )
@@ -38,7 +60,14 @@ export function FastMenu({ request, onRun }: { request: WorkRequest; onRun: (eve
 export function DeleteButton({ title, onPress }: { title: string; onPress: () => void }) {
   return (
     <Tip label="Sil">
-      <Button isIconOnly size="sm" variant="ghost" aria-label={`Sil: ${title}`} onPress={onPress} className="text-muted">
+      <Button
+        isIconOnly
+        size="sm"
+        variant="ghost"
+        aria-label={`Sil: ${title}`}
+        onPress={onPress}
+        className="text-muted"
+      >
         <Trash2 {...IC} />
       </Button>
     </Tip>

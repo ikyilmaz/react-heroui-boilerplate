@@ -156,7 +156,9 @@ export function FormBody({
                               {it.qty} {it.unit}
                             </Table.Cell>
                             <Table.Cell className={numCls}>{tl.format(it.price)}</Table.Cell>
-                            <Table.Cell className={numCls}>{tl.format(it.qty * it.price)}</Table.Cell>
+                            <Table.Cell className={numCls}>
+                              {tl.format(it.qty * it.price)}
+                            </Table.Cell>
                           </Table.Row>
                         )),
                         <Table.Row key="total" id="total">
@@ -290,10 +292,11 @@ export function DocumentsList({
   return (
     <Box className="flex flex-col gap-2">
       {showWarning && notViewed.length > 0 && (
-        <Alert status="warning">
-          <Alert.Indicator />
+        // Dolu uyarı zemini: ikon ve metin uyarının ön plan renginde
+        <Alert status="warning" className="bg-warning">
+          <Alert.Indicator className="text-warning-foreground" />
           <Alert.Content>
-            <Alert.Description>{DOCS_REQUIRED}</Alert.Description>
+            <Alert.Description className="font-medium text-warning-foreground">{DOCS_REQUIRED}</Alert.Description>
           </Alert.Content>
         </Alert>
       )}
@@ -380,7 +383,11 @@ function iconOf(h: HistoryEntry, isDone: boolean, isLast: boolean): LucideIcon {
 /** Adımın durum metni; vekaleten yanıtlandıysa ayrıca "Vekaleten" çipi çizilir. */
 function statusText(h: HistoryEntry) {
   const base =
-    h.type === 'end' || h.type === 'notify' ? '' : h.responseDate ? (h.eventText ?? '') : VIEWER_LABELS.waiting
+    h.type === 'end' || h.type === 'notify'
+      ? ''
+      : h.responseDate
+        ? (h.eventText ?? '')
+        : VIEWER_LABELS.waiting
   return h.actionerType === 'delegated' && h.actioner && base
     ? FLOW_TEXT.delegated(base, h.actioner.name)
     : base
@@ -424,6 +431,7 @@ export function HistoryTimeline({
   )
 }
 
+/** Tarihçe adımı; bekleyen adımın halkası nabız gibi atar. */
 function HistoryItem({
   h,
   isLast,
@@ -439,13 +447,21 @@ function HistoryItem({
   const waiting = !h.responseDate && h.type === 'approver'
   const status = statusText(h)
   const res = h.responseDate
-  const dates = res && res.getTime() !== h.requestDate.getTime() ? [h.requestDate, res] : [h.requestDate]
+  const dates =
+    res && res.getTime() !== h.requestDate.getTime() ? [h.requestDate, res] : [h.requestDate]
   return (
     <Box role="listitem" className="flex gap-3">
       <Box className="flex flex-col items-center">
         {/* Tamamlanan adım vurgu renginde; bekleyen adım yalnızca halka */}
         {/* Halka kökte ve dışta: içe dönük halka dolgunun altında kalıyordu */}
-        <Avatar size="sm" aria-hidden className={cn('shrink-0', waiting && 'ring-2 ring-accent')}>
+        <Avatar
+          size="sm"
+          aria-hidden
+          className={cn(
+            'shrink-0',
+            waiting && 'animate-[halo_calc(1.8s*var(--motion-time,1))_ease-out_infinite] ring-2 ring-accent',
+          )}
+        >
           <Avatar.Fallback
             className={
               h.eventText === 'Reddet'
@@ -458,7 +474,12 @@ function HistoryItem({
             {createElement(icon, { ...IC, size: 15 })}
           </Avatar.Fallback>
         </Avatar>
-        {!isLast && <Box aria-hidden className="my-1 w-0.5 flex-1 bg-accent-soft" />}
+        {!isLast && (
+          <Box
+            aria-hidden
+            className="my-1 w-0.5 flex-1 bg-accent-soft"
+          />
+        )}
       </Box>
       <Box className={cn('min-w-0 flex-1', !isLast && 'pb-4')}>
         <Box className="flex items-start justify-between gap-3">
@@ -481,7 +502,8 @@ function HistoryItem({
                 {VIEWER_LABELS.requestDate}: {formatDateTime(h.requestDate)}
               </Typography>
               <Typography type="body-xs">
-                {VIEWER_LABELS.responseDate}: {h.responseDate ? formatDateTime(h.responseDate) : '-'}
+                {VIEWER_LABELS.responseDate}:{' '}
+                {h.responseDate ? formatDateTime(h.responseDate) : '-'}
               </Typography>
             </Tooltip.Content>
           </Tooltip>
@@ -516,7 +538,12 @@ function ReasonQuote({ h, reason }: { h: HistoryEntry; reason: string }) {
       </Card>
       {long && (
         <Popover>
-          <Button size="sm" variant="ghost" className="mt-1" aria-label={`${VIEWER_LABELS.reason}: ${h.step}`}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-1"
+            aria-label={`${VIEWER_LABELS.reason}: ${h.step}`}
+          >
             {FLOW_TEXT.detail}
           </Button>
           <Popover.Content placement="top" className="w-80 max-w-[calc(100vw-2rem)]">

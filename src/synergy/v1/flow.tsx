@@ -23,7 +23,12 @@ import {
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
-import { toneOf, useDecisionPipeline, type EventTone as Tone, type PipelineOptions } from '@/synergy/shared/pipeline'
+import {
+  toneOf,
+  useDecisionPipeline,
+  type EventTone as Tone,
+  type PipelineOptions,
+} from '@/synergy/shared/pipeline'
 import { Box } from '@/synergy/shared/ui'
 
 /* -------------------------------------------------------------------------------------------------
@@ -33,11 +38,20 @@ import { Box } from '@/synergy/shared/ui'
 
 const TITLE = 'font-display text-lg font-semibold'
 
-const stripe: Record<Tone, string> = { success: 'bg-success', danger: 'bg-danger', ink: 'bg-accent' }
+const stripe: Record<Tone, string> = {
+  success: 'bg-success',
+  danger: 'bg-danger',
+  ink: 'bg-accent',
+}
 
-/** Pencerenin üst şeridi. */
+/** Pencerenin üst şeridi; pencere açılınca soldan sağa dolar. */
 function Stripe({ tone }: { tone: Tone }) {
-  return <Box aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${stripe[tone]}`} />
+  return (
+    <Box
+      aria-hidden
+      className={`absolute inset-x-0 top-0 h-1.5 origin-left animate-grow-x [animation-delay:calc(120ms*var(--motion-time,1))] ${stripe[tone]}`}
+    />
+  )
 }
 
 export function useKaroFlow(
@@ -65,7 +79,12 @@ export function useKaroFlow(
         />
       )}
       {open?.stage === 'forward' && (
-        <ForwardDialog key={key} candidates={forwardCandidates(open.request)} onOk={forward} onCancel={cancel} />
+        <ForwardDialog
+          key={key}
+          candidates={forwardCandidates(open.request)}
+          onOk={forward}
+          onCancel={cancel}
+        />
       )}
     </>
   )
@@ -135,10 +154,13 @@ function KaroModal({
         <Modal.Container size="sm">
           <Modal.Dialog className="gap-4 overflow-hidden">
             <Stripe tone={tone} />
-            <Modal.Header>
+            {/* Hattın sonraki adımı (sebep, yönlendirme): içerik yandan kayarak gelir */}
+            <Modal.Header className="animate-slide-in">
               <Modal.Heading className={TITLE}>{title}</Modal.Heading>
             </Modal.Header>
-            <Modal.Body>{children}</Modal.Body>
+            <Modal.Body className="animate-slide-in [animation-delay:calc(60ms*var(--motion-time,1))]">
+              {children}
+            </Modal.Body>
             <Modal.Footer>
               <Button variant="ghost" onPress={onCancel}>
                 {FLOW_TEXT.cancel}
@@ -179,7 +201,14 @@ function ReasonDialog({
         if (reason) onOk(reason)
       }}
     >
-      <TextField aria-label={title} value={text} onChange={setText} isInvalid={tried && !reason} autoFocus fullWidth>
+      <TextField
+        aria-label={title}
+        value={text}
+        onChange={setText}
+        isInvalid={tried && !reason}
+        autoFocus
+        fullWidth
+      >
         <TextArea rows={5} className="w-full resize-none" />
         <FieldError>{REASON_EMPTY}</FieldError>
       </TextField>

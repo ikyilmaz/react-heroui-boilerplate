@@ -18,6 +18,8 @@ export type CardStyle = 'filled' | 'outlined' | 'elevated'
 /** `default`: sürümün kendi karışımı (ör. v1'de karşılama dolu, talep başlığı beyaz). */
 export type AccentStrength = 'default' | 'soft' | 'solid'
 export type ButtonShape = 'default' | 'pill' | 'square'
+/** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
+export type MotionLevel = 'full' | 'reduced' | 'off'
 
 export interface ThemeSettings {
   /** Birincil renk (OKLCH): ton 0–360, doygunluk 0–0.24, açıklık 0.3–0.65. */
@@ -43,6 +45,8 @@ export interface ThemeSettings {
   buttonShape: ButtonShape
   /** Gezinme konumu; seçenekler sürüme göre (`ThemeKit.navOptions`), `default` sürümün kendisi. */
   nav: string
+  /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. Hazır temalar buna dokunmaz. */
+  motion: MotionLevel
 }
 
 export interface ThemePreset {
@@ -65,15 +69,32 @@ export interface ThemeKit {
   presets: ThemePreset[]
   /** Gezinme konumu seçenekleri (ilki `default`). */
   navOptions: { id: string; label: string }[]
+  /** Panelde Animasyon bölümü (sürüm animasyonları `--motion-*` / `useLook().motion` ile okuyorsa). */
+  motion?: boolean
 }
 
 /** Ortak varsayılanların yeni ayarları (sürümler kendi değerlerini üstüne yazar). */
-export const BASE_LOOK = { spacing: 0.25, cardStyle: 'filled', accent: 'default', buttonShape: 'default', nav: 'default' } as const
+export const BASE_LOOK = {
+  spacing: 0.25,
+  cardStyle: 'filled',
+  accent: 'default',
+  buttonShape: 'default',
+  nav: 'default',
+  motion: 'full',
+} as const
 
 export const FONTS: { id: FontId; label: string; stack: string }[] = [
-  { id: 'bricolage', label: 'Bricolage Grotesque', stack: "'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif" },
+  {
+    id: 'bricolage',
+    label: 'Bricolage Grotesque',
+    stack: "'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif",
+  },
   { id: 'inter', label: 'Inter', stack: "'Inter', ui-sans-serif, system-ui, sans-serif" },
-  { id: 'jakarta', label: 'Plus Jakarta Sans', stack: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" },
+  {
+    id: 'jakarta',
+    label: 'Plus Jakarta Sans',
+    stack: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
+  },
   { id: 'figtree', label: 'Figtree', stack: "'Figtree', ui-sans-serif, system-ui, sans-serif" },
   { id: 'geist', label: 'Geist', stack: "'Geist', ui-sans-serif, system-ui, sans-serif" },
 ]
@@ -105,18 +126,22 @@ const VARS = [
   '--font-sans',
   '--font-display',
   '--spacing',
+  '--motion-time',
+  '--motion-shift',
 ] as const
 
 type VarName = (typeof VARS)[number]
 
-const same = (a: ThemeSettings, b: ThemeSettings) => (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => a[k] === b[k])
+export const same = (a: ThemeSettings, b: ThemeSettings, skip?: keyof ThemeSettings) =>
+  (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => k === skip || a[k] === b[k])
 
-/** Ayarlar bir hazır temaya eşitse onun kimliği. */
+/** Ayarlar bir hazır temaya eşitse onun kimliği (animasyon düzeyi görünüşten sayılmaz). */
 export function presetOf(kit: ThemeKit, s: ThemeSettings) {
-  return kit.presets.find((p) => same(p.settings, s))?.id ?? null
+  return kit.presets.find((p) => same(p.settings, s, 'motion'))?.id ?? null
 }
 
-const ok = (l: number, c: number, h: number) => `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)})`
+const ok = (l: number, c: number, h: number) =>
+  `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)})`
 
 const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
   none: (dark) => (dark ? '0 0 0 1px var(--border)' : 'none'),
@@ -125,13 +150,20 @@ const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
 }
 
 /** Varsayılandan ayrılan ayarların değişkenleri (açık / koyu). */
-function variables(s: ThemeSettings, d: ThemeSettings, dark: boolean): Partial<Record<VarName, string>> {
+function variables(
+  s: ThemeSettings,
+  d: ThemeSettings,
+  dark: boolean,
+  motion: MotionLevel,
+): Partial<Record<VarName, string>> {
   const out: Partial<Record<VarName, string>> = {}
   const { hue: h, chroma: c, lightness: l } = s
 
   if (s.hue !== d.hue || s.chroma !== d.chroma || s.lightness !== d.lightness) {
     out['--accent'] = dark ? ok(Math.max(l, 0.52), c, h) : ok(l, c, h)
-    out['--accent-soft-foreground'] = dark ? ok(0.8, c * 0.7, h) : ok(Math.max(l - 0.03, 0.25), c, h)
+    out['--accent-soft-foreground'] = dark
+      ? ok(0.8, c * 0.7, h)
+      : ok(Math.max(l - 0.03, 0.25), c, h)
     out['--focus'] = dark ? ok(0.72, c * 0.8, h) : ok(Math.min(l + 0.08, 0.75), c, h)
     out['--link'] = 'var(--accent-soft-foreground)'
   }
@@ -142,7 +174,12 @@ function variables(s: ThemeSettings, d: ThemeSettings, dark: boolean): Partial<R
       ? {
           // zemin, yüzey, ikinci yüzey, üçüncü yüzey
           neutral: [ok(0.16, 0, 0), ok(0.2, 0, 0), ok(0.225, 0, 0), ok(0.25, 0, 0)],
-          cool: [ok(0.17, 0.006, 260), ok(0.21, 0.007, 260), ok(0.235, 0.008, 260), ok(0.26, 0.008, 260)],
+          cool: [
+            ok(0.17, 0.006, 260),
+            ok(0.21, 0.007, 260),
+            ok(0.235, 0.008, 260),
+            ok(0.26, 0.008, 260),
+          ],
           warm: [ok(0.17, 0.008, 70), ok(0.21, 0.009, 70), ok(0.235, 0.01, 70), ok(0.26, 0.01, 70)],
           tinted: [ok(0.17, 0.02, h), ok(0.21, 0.022, h), ok(0.235, 0.024, h), ok(0.26, 0.026, h)],
         }
@@ -184,6 +221,9 @@ function variables(s: ThemeSettings, d: ThemeSettings, dark: boolean): Partial<R
   if (s.bodyFont !== d.bodyFont) out['--font-sans'] = font(s.bodyFont)
   if (s.headingFont !== d.headingFont) out['--font-display'] = font(s.headingFont)
   if (s.spacing !== d.spacing) out['--spacing'] = `${s.spacing}rem`
+  // Animasyon: az = kayma / ölçek yok, kapalı = süre de yok
+  if (motion !== 'full') out['--motion-shift'] = '0'
+  if (motion === 'off') out['--motion-time'] = '0'
   return out
 }
 
@@ -207,9 +247,31 @@ function clear(root: HTMLElement) {
 export interface Look {
   accent: AccentStrength
   nav: string
+  /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
+  motion: MotionLevel
 }
 
-export const LookContext = createContext<Look>({ accent: 'default', nav: 'default' })
+export const LookContext = createContext<Look>({
+  accent: 'default',
+  nav: 'default',
+  motion: 'full',
+})
+
+const REDUCE = '(prefers-reduced-motion: reduce)'
+
+/** Sistemin "hareketi azalt" tercihi (değişince güncellenir). */
+function useSystemReduced() {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(REDUCE).matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(REDUCE)
+    const on = () => setReduced(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return reduced
+}
 
 export const useLook = () => useContext(LookContext)
 
@@ -218,15 +280,21 @@ export function useThemeSettings(kit: ThemeKit) {
   const [settings, setSettings] = useState<ThemeSettings>(() => load(kit))
   const { resolvedTheme } = useTheme()
   const dark = resolvedTheme === 'dark'
+  const systemReduced = useSystemReduced()
+  const motion: MotionLevel =
+    settings.motion === 'full' && systemReduced ? 'reduced' : settings.motion
 
   useEffect(() => {
     const root = document.documentElement
     clear(root)
-    Object.entries(variables(settings, kit.defaults, dark)).forEach(([k, val]) => val && root.style.setProperty(k, val))
+    Object.entries(variables(settings, kit.defaults, dark, motion)).forEach(
+      ([k, val]) => val && root.style.setProperty(k, val),
+    )
     if (settings.scale !== 16) root.style.fontSize = `${settings.scale}px`
-    if (settings.buttonShape !== 'default') root.classList.add(...SHAPE_CLASSES[settings.buttonShape])
+    if (settings.buttonShape !== 'default')
+      root.classList.add(...SHAPE_CLASSES[settings.buttonShape])
     return () => clear(root)
-  }, [settings, dark, kit])
+  }, [settings, dark, kit, motion])
 
   const update = (next: ThemeSettings) => {
     setSettings(next)
@@ -238,6 +306,6 @@ export function useThemeSettings(kit: ThemeKit) {
     }
   }
 
-  const look: Look = { accent: settings.accent, nav: settings.nav }
+  const look: Look = { accent: settings.accent, nav: settings.nav, motion }
   return [settings, update, look] as const
 }

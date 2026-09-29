@@ -67,7 +67,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - `v2/` (Bento): the same pages as bento grids, flat colour, no gradients (`HERO`, `FILL`, `TINT` in
   `parts.tsx`): top header + floating bottom dock, Başlangıç with a vertical apps panel on the right,
   İş Akış Yönetimi with navigation pills in the header card and process content cards.
-- `shared/`: data and logic for both — `workflowData.ts` (people, boxes, processes, events, columns,
+- `shared/`: data and logic for all versions — `workflowData.ts` (people, boxes, processes, events, columns,
   date buckets, menu apps, formatting), `decisions.ts` (in-memory store: `decide`, `markRead`,
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →

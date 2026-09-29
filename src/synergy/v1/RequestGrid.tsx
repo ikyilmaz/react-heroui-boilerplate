@@ -1,9 +1,25 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { SortDescriptor } from 'react-aria-components'
-import { Button, Card, Chip, ListBox, Pagination, Select, Table, Typography, cn } from '@heroui/react'
+import {
+  Button,
+  Card,
+  Chip,
+  ListBox,
+  Pagination,
+  Select,
+  Table,
+  Typography,
+  cn,
+} from '@heroui/react'
 import { FilterX } from 'lucide-react'
-import { deleteDraft, isRead, markRead, useBoxRequests, useReadIds } from '@/synergy/shared/decisions'
+import {
+  deleteDraft,
+  isRead,
+  markRead,
+  useBoxRequests,
+  useReadIds,
+} from '@/synergy/shared/decisions'
 import { useRemembered } from '@/synergy/shared/remembered'
 import {
   DELETE_CONFIRM,
@@ -29,6 +45,7 @@ import { requestLink } from '@/synergy/v1/paths'
 import { CellValue, EmptyNote, IC, KaroSearch, Tip, compareBy } from '@/synergy/v1/parts'
 import { DeleteButton, FastMenu } from '@/synergy/v1/rows'
 import { KaroConfirm, useKaroFlow } from '@/synergy/v1/flow'
+import { Count, RISE, useLeaving } from '@/synergy/v1/motion'
 
 /*
  * Talep ızgarası (orijinal wfProcessList). Sütunlar süreçten; satırlar tarih gruplarına ayrılır.
@@ -70,12 +87,25 @@ function pageItems(page: number, count: number): (number | 'gap')[] {
   return out
 }
 
-export function RequestGrid({ box, process, range }: { box: WorkBox; process: Process; range?: DateRange }) {
+export function RequestGrid({
+  box,
+  process,
+  range,
+}: {
+  box: WorkBox
+  process: Process
+  range?: DateRange
+}) {
   const navigate = useNavigate()
   const all = useBoxRequests(box.id)
   const readIds = useReadIds()
   const columns = useMemo(() => columnsFor(box, process), [box, process])
-  const [grid, setGrid] = useRemembered<GridState>(`karo:grid:${box.id}/${process.id}`, () => ({ search: '', sort: null, page: 1, pageSize: 10 }))
+  const [grid, setGrid] = useRemembered<GridState>(`karo:grid:${box.id}/${process.id}`, () => ({
+    search: '',
+    sort: null,
+    page: 1,
+    pageSize: 10,
+  }))
   const [deleting, setDeleting] = useState<WorkRequest | null>(null)
   const flow = useKaroFlow(undefined)
 
@@ -83,8 +113,14 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
   const byDateAsc = grid.sort?.column === dateCol && grid.sort?.direction === 'ascending'
   const rows = useMemo(() => {
     const q = grid.search.trim().toLocaleLowerCase('tr')
-    const own = all.filter((r) => r.processId === process.id && inRange(dateOf(r, box), range) && (!q || searchText(r, columns).includes(q)))
-    const bucketIndex = (r: WorkRequest) => dateBuckets.findIndex((b) => b.id === dateBucket(dateOf(r, box)))
+    const own = all.filter(
+      (r) =>
+        r.processId === process.id &&
+        inRange(dateOf(r, box), range) &&
+        (!q || searchText(r, columns).includes(q)),
+    )
+    const bucketIndex = (r: WorkRequest) =>
+      dateBuckets.findIndex((b) => b.id === dateBucket(dateOf(r, box)))
     return own.sort((a, b) => {
       const g = bucketIndex(a) - bucketIndex(b)
       if (g) return byDateAsc ? -g : g
@@ -96,10 +132,12 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
     })
   }, [all, process, box, range, grid.search, grid.sort, columns, byDateAsc])
 
+  // Karar / silme ile düşen satır yerinde kalıp sağa kayarak çıkar
+  const [kept, leaving] = useLeaving(rows)
   const pageCount = Math.max(1, Math.ceil(rows.length / grid.pageSize))
   const page = Math.min(grid.page, pageCount)
   const from = (page - 1) * grid.pageSize
-  const pageRows = rows.slice(from, page * grid.pageSize)
+  const pageRows = kept.slice(from, page * grid.pageSize + (kept.length - rows.length))
   const groups = groupByDate(pageRows, (r) => dateOf(r, box))
   if (byDateAsc) groups.reverse()
 
@@ -119,19 +157,34 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
   )
 
   return (
-    <Card className={cn('gap-4 p-5', card)}>
+    <Card className={cn(RISE, 'gap-4 p-5', card)}>
       <Box className="flex flex-wrap items-center gap-2">
         {/* `min-w-48`: telefonda araçların yanında tek harfe ("S") sıkışıyordu; sığmazsa alt satıra iner */}
         <Typography.Heading level={2} truncate className="min-w-48 flex-1 font-display text-lg">
           {boxProcessCaption(box, process)}
         </Typography.Heading>
-        <KaroSearch value={grid.search} onChange={(search) => set({ search, page: 1 })} className="w-64" />
+        <KaroSearch
+          value={grid.search}
+          onChange={(search) => set({ search, page: 1 })}
+          className="w-64"
+        />
         <Tip label={CLEAR_FILTERS}>
-          <Button isIconOnly variant="ghost" aria-label={CLEAR_FILTERS} isDisabled={!hasFilters} onPress={() => set({ search: '', sort: null, page: 1 })}>
+          <Button
+            isIconOnly
+            variant="ghost"
+            aria-label={CLEAR_FILTERS}
+            isDisabled={!hasFilters}
+            onPress={() => set({ search: '', sort: null, page: 1 })}
+          >
             <FilterX {...IC} />
           </Button>
         </Tip>
-        <Select aria-label="Sayfa boyutu" className="w-32" value={String(grid.pageSize)} onChange={(v) => v && set({ pageSize: Number(v), page: 1 })}>
+        <Select
+          aria-label="Sayfa boyutu"
+          className="w-32"
+          value={String(grid.pageSize)}
+          onChange={(v) => v && set({ pageSize: Number(v), page: 1 })}
+        >
           <Select.Trigger className="">
             <Select.Value />
             <Select.Indicator />
@@ -151,51 +204,97 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
 
       <Table variant="secondary">
         <Table.ScrollContainer>
-          <Table.Content aria-label={boxProcessCaption(box, process)} sortDescriptor={grid.sort ?? undefined} onSortChange={(sort) => set({ sort, page: 1 })}>
+          <Table.Content
+            aria-label={boxProcessCaption(box, process)}
+            sortDescriptor={grid.sort ?? undefined}
+            onSortChange={(sort) => set({ sort, page: 1 })}
+          >
             <Table.Header>
               {[
                 ...columns.map((c) => (
-                  <Table.Column key={c.key} id={c.key} allowsSorting isRowHeader={c.key === rowHeader} className={HEAD_CELL}>
-                    {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>{c.caption}</Table.SortableColumnHeader>}
+                  <Table.Column
+                    key={c.key}
+                    id={c.key}
+                    allowsSorting
+                    isRowHeader={c.key === rowHeader}
+                    className={HEAD_CELL}
+                  >
+                    {({ sortDirection }) => (
+                      <Table.SortableColumnHeader sortDirection={sortDirection}>
+                        {c.caption}
+                      </Table.SortableColumnHeader>
+                    )}
                   </Table.Column>
                 )),
                 ...(actionsHead ? [actionsHead] : []),
               ]}
             </Table.Header>
             <Table.Body renderEmptyState={() => <EmptyNote text="Gösterilecek veri yok." />}>
-              {groups.flatMap(({ bucket, rows: items }) => [
-                <Table.Row key={`g-${bucket.id}`} id={`g-${bucket.id}`} className={BUCKET_ROW}>
-                  <Table.Cell colSpan={span}>
-                    <Box className="flex items-center gap-2">
-                      <Text tone="primary" className="text-sm font-semibold">
-                        {bucket.label}
-                      </Text>
-                      <Chip size="sm" color="accent" variant="soft" className="min-w-5 justify-center">
-                        {items.length}
-                      </Chip>
-                    </Box>
-                  </Table.Cell>
-                </Table.Row>,
-                ...items.map((r) => (
-                  <Table.Row key={r.id} id={r.id} onAction={() => open(r)} className={cn(ITEM_ROW, !isRead(r, readIds) && 'font-semibold')}>
-                    {[
-                      ...columns.map((c) => (
-                        <Table.Cell key={c.key} className={c.key === rowHeader ? 'min-w-48' : 'whitespace-nowrap'}>
-                          <CellValue r={r} col={c} />
-                        </Table.Cell>
-                      )),
-                      ...(hasActions
-                        ? [
-                            <Table.Cell key="__actions" className="w-px">
-                              {box.decisions && <FastMenu request={r} onRun={(id) => flow.run(id, r)} />}
-                              {box.draftDelete && <DeleteButton title={r.template.title} onPress={() => setDeleting(r)} />}
-                            </Table.Cell>,
-                          ]
-                        : []),
-                    ]}
-                  </Table.Row>
-                )),
-              ])}
+              {groups.flatMap(({ bucket, rows: items }) => {
+                return [
+                  <Table.Row
+                    key={`g-${bucket.id}`}
+                    id={`g-${bucket.id}`}
+                    className={BUCKET_ROW}
+                  >
+                    <Table.Cell colSpan={span}>
+                      <Box className="flex items-center gap-2">
+                        <Text tone="primary" className="text-sm font-semibold">
+                          {bucket.label}
+                        </Text>
+                        <Chip
+                          size="sm"
+                          color="accent"
+                          variant="soft"
+                          className="min-w-5 justify-center"
+                        >
+                          <Count value={items.length} />
+                        </Chip>
+                      </Box>
+                    </Table.Cell>
+                  </Table.Row>,
+                  ...items.map((r) => {
+                    return (
+                      <Table.Row
+                        key={r.id}
+                        id={r.id}
+                        onAction={() => open(r)}
+                        className={cn(
+                          ITEM_ROW,
+                          leaving(r.id),
+                          !isRead(r, readIds) && 'font-semibold',
+                        )}
+                      >
+                        {[
+                          ...columns.map((c) => (
+                            <Table.Cell
+                              key={c.key}
+                              className={c.key === rowHeader ? 'min-w-48' : 'whitespace-nowrap'}
+                            >
+                              <CellValue r={r} col={c} />
+                            </Table.Cell>
+                          )),
+                          ...(hasActions
+                            ? [
+                                <Table.Cell key="__actions" className="w-px">
+                                  {box.decisions && (
+                                    <FastMenu request={r} onRun={(id) => flow.run(id, r)} />
+                                  )}
+                                  {box.draftDelete && (
+                                    <DeleteButton
+                                      title={r.template.title}
+                                      onPress={() => setDeleting(r)}
+                                    />
+                                  )}
+                                </Table.Cell>,
+                              ]
+                            : []),
+                        ]}
+                      </Table.Row>
+                    )
+                  }),
+                ]
+              })}
             </Table.Body>
           </Table.Content>
         </Table.ScrollContainer>
@@ -210,7 +309,11 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
           </Pagination.Summary>
           <Pagination.Content>
             <Pagination.Item>
-              <Pagination.Previous aria-label="Önceki sayfa" isDisabled={page <= 1} onPress={() => set({ page: page - 1 })}>
+              <Pagination.Previous
+                aria-label="Önceki sayfa"
+                isDisabled={page <= 1}
+                onPress={() => set({ page: page - 1 })}
+              >
                 <Pagination.PreviousIcon />
               </Pagination.Previous>
             </Pagination.Item>
@@ -221,14 +324,24 @@ export function RequestGrid({ box, process, range }: { box: WorkBox; process: Pr
                 </Pagination.Item>
               ) : (
                 <Pagination.Item key={it}>
-                  <Pagination.Link aria-label={`Sayfa ${it}`} aria-current={it === page ? 'page' : undefined} isActive={it === page} onPress={() => set({ page: it })} className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground">
+                  <Pagination.Link
+                    aria-label={`Sayfa ${it}`}
+                    aria-current={it === page ? 'page' : undefined}
+                    isActive={it === page}
+                    onPress={() => set({ page: it })}
+                    className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                  >
                     {it}
                   </Pagination.Link>
                 </Pagination.Item>
               ),
             )}
             <Pagination.Item>
-              <Pagination.Next aria-label="Sonraki sayfa" isDisabled={page >= pageCount} onPress={() => set({ page: page + 1 })}>
+              <Pagination.Next
+                aria-label="Sonraki sayfa"
+                isDisabled={page >= pageCount}
+                onPress={() => set({ page: page + 1 })}
+              >
                 <Pagination.NextIcon />
               </Pagination.Next>
             </Pagination.Item>

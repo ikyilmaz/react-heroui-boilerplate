@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Outlet, matchPath, useHref, useLocation, useNavigate } from 'react-router'
+import { matchPath, useHref, useLocation, useNavigate } from 'react-router'
 import {
   Avatar,
   Breadcrumbs,
@@ -53,6 +53,7 @@ import { LookContext, useThemeSettings } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
 import { V1_THEME } from '@/synergy/v1/theme'
 import { VersionSwitch } from '@/synergy/shared/version'
+import { Indicator, MotionScope, PageTransition } from '@/synergy/v1/motion'
 
 /*
  * Kabuk: üst çubuk (logo, konum hapları, uygulama araması, kullanıcı) ve solda uygulama rafı
@@ -74,7 +75,13 @@ const dockEntries: DockEntry[] = [
   { id: 'geri', label: 'Ana sayfaya dön', icon: ChevronLeft, href: '/' },
   { id: 'baslangic', label: 'Başlangıç', icon: House, href: BASE, match: BASE },
   { id: 'dokumanlar', label: 'Dokümanlar', icon: FolderOpen },
-  { id: 'is-akis-yonetimi', label: 'İş Akış Yönetimi', icon: Workflow, href: '/is-akislari/bekleyen', match: '/is-akislari' },
+  {
+    id: 'is-akis-yonetimi',
+    label: 'İş Akış Yönetimi',
+    icon: Workflow,
+    href: '/is-akislari/bekleyen',
+    match: '/is-akislari',
+  },
   { id: 'insan-kaynaklari', label: 'İnsan Kaynakları', icon: Users },
 ]
 
@@ -124,7 +131,12 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
         </ComboBox.Trigger>
       </ComboBox.InputGroup>
       <ComboBox.Popover>
-        <ListBox aria-label="Uygulamalar" renderEmptyState={() => <EmptyState className="py-4 text-center">Kullanılabilir öğe yok.</EmptyState>}>
+        <ListBox
+          aria-label="Uygulamalar"
+          renderEmptyState={() => (
+            <EmptyState className="py-4 text-center">Kullanılabilir öğe yok.</EmptyState>
+          )}
+        >
           {results.length > 0 && (
             <ListBox.Section>
               <SectionHeader>Uygulamalar</SectionHeader>
@@ -134,7 +146,9 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
                     <Icon {...IC} className="shrink-0" />
                   ) : (
                     <Avatar size="sm" color={avatarColor(caption)} className="size-6">
-                      <Avatar.Fallback className="text-[0.625rem] font-semibold">{initials(caption)}</Avatar.Fallback>
+                      <Avatar.Fallback className="text-[0.625rem] font-semibold">
+                        {initials(caption)}
+                      </Avatar.Fallback>
                     </Avatar>
                   )}
                   <Text slot="label" tone="primary">
@@ -154,7 +168,12 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
 function CrumbPill({ c, current, icon }: { c: Crumb; current: boolean; icon?: ReactNode }) {
   return (
     <Breadcrumbs.Item href={current ? undefined : c.href}>
-      <Chip size="lg" color="accent" variant={current ? 'primary' : 'soft'} className={current ? 'font-semibold' : 'text-foreground'}>
+      <Chip
+        size="lg"
+        color="accent"
+        variant={current ? 'primary' : 'soft'}
+        className={current ? 'font-semibold' : 'text-foreground'}
+      >
         {icon}
         <Chip.Label>{c.label}</Chip.Label>
       </Chip>
@@ -172,14 +191,24 @@ function Crumbs({ crumbs, compact = false }: { crumbs: Crumb[]; compact?: boolea
   const tail = rest.slice(-keep)
   return (
     // Üst çubukta tek satır (sarınca çubuktan taşıyordu); sayfa başındaki kısa sürüm sarabilir
-    <Breadcrumbs aria-label="Konum" className={cn('min-w-0 gap-1', compact ? 'flex-wrap' : 'flex-nowrap')} separator={<ChevronRight strokeWidth={1.75} />}>
+    <Breadcrumbs
+      aria-label="Konum"
+      className={cn('min-w-0 gap-1', compact ? 'flex-wrap' : 'flex-nowrap')}
+      separator={<ChevronRight strokeWidth={1.75} />}
+    >
       <CrumbPill c={first!} current={!rest.length} icon={<House {...IC} size={14} />} />
       {folded.length > 0 && (
         <Breadcrumbs.Item>
           {() => (
             <>
               <Dropdown>
-                <Button isIconOnly size="sm" variant="ghost" aria-label="Diğer konumlar" className="bg-accent-soft text-accent-soft-foreground">
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Diğer konumlar"
+                  className="bg-accent-soft text-accent-soft-foreground"
+                >
                   <Ellipsis {...IC} />
                 </Button>
                 <Dropdown.Popover placement="bottom">
@@ -246,7 +275,12 @@ function TopBar({ crumbs, onMenu }: { crumbs: Crumb[]; onMenu: () => void }) {
 function BarButton({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
   return (
     <Tip label={label} placement="bottom">
-      <Button isIconOnly variant="ghost" aria-label={label} className="text-muted data-hovered:text-foreground">
+      <Button
+        isIconOnly
+        variant="ghost"
+        aria-label={label}
+        className="text-muted data-hovered:text-foreground"
+      >
         <Icon {...IC} size={20} />
       </Button>
     </Tip>
@@ -276,7 +310,9 @@ function PanelButton({ label, icon }: { label: string; icon: LucideIcon }) {
       <Popover.Content placement="bottom end" className="w-80 max-w-[calc(100vw-2rem)]">
         <Popover.Dialog aria-label={label} className="flex flex-col gap-1 p-4">
           <Popover.Heading className="font-display text-lg font-semibold">{label}</Popover.Heading>
-          <EmptyState className="py-8 text-center text-sm text-muted">Kullanılabilir öğe yok.</EmptyState>
+          <EmptyState className="py-8 text-center text-sm text-muted">
+            Kullanılabilir öğe yok.
+          </EmptyState>
         </Popover.Dialog>
       </Popover.Content>
     </Popover>
@@ -285,7 +321,18 @@ function PanelButton({ label, icon }: { label: string; icon: LucideIcon }) {
 
 /* --- Uygulama rafı ----------------------------------------------------------------------------- */
 
-function DockList({ expanded, current, onNavigate }: { expanded: boolean; current: string | undefined; onNavigate?: () => void }) {
+/** `group`: göstergenin kimliği (raf ve çekmece ayrı kayar). */
+function DockList({
+  expanded,
+  current,
+  onNavigate,
+  group = 'dock',
+}: {
+  expanded: boolean
+  current: string | undefined
+  onNavigate?: () => void
+  group?: string
+}) {
   return (
     <ListBox
       aria-label="Sayfalar"
@@ -301,26 +348,40 @@ function DockList({ expanded, current, onNavigate }: { expanded: boolean; curren
           href={href}
           textValue={label}
           className={cn(
-            'h-11 gap-0 overflow-hidden bg-surface p-0 transition-colors data-hovered:bg-surface-tertiary data-selected:bg-accent data-selected:text-accent-foreground',
+            // Seçili zemin kayan gösterge (Indicator); taşma iç kutuda kırpılır ki gösterge öğeden öğeye kayabilsin
+            'relative h-11 gap-0 bg-surface p-0 transition-colors data-hovered:bg-surface-tertiary data-selected:text-accent-foreground',
             !expanded && 'w-11',
             // Geri dönüş bir uygulama değil: zeminsiz, altında ayraç
             id === 'geri' && 'mb-3 bg-transparent text-muted',
           )}
         >
-          {({ isHovered, isFocusVisible }) => (
+          {({ isHovered, isFocusVisible, isSelected }) => (
             <>
-              <Tooltip isOpen={!expanded && (isHovered || isFocusVisible)}>
-                {/* İkon yuvası ipucuna yalnızca konum verir; odak ve rol seçenek öğesinde kalır */}
-                <Tooltip.Trigger role="presentation" tabIndex={-1} className="pointer-events-none grid size-11 shrink-0 place-items-center">
-                  <Icon {...IC} size={20} />
-                </Tooltip.Trigger>
-                <Tooltip.Content placement="right" offset={16}>
+              {isSelected && <Indicator id={`${group}-sel`} className="bg-accent" />}
+              <Box className="relative flex size-full items-center overflow-hidden">
+                <Tooltip isOpen={!expanded && (isHovered || isFocusVisible)}>
+                  {/* İkon yuvası ipucuna yalnızca konum verir; odak ve rol seçenek öğesinde kalır */}
+                  <Tooltip.Trigger
+                    role="presentation"
+                    tabIndex={-1}
+                    className="pointer-events-none grid size-11 shrink-0 place-items-center"
+                  >
+                    <Icon {...IC} size={20} />
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="right" offset={16}>
+                    {label}
+                  </Tooltip.Content>
+                </Tooltip>
+                <Text
+                  slot="label"
+                  className={cn(
+                    'text-sm font-medium whitespace-nowrap text-current',
+                    !expanded && 'sr-only',
+                  )}
+                >
                   {label}
-                </Tooltip.Content>
-              </Tooltip>
-              <Text slot="label" className={cn('text-sm font-medium whitespace-nowrap text-current', !expanded && 'sr-only')}>
-                {label}
-              </Text>
+                </Text>
+              </Box>
             </>
           )}
         </ListBox.Item>
@@ -335,8 +396,9 @@ const themes = [
 ] as const
 
 /** Tema geçişi: seçili olan dolu birincil renkte, diğeri şeffaf. */
-function ThemeSwitch({ vertical }: { vertical: boolean }) {
+function ThemeSwitch({ vertical, group }: { vertical: boolean; group: string }) {
   const { resolvedTheme, setTheme } = useTheme()
+  const selected = resolvedTheme === 'dark' ? 'dark' : 'light'
   // Kap Card: HeroUI yarıçapıyla beyaz hap; grubun kendi zemini / yarıçapı yok
   return (
     <Card className="w-fit p-1">
@@ -347,14 +409,26 @@ function ThemeSwitch({ vertical }: { vertical: boolean }) {
         orientation={vertical ? 'vertical' : 'horizontal'}
         selectionMode="single"
         disallowEmptySelection
-        selectedKeys={[resolvedTheme === 'dark' ? 'dark' : 'light']}
+        selectedKeys={[selected]}
         onSelectionChange={(keys) => setTheme([...keys][0] === 'dark' ? 'dark' : 'light')}
         className="gap-1"
       >
         {themes.map(({ id, label, icon: Icon }) => (
           <Tip key={id} label={label} placement={vertical ? 'right' : 'top'}>
-            <ToggleButton id={id} isIconOnly variant="ghost" aria-label={label} className="data-selected:bg-accent data-selected:text-accent-foreground">
-              <Icon {...IC} />
+            <ToggleButton
+              id={id}
+              isIconOnly
+              variant="ghost"
+              aria-label={label}
+              className="relative data-selected:bg-transparent data-selected:text-accent-foreground"
+            >
+              {id === selected && <Indicator id={`${group}-theme`} className="bg-accent" />}
+              {/* Seçilince ikon küçük bir dönüşle gelir */}
+              <Icon
+                key={String(id === selected)}
+                {...IC}
+                className={cn('relative', id === selected && 'animate-pop')}
+              />
             </ToggleButton>
           </Tip>
         ))}
@@ -387,15 +461,24 @@ function Dock({ current, onTheme }: { current: string | undefined; onTheme: () =
     >
       <Box className="flex flex-col gap-3">
         <Tip label={label} placement="right">
-          <Button isIconOnly variant="ghost" aria-label={label} aria-expanded={expanded} onPress={toggle} className="size-11 text-muted">
+          <Button
+            isIconOnly
+            variant="ghost"
+            aria-label={label}
+            aria-expanded={expanded}
+            onPress={toggle}
+            className="size-11 text-muted"
+          >
             <ToggleIcon {...IC} size={20} />
           </Button>
         </Tip>
         <DockList expanded={expanded} current={current} />
       </Box>
-      <Box className={cn('flex gap-2', expanded ? 'flex-row items-center' : 'flex-col items-start')}>
+      <Box
+        className={cn('flex gap-2', expanded ? 'flex-row items-center' : 'flex-col items-start')}
+      >
         <ThemeButton onPress={onTheme} />
-        <ThemeSwitch vertical={!expanded} />
+        <ThemeSwitch vertical={!expanded} group="dock" />
       </Box>
     </Box>
   )
@@ -404,7 +487,11 @@ function Dock({ current, onTheme }: { current: string | undefined; onTheme: () =
 /** Gezinme "Üstte": uygulamalar üst çubuğun altında yatay; sağda tema paneli ve tema geçişi. */
 function TopNav({ current, onTheme }: { current: string | undefined; onTheme: () => void }) {
   return (
-    <Box role="navigation" aria-label="Ana menü" className="hidden items-center gap-2 px-6 pb-3 sm:flex">
+    <Box
+      role="navigation"
+      aria-label="Ana menü"
+      className="hidden items-center gap-2 px-6 pb-3 sm:flex"
+    >
       {dockEntries.map(({ id, label, icon: Icon, href }) => (
         <Link
           key={id}
@@ -412,18 +499,21 @@ function TopNav({ current, onTheme }: { current: string | undefined; onTheme: ()
           isDisabled={!href}
           aria-current={id === current ? 'page' : undefined}
           className={cn(
-            'h-10 gap-2 rounded-xl px-3.5 text-sm font-medium no-underline transition-colors data-disabled:opacity-50',
-            id === current ? 'bg-accent text-accent-foreground' : 'bg-surface text-foreground hover:bg-surface-tertiary',
+            'relative h-10 gap-2 rounded-xl px-3.5 text-sm font-medium no-underline transition-colors data-disabled:opacity-50',
+            id === current
+              ? 'text-accent-foreground'
+              : 'bg-surface text-foreground hover:bg-surface-tertiary',
             id === 'geri' && 'bg-transparent text-muted',
           )}
         >
-          <Icon {...IC} size={18} />
-          {id !== 'geri' && label}
+          {id === current && <Indicator id="topnav-sel" className="bg-accent" />}
+          <Icon {...IC} size={18} className="relative" />
+          {id !== 'geri' && <Text className="relative text-current">{label}</Text>}
         </Link>
       ))}
       <Box className="ms-auto flex items-center gap-2">
         <ThemeButton onPress={onTheme} />
-        <ThemeSwitch vertical={false} />
+        <ThemeSwitch vertical={false} group="topnav" />
       </Box>
     </Box>
   )
@@ -434,8 +524,18 @@ function ThemeButton({ onPress }: { onPress: () => void }) {
   return (
     <Tip label="Tema ayarları" placement="right">
       <Card className="w-fit p-1">
-        <Button isIconOnly size="sm" variant="ghost" aria-label="Tema ayarları" onPress={onPress}>
-          <Palette {...IC} />
+        <Button
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          aria-label="Tema ayarları"
+          onPress={onPress}
+          className="group"
+        >
+          <Palette
+            {...IC}
+            className="transition-transform duration-300 group-data-hovered:scale-110 group-data-hovered:-rotate-20"
+          />
         </Button>
       </Card>
     </Tip>
@@ -443,6 +543,15 @@ function ThemeButton({ onPress }: { onPress: () => void }) {
 }
 
 /* --- Kabuk ------------------------------------------------------------------------------------- */
+
+/** Sayfa geçişi anahtarı: aynı anahtarda kalan gezinme (kutu / süreç değişimi) geçiş oynatmaz. */
+function pageOf(pathname: string) {
+  if (matchPath('/is-akislari/:box/:processId/:requestId', pathname)) return 'detail'
+  if (matchPath({ path: '/is-akislari', end: false }, pathname)) return 'workflow'
+  const app = matchPath('/uygulamalar/:appId', pathname)
+  if (app) return `app:${app.params.appId}`
+  return pathname
+}
 
 function Shell() {
   const { pathname } = useLocation()
@@ -455,57 +564,81 @@ function Shell() {
   const topNav = look.nav === 'top'
   const [themeOpen, setThemeOpen] = useState(false)
 
-  const current = dockEntries.find((e) => e.match && matchPath({ path: e.match, end: false }, pathname))?.id
+  const current = dockEntries.find(
+    (e) => e.match && matchPath({ path: e.match, end: false }, pathname),
+  )?.id
 
   return (
     <LookContext value={look}>
-    <FrameContext value={setFrame}>
-      <Box className="flex min-h-screen flex-col bg-background text-foreground antialiased">
-        <TopBar crumbs={frame?.crumbs ?? []} onMenu={() => setDrawer(true)} />
-        {topNav && <TopNav current={current} onTheme={() => setThemeOpen(true)} />}
-        <Box className="flex flex-1">
-          {!topNav && <Dock current={current} onTheme={() => setThemeOpen(true)} />}
-          <Box role="main" className={cn('flex min-w-0 flex-1 flex-col gap-3 px-4 pb-6 sm:pe-6', topNav ? 'sm:ps-6' : 'sm:ps-0')}>
-            {/* 1280px altında konum, üst çubuk yerine sayfanın başında kısa haplarla (1024'te çubuğa sığmıyordu) */}
-            {(frame?.crumbs.length ?? 0) > 1 && (
-              <Box className="pt-1 xl:hidden">
-                <Crumbs crumbs={frame!.crumbs} compact />
+      <MotionScope>
+        <FrameContext value={setFrame}>
+          <Box className="flex min-h-screen flex-col bg-background text-foreground antialiased">
+            <TopBar crumbs={frame?.crumbs ?? []} onMenu={() => setDrawer(true)} />
+            {topNav && <TopNav current={current} onTheme={() => setThemeOpen(true)} />}
+            <Box className="flex flex-1">
+              {!topNav && <Dock current={current} onTheme={() => setThemeOpen(true)} />}
+              <Box
+                role="main"
+                className={cn(
+                  'flex min-w-0 flex-1 flex-col gap-3 px-4 pb-6 sm:pe-6',
+                  topNav ? 'sm:ps-6' : 'sm:ps-0',
+                )}
+              >
+                {/* 1280px altında konum, üst çubuk yerine sayfanın başında kısa haplarla (1024'te çubuğa sığmıyordu) */}
+                {(frame?.crumbs.length ?? 0) > 1 && (
+                  <Box className="pt-1 xl:hidden">
+                    <Crumbs crumbs={frame!.crumbs} compact />
+                  </Box>
+                )}
+                <PageTransition page={pageOf(pathname)} className="flex min-w-0 flex-1 flex-col" />
               </Box>
-            )}
-            <Outlet />
+            </Box>
+
+            {/* Dar ekranda raf çekmecede */}
+            <Drawer.Root isOpen={drawerAt === pathname} onOpenChange={setDrawer}>
+              <Drawer.Trigger className="hidden" aria-hidden />
+              <Drawer.Content placement="left">
+                <Drawer.Dialog className="bg-background">
+                  <Drawer.Header>
+                    <Drawer.Heading className="font-display text-lg font-semibold">
+                      synergy
+                    </Drawer.Heading>
+                    <Drawer.CloseTrigger />
+                  </Drawer.Header>
+                  <Drawer.Body className="flex flex-col gap-6">
+                    <AppSearch />
+                    <DockList
+                      expanded
+                      current={current}
+                      onNavigate={() => setDrawer(false)}
+                      group="drawer"
+                    />
+                    <Box className="flex items-center gap-2">
+                      <ThemeButton
+                        onPress={() => {
+                          setDrawer(false)
+                          setThemeOpen(true)
+                        }}
+                      />
+                      <ThemeSwitch vertical={false} group="drawer" />
+                    </Box>
+                  </Drawer.Body>
+                </Drawer.Dialog>
+              </Drawer.Content>
+            </Drawer.Root>
+
+            <ThemePanel
+              kit={V1_THEME}
+              isOpen={themeOpen}
+              onClose={() => setThemeOpen(false)}
+              settings={theme}
+              onChange={setTheme}
+              reducedBySystem={theme.motion === 'full' && look.motion !== 'full'}
+            />
+            <Toast.Provider placement="bottom end" />
           </Box>
-        </Box>
-
-        {/* Dar ekranda raf çekmecede */}
-        <Drawer.Root isOpen={drawerAt === pathname} onOpenChange={setDrawer}>
-          <Drawer.Trigger className="hidden" aria-hidden />
-          <Drawer.Content placement="left">
-            <Drawer.Dialog className="bg-background">
-              <Drawer.Header>
-                <Drawer.Heading className="font-display text-lg font-semibold">synergy</Drawer.Heading>
-                <Drawer.CloseTrigger />
-              </Drawer.Header>
-              <Drawer.Body className="flex flex-col gap-6">
-                <AppSearch />
-                <DockList expanded current={current} onNavigate={() => setDrawer(false)} />
-                <Box className="flex items-center gap-2">
-                  <ThemeButton
-                    onPress={() => {
-                      setDrawer(false)
-                      setThemeOpen(true)
-                    }}
-                  />
-                  <ThemeSwitch vertical={false} />
-                </Box>
-              </Drawer.Body>
-            </Drawer.Dialog>
-          </Drawer.Content>
-        </Drawer.Root>
-
-        <ThemePanel kit={V1_THEME} isOpen={themeOpen} onClose={() => setThemeOpen(false)} settings={theme} onChange={setTheme} />
-        <Toast.Provider placement="bottom end" />
-      </Box>
-    </FrameContext>
+        </FrameContext>
+      </MotionScope>
     </LookContext>
   )
 }

@@ -3,7 +3,22 @@ import type { LucideIcon } from 'lucide-react'
 import { ArrowDownUp } from 'lucide-react'
 import { CalendarDate, getLocalTimeZone } from '@internationalized/date'
 import { I18nProvider } from 'react-aria-components'
-import { Avatar, Button, Calendar, Chip, DateField, DatePicker, Dropdown, EmptyState, Header, Label, SearchField, Tooltip, Typography, cn } from '@heroui/react'
+import {
+  Avatar,
+  Button,
+  Calendar,
+  Chip,
+  DateField,
+  DatePicker,
+  Dropdown,
+  EmptyState,
+  Header,
+  Label,
+  SearchField,
+  Tooltip,
+  Typography,
+  cn,
+} from '@heroui/react'
 import {
   SORT_LABELS,
   cellValue,
@@ -32,7 +47,15 @@ export const IC_BLOCK = { ...IC, size: 20 } as const
 export const SOFT_BAND = 'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] text-foreground'
 
 /** İpucu (içerik portal ile basılır). */
-export function Tip({ label, children, placement = 'top' }: { label: string; children: ReactElement; placement?: 'top' | 'bottom' | 'right' | 'left' }) {
+export function Tip({
+  label,
+  children,
+  placement = 'top',
+}: {
+  label: string
+  children: ReactElement
+  placement?: 'top' | 'bottom' | 'right' | 'left'
+}) {
   return (
     <Tooltip delay={400}>
       {children}
@@ -42,7 +65,15 @@ export function Tip({ label, children, placement = 'top' }: { label: string; chi
 }
 
 /** Birincil rengin yumuşak tonunda ikon dairesi. */
-export function TintIcon({ icon: Icon, className, size = 'md' }: { icon: LucideIcon; className?: string; size?: 'sm' | 'md' }) {
+export function TintIcon({
+  icon: Icon,
+  className,
+  size = 'md',
+}: {
+  icon: LucideIcon
+  className?: string
+  size?: 'sm' | 'md'
+}) {
   return (
     <Avatar variant="soft" color="accent" size={size} className={className}>
       <Avatar.Fallback>
@@ -53,9 +84,24 @@ export function TintIcon({ icon: Icon, className, size = 'md' }: { icon: LucideI
 }
 
 /** "Ara" alanı. */
-export function KaroSearch({ value, onChange, label = 'Ara', className }: { value: string; onChange: (v: string) => void; label?: string; className?: string }) {
+export function KaroSearch({
+  value,
+  onChange,
+  label = 'Ara',
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  label?: string
+  className?: string
+}) {
   return (
-    <SearchField value={value} onChange={onChange} aria-label={label} className={cn('min-w-0', className)}>
+    <SearchField
+      value={value}
+      onChange={onChange}
+      aria-label={label}
+      className={cn('min-w-0', className)}
+    >
       <SearchField.Group>
         <SearchField.SearchIcon />
         <SearchField.Input placeholder={label} />
@@ -109,12 +155,22 @@ export function SortMenu({
     <Dropdown>
       {trigger === 'icon' ? (
         <Tip label={SORT_LABELS.title}>
-          <Button isIconOnly size="sm" variant="ghost" aria-label={SORT_LABELS.title} className={cn('size-9', className)}>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            aria-label={SORT_LABELS.title}
+            className={cn('size-9', className)}
+          >
             <ArrowDownUp {...IC} />
           </Button>
         </Tip>
       ) : (
-        <Button variant="secondary" aria-label={`${SORT_LABELS.title}: ${current}`} className={className}>
+        <Button
+          variant="secondary"
+          aria-label={`${SORT_LABELS.title}: ${current}`}
+          className={className}
+        >
           <ArrowDownUp {...IC} />
           {current}
         </Button>
@@ -138,7 +194,11 @@ export function StatusChip({ status }: { status: RequestStatus }) {
   const done = status === 'Tamamlandı'
   const final = done || status === 'Reddedildi'
   return (
-    <Chip size="sm" variant={final ? 'primary' : 'soft'} color={final ? (done ? 'success' : 'danger') : 'warning'}>
+    <Chip
+      size="sm"
+      variant={final ? 'primary' : 'soft'}
+      color={final ? (done ? 'success' : 'danger') : 'warning'}
+    >
       {status}
     </Chip>
   )
@@ -150,11 +210,17 @@ const PLAIN = 'text-current [font:inherit]'
 /** Hücre: tarih göreli (ipucunda tam), durum çipi, boşsa "-". */
 export function CellValue({ r, col }: { r: WorkRequest; col: Column }) {
   const v = cellValue(r, col.key)
-  if (col.type === 'status' && typeof v === 'string') return <StatusChip status={v as RequestStatus} />
+  if (col.type === 'status' && typeof v === 'string')
+    return <StatusChip status={v as RequestStatus} />
   if (v == null || v === '') return <Text tone="muted">-</Text>
   if (v instanceof Date)
     return (
-      <Typography {...inline} {...timeOf(v)} title={formatDateTime(v)} className={cn(PLAIN, 'whitespace-nowrap')}>
+      <Typography
+        {...inline}
+        {...timeOf(v)}
+        title={formatDateTime(v)}
+        className={cn(PLAIN, 'whitespace-nowrap')}
+      >
         {relative(v)}
       </Typography>
     )
@@ -185,7 +251,15 @@ export function compareBy(a: WorkRequest, b: WorkRequest, key: string) {
 }
 
 /** Boş durum: kısa metin, isteğe bağlı ikon. */
-export function EmptyNote({ text, icon, className }: { text: string; icon?: LucideIcon; className?: string }) {
+export function EmptyNote({
+  text,
+  icon,
+  className,
+}: {
+  text: string
+  icon?: LucideIcon
+  className?: string
+}) {
   return (
     <EmptyState className={cn('flex flex-col items-center gap-3 px-4 py-12', className)}>
       {icon && <TintIcon icon={icon} />}
@@ -199,7 +273,17 @@ export function EmptyNote({ text, icon, className }: { text: string; icon?: Luci
 /* --- Başlangıç / Bitiş Tarihi (geçmiş kutuları) ----------------------------------------------- */
 
 /** Gün seçici; `end` ise seçilen gün 23:59:59'a çekilir (başlangıç zaten 00:00). */
-function DayPicker({ label, value, end, onChange }: { label: string; value: Date | null; end?: boolean; onChange: (d: Date | null) => void }) {
+function DayPicker({
+  label,
+  value,
+  end,
+  onChange,
+}: {
+  label: string
+  value: Date | null
+  end?: boolean
+  onChange: (d: Date | null) => void
+}) {
   return (
     <DatePicker
       value={value && new CalendarDate(value.getFullYear(), value.getMonth() + 1, value.getDate())}
@@ -231,11 +315,15 @@ function DayPicker({ label, value, end, onChange }: { label: string; value: Date
             <Calendar.NavButton slot="next" />
           </Calendar.Header>
           <Calendar.Grid>
-            <Calendar.GridHeader>{(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}</Calendar.GridHeader>
+            <Calendar.GridHeader>
+              {(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}
+            </Calendar.GridHeader>
             <Calendar.GridBody>{(date) => <Calendar.Cell date={date} />}</Calendar.GridBody>
           </Calendar.Grid>
           <Calendar.YearPickerGrid>
-            <Calendar.YearPickerGridBody>{({ year }) => <Calendar.YearPickerCell year={year} />}</Calendar.YearPickerGridBody>
+            <Calendar.YearPickerGridBody>
+              {({ year }) => <Calendar.YearPickerCell year={year} />}
+            </Calendar.YearPickerGridBody>
           </Calendar.YearPickerGrid>
         </Calendar>
       </DatePicker.Popover>
@@ -244,12 +332,27 @@ function DayPicker({ label, value, end, onChange }: { label: string; value: Date
 }
 
 /** Başlangıç Tarihi / Bitiş Tarihi, yan yana; gün bazında. */
-export function RangeFields({ value, onChange }: { value: DateRange; onChange: (next: DateRange) => void }) {
+export function RangeFields({
+  value,
+  onChange,
+}: {
+  value: DateRange
+  onChange: (next: DateRange) => void
+}) {
   return (
     <I18nProvider locale="tr-TR">
       <Box className="flex flex-wrap items-end gap-2">
-        <DayPicker label={RANGE_LABELS.start} value={value.start} onChange={(start) => onChange({ ...value, start })} />
-        <DayPicker label={RANGE_LABELS.end} value={value.end} end onChange={(end) => onChange({ ...value, end })} />
+        <DayPicker
+          label={RANGE_LABELS.start}
+          value={value.start}
+          onChange={(start) => onChange({ ...value, start })}
+        />
+        <DayPicker
+          label={RANGE_LABELS.end}
+          value={value.end}
+          end
+          onChange={(end) => onChange({ ...value, end })}
+        />
       </Box>
     </I18nProvider>
   )

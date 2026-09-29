@@ -18,6 +18,7 @@ const DEFAULTS: ThemeSettings = {
 
 export const V1_THEME: ThemeKit = {
   storageKey: 'synergy-v1-theme',
+  motion: true,
   defaults: DEFAULTS,
   navOptions: [
     { id: 'default', label: 'Solda' },
