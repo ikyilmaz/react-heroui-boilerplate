@@ -89,13 +89,7 @@ import { FastMenu } from '@/synergy/v1/rows'
 import { useKaroFlow } from '@/synergy/v1/flow'
 import { useMediaQuery } from '@/synergy/shared/hooks'
 import { AnimatePresence } from 'framer-motion'
-import {
-  Count,
-  Indicator,
-  MotionBox,
-  useLeaving,
-  useTransition,
-} from '@/synergy/v1/motion'
+import { Count, Indicator, MotionBox, useLeaving, useTransition } from '@/synergy/v1/motion'
 
 /* -------------------------------------------------------------------------------------------------
  * Karo · Başlangıç: sabit 12 sütunlu bento
@@ -248,7 +242,7 @@ export function StartPage() {
   return (
     // Sayfa ana alanın kalanını doldurur; iş bloğu en alta kadar uzar
     <Box className="flex flex-1 flex-col">
-            <Box className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+      <Box className="grid grid-cols-1 gap-3 lg:grid-cols-12">
         <Greeting refreshing={refreshing} onRefresh={refreshAll} />
         <AppsBlock />
       </Box>
@@ -313,10 +307,7 @@ function Greeting({ refreshing, onRefresh }: { refreshing: boolean; onRefresh: (
       )}
     >
       <Box className="flex items-center gap-3">
-        <Icon
-          {...IC_BLOCK}
-          className="size-6 shrink-0"
-        />
+        <Icon {...IC_BLOCK} className="size-6 shrink-0" />
         <Typography.Heading
           level={1}
           weight="bold"
@@ -470,11 +461,7 @@ function AppsBlock() {
 function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: BoxId) => void }) {
   const counts = useBoxCounts({ unreadInfo: true })
   return (
-    <ScrollShadow
-      orientation="horizontal"
-      hideScrollBar
-      className="mt-3"
-    >
+    <ScrollShadow orientation="horizontal" hideScrollBar className="mt-3">
       <ToggleButtonGroup
         aria-label={START_LABELS.categories}
         isDetached
@@ -572,7 +559,8 @@ function WorkSplit({ left, right }: { left: ReactNode; right: ReactNode }) {
       className="flex flex-1 flex-col lg:flex-row"
       style={{ '--split': `${split}%` } as CSSProperties}
     >
-      <Box className="p-5 lg:w-(--split) lg:shrink-0">{left}</Box>
+      {/* Sol sütun iş bloğunun tüm yüksekliğini alır (süreç listesi en alta kadar uzar) */}
+      <Box className="flex flex-col p-5 lg:w-(--split) lg:shrink-0">{left}</Box>
       <Box
         role="separator"
         aria-orientation="vertical"
@@ -624,7 +612,7 @@ function GroupList({
   const caption = groupCaption(box.id)
   const label = `${box.label}: ${caption}`
   return (
-    <Box className="flex flex-col gap-3">
+    <Box className="flex flex-1 flex-col gap-3">
       <Box className="flex flex-wrap items-center gap-1">
         <Typography.Heading level={2} className={cn(H2, 'me-auto')}>
           {caption}
@@ -686,55 +674,62 @@ function GroupList({
           </Select.Popover>
         </Select>
       ) : (
-        <ListBox
-          aria-label={label}
-          selectionMode="single"
-          selectedKeys={selectedId ? [selectedId] : []}
-          onSelectionChange={(keys) => {
-            const [key] = keys === 'all' ? [] : [...keys]
-            onSelect(key == null ? null : String(key))
-          }}
-          className={cn(LIST, 'max-h-[26rem] overflow-y-auto')}
-        >
-          {groups.map(({ process: p, count }) => {
-            const Icon = p.icon
-            return (
-              <ListBox.Item
-                key={p.id}
-                id={p.id}
-                textValue={`${processCaption(p)}, ${countLabel} ${count}`}
-                // Seçili zemin satırdan satıra kayar
-                className={cn(
-                  ITEM,
-                  'group relative data-selected:bg-transparent data-selected:text-accent-foreground',
-                )}
-              >
-                {({ isSelected }) => (
-                  <>
-                    {isSelected && <Indicator id="start-group" className="bg-accent" />}
-                    <Icon {...IC} className="relative opacity-80" />
-                    <Box className="relative min-w-0 flex-1">
-                      <Typography {...inline} truncate className="text-xs text-current! opacity-65">
-                        {p.project}
-                      </Typography>
-                      <Typography
-                        {...inline}
-                        truncate
-                        weight="medium"
-                        className="text-sm text-current!"
-                      >
-                        {isDraft ? p.form : p.name}
-                      </Typography>
-                    </Box>
-                    <Chip className="relative min-w-8 justify-center bg-surface-secondary font-semibold group-data-selected:bg-surface">
-                      <Count value={count} />
-                    </Chip>
-                  </>
-                )}
-              </ListBox.Item>
-            )
-          })}
-        </ListBox>
+        // Liste kalan yüksekliği doldurur, sığmazsa kendi içinde kayar; yüksekliği bloğu uzatmaz
+        <Box className="relative min-h-[26rem] flex-1 lg:min-h-48">
+          <ListBox
+            aria-label={label}
+            selectionMode="single"
+            selectedKeys={selectedId ? [selectedId] : []}
+            onSelectionChange={(keys) => {
+              const [key] = keys === 'all' ? [] : [...keys]
+              onSelect(key == null ? null : String(key))
+            }}
+            className={cn(LIST, 'absolute inset-0 overflow-y-auto')}
+          >
+            {groups.map(({ process: p, count }) => {
+              const Icon = p.icon
+              return (
+                <ListBox.Item
+                  key={p.id}
+                  id={p.id}
+                  textValue={`${processCaption(p)}, ${countLabel} ${count}`}
+                  // Seçili zemin satırdan satıra kayar
+                  className={cn(
+                    ITEM,
+                    'group relative data-selected:bg-transparent data-selected:text-accent-foreground',
+                  )}
+                >
+                  {({ isSelected }) => (
+                    <>
+                      {isSelected && <Indicator id="start-group" className="bg-accent" />}
+                      <Icon {...IC} className="relative opacity-80" />
+                      <Box className="relative min-w-0 flex-1">
+                        <Typography
+                          {...inline}
+                          truncate
+                          className="text-xs text-current! opacity-65"
+                        >
+                          {p.project}
+                        </Typography>
+                        <Typography
+                          {...inline}
+                          truncate
+                          weight="medium"
+                          className="text-sm text-current!"
+                        >
+                          {isDraft ? p.form : p.name}
+                        </Typography>
+                      </Box>
+                      <Chip className="relative min-w-8 justify-center bg-surface-secondary font-semibold group-data-selected:bg-surface">
+                        <Count value={count} />
+                      </Chip>
+                    </>
+                  )}
+                </ListBox.Item>
+              )
+            })}
+          </ListBox>
+        </Box>
       )}
     </Box>
   )
@@ -784,14 +779,16 @@ function RequestsTile({
   // Hızlı onaylanan satır yerinde kalıp sağa kayarak çıkar
   const [shown, leaving] = useLeaving(rows)
   const fade = (r: WorkRequest) => leaving(r.id)
-  
+
   const open = (key: string | number) => {
     const r = rows.find((x) => x.id === key)
     if (!r) return
     markRead(r.id)
     navigate(requestLink(r), { state: { ids: rows.map((x) => x.id) } satisfies DetailNavState })
   }
-  const events = (r: WorkRequest) => <FastMenu request={r} onRun={(id) => flow.run(id, r)} placement="bottom start" />
+  const events = (r: WorkRequest) => (
+    <FastMenu request={r} onRun={(id) => flow.run(id, r)} placement="bottom start" />
+  )
 
   return (
     <Box className="flex flex-col gap-3">
@@ -905,11 +902,7 @@ function RequestsTile({
                     <Table.Row
                       key={r.id}
                       id={r.id}
-                      className={cn(
-                        'group/row cursor-pointer',
-                        fade(r),
-                        unread && 'font-semibold',
-                      )}
+                      className={cn('group/row cursor-pointer', fade(r), unread && 'font-semibold')}
                     >
                       {box.decisions && (
                         <Table.Cell className={cn(CELL, STICKY_START, 'w-px')}>

@@ -15,7 +15,9 @@ logic layer: **v1 "Karo"** (`v1/`, root routes `/calisma-alani`, `/is-akislari/â
   `style` only for truly dynamic numbers (e.g. a dragged splitter width).
   - `src/index.css` holds only the HeroUI setup: `@layer theme, base, components, utilities;`,
     `@import 'tailwindcss'`, `@import '@heroui/styles'`, the theme imports, `@source` for HeroUI's JS
-    classes and Tailwind `@theme` keys for `font-display` / `font-mono`.
+    classes, Tailwind `@theme` keys for `font-display` / `font-mono`, the v1 animation keys
+    (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`) and one base rule for the
+    thin, track-less scrollbars.
   - `src/themes/synergy.css` is the v1 HeroUI theme: **variables only**, in `@layer base`, for
     `:root, .light, [data-theme='light']` and `.dark, [data-theme='dark']` (HeroUI's `useTheme` writes
     those onto `<html>`). Set base colours only (`--background`, `--surface*`, `--accent`,

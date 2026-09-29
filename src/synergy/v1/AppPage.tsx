@@ -11,7 +11,7 @@ import { TintIcon } from '@/synergy/v1/parts'
 
 export function KaroAppPage() {
   const app = findApp(useParams().appId)
-  useFrame(app ? [START_CRUMB, { label: app.caption }] : [])
+  useFrame(app ? [START_CRUMB, { label: app.caption, icon: `app:${app.id}` }] : [])
   if (!app) return <Navigate to={BASE} replace />
   return (
     <Box className="flex flex-col gap-3">

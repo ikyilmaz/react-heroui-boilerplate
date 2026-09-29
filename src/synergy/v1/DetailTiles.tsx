@@ -6,6 +6,7 @@ import {
   CirclePlay,
   CornerUpLeft,
   CircleDot,
+  FilePlus2,
   FileText,
   Flag,
   Forward,
@@ -13,6 +14,7 @@ import {
   Info,
   Paperclip,
   Settings2,
+  SquareArrowOutUpRight,
   X,
 } from 'lucide-react'
 import {
@@ -44,6 +46,8 @@ import {
   type FlowDocument,
   type FlowProperty,
   type HistoryEntry,
+  type ChildLink,
+  type LineItem,
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import type { HistoryViewOptions } from '@/synergy/shared/historyView'
@@ -53,8 +57,9 @@ import { Box, Text } from '@/synergy/shared/ui'
 import { IC, StatusChip, TintIcon, Tip } from '@/synergy/v1/parts'
 import { TextBox } from '@/components/TextBox'
 import { FormField, LongField } from '@/synergy/shared/FormFields'
+import { useOpenChild } from '@/synergy/v1/FormTabs'
 
-/* Flow Viewer karoları: form, ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
+/* Flow Viewer karoları: form (ve child form bağlantıları), ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
 
 const TITLE = 'font-display text-lg'
 
@@ -65,7 +70,7 @@ const colCls = 'whitespace-nowrap after:content-none'
 const cellCls = 'border-b-0'
 const numCls = cn(cellCls, 'text-end whitespace-nowrap tabular-nums')
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+export function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
   return (
     <Box role="group" aria-labelledby={id} className="flex flex-col gap-3">
@@ -91,30 +96,82 @@ function DocTitle({ doc }: { doc: FlowDocument }) {
   )
 }
 
+/** Kalem tablosu (miktar, birim fiyat, tutar; altta toplam). */
+export function ItemsTable({ items }: { items: LineItem[] }) {
+  const total = items.reduce((s, it) => s + it.qty * it.price, 0)
+  return (
+    <Table variant="secondary">
+      <Table.ScrollContainer>
+        <Table.Content aria-label="Kalemler">
+          <Table.Header>
+            <Table.Column isRowHeader className={colCls}>
+              Kalem
+            </Table.Column>
+            {['Miktar', 'Birim fiyat', 'Tutar'].map((c) => (
+              <Table.Column key={c} id={c} className={cn(colCls, 'text-end')}>
+                {c}
+              </Table.Column>
+            ))}
+          </Table.Header>
+          <Table.Body>
+            {[
+              ...items.map((it, i) => (
+                <Table.Row key={`i${i}`} id={`i${i}`}>
+                  <Table.Cell className={cellCls}>{it.name}</Table.Cell>
+                  <Table.Cell className={numCls}>
+                    {it.qty} {it.unit}
+                  </Table.Cell>
+                  <Table.Cell className={numCls}>{tl.format(it.price)}</Table.Cell>
+                  <Table.Cell className={numCls}>{tl.format(it.qty * it.price)}</Table.Cell>
+                </Table.Row>
+              )),
+              <Table.Row key="total" id="total">
+                <Table.Cell className={cn(cellCls, 'font-semibold')}>Toplam</Table.Cell>
+                <Table.Cell className={cellCls} />
+                <Table.Cell className={cellCls} />
+                <Table.Cell className={cn(numCls, 'font-display text-lg font-bold')}>
+                  {tl.format(total)}
+                </Table.Cell>
+              </Table.Row>,
+            ]}
+          </Table.Body>
+        </Table.Content>
+      </Table.ScrollContainer>
+    </Table>
+  )
+}
+
+/**
+ * Formun içindeki child form düğmesi (orijinalde form tasarımcısının koyduğu eylem düğmesi):
+ * ilgili alanın hemen altında; basınca child talep yeni form sekmesinde açılır (`FormTabs.tsx`).
+ */
+function ChildButton({ link, onOpen }: { link: ChildLink; onOpen: (id: string) => void }) {
+  const Icon = link.action === 'add' ? FilePlus2 : SquareArrowOutUpRight
+  return (
+    <Button variant="secondary" size="sm" onPress={() => onOpen(link.id)} className="self-start">
+      <Icon {...IC} />
+      {link.label}
+    </Button>
+  )
+}
+
 export function FormBody({
   r,
-  form,
   files,
   onOpenFile,
 }: {
   r: WorkRequest
-  form: FlowDocument
   files: FlowDocument[]
   onOpenFile: (d: FlowDocument) => void
 }) {
   const t = r.template
   const fields = Object.entries(t.fields)
+  // Child form düğmeleri yalnızca form sekmelerinin içinde (açacak yer varsa)
+  const open = useOpenChild()
   const items = t.items ?? []
-  const total = items.reduce((s, it) => s + it.qty * it.price, 0)
   return (
+    // Form adı ve doküman numarası başlık kartında; form doğrudan alanlarla başlar
     <Box className="flex flex-col gap-8">
-      <Box className="flex items-center gap-3">
-        <TintIcon icon={FileText} />
-        <Box>
-          <DocTitle doc={form} />
-        </Box>
-      </Box>
-
       {fields.length === 0 && !t.reason ? (
         <EmptyState className="py-10 text-center">{FLOW_TEXT.formEmpty}</EmptyState>
       ) : (
@@ -124,56 +181,26 @@ export function FormBody({
           </Section>
           {fields.length > 0 && (
             <Section title="Form bilgileri">
-              {/* Gerçek form bileşenleri, salt okunur (FormFields.tsx) */}
-              <Box className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-                {fields.map(([label, value]) => (
-                  <FormField key={label} label={label} value={value} />
-                ))}
+              {/* Gerçek form bileşenleri, salt okunur (FormFields.tsx); sütun sayısı kabın (bölmenin) genişliğine göre */}
+              <Box className="grid grid-cols-1 gap-x-6 gap-y-4 @xl:grid-cols-2">
+                {fields.map(([label, value]) => {
+                  const links = open ? (t.children ?? []).filter((c) => c.after === label) : []
+                  if (!links.length) return <FormField key={label} label={label} value={value} />
+                  return (
+                    <Box key={label} className="flex flex-col gap-2">
+                      <FormField label={label} value={value} />
+                      {links.map((l) => (
+                        <ChildButton key={l.id} link={l} onOpen={(id) => open?.(r.id, id)} />
+                      ))}
+                    </Box>
+                  )
+                })}
               </Box>
             </Section>
           )}
           {items.length > 0 && (
             <Section title="Kalemler">
-              <Table variant="secondary">
-                <Table.ScrollContainer>
-                  <Table.Content aria-label="Kalemler">
-                    <Table.Header>
-                      <Table.Column isRowHeader className={colCls}>
-                        Kalem
-                      </Table.Column>
-                      {['Miktar', 'Birim fiyat', 'Tutar'].map((c) => (
-                        <Table.Column key={c} id={c} className={cn(colCls, 'text-end')}>
-                          {c}
-                        </Table.Column>
-                      ))}
-                    </Table.Header>
-                    <Table.Body>
-                      {[
-                        ...items.map((it, i) => (
-                          <Table.Row key={`i${i}`} id={`i${i}`}>
-                            <Table.Cell className={cellCls}>{it.name}</Table.Cell>
-                            <Table.Cell className={numCls}>
-                              {it.qty} {it.unit}
-                            </Table.Cell>
-                            <Table.Cell className={numCls}>{tl.format(it.price)}</Table.Cell>
-                            <Table.Cell className={numCls}>
-                              {tl.format(it.qty * it.price)}
-                            </Table.Cell>
-                          </Table.Row>
-                        )),
-                        <Table.Row key="total" id="total">
-                          <Table.Cell className={cn(cellCls, 'font-semibold')}>Toplam</Table.Cell>
-                          <Table.Cell className={cellCls} />
-                          <Table.Cell className={cellCls} />
-                          <Table.Cell className={cn(numCls, 'font-display text-lg font-bold')}>
-                            {tl.format(total)}
-                          </Table.Cell>
-                        </Table.Row>,
-                      ]}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
+              <ItemsTable items={items} />
             </Section>
           )}
           {t.reason && (
@@ -296,7 +323,9 @@ export function DocumentsList({
         <Alert status="warning" className="bg-warning">
           <Alert.Indicator className="text-warning-foreground" />
           <Alert.Content>
-            <Alert.Description className="font-medium text-warning-foreground">{DOCS_REQUIRED}</Alert.Description>
+            <Alert.Description className="font-medium text-warning-foreground">
+              {DOCS_REQUIRED}
+            </Alert.Description>
           </Alert.Content>
         </Alert>
       )}
@@ -459,7 +488,8 @@ function HistoryItem({
           aria-hidden
           className={cn(
             'shrink-0',
-            waiting && 'animate-[halo_calc(1.8s*var(--motion-time,1))_ease-out_infinite] ring-2 ring-accent',
+            waiting &&
+              'animate-[halo_calc(1.8s*var(--motion-time,1))_ease-out_infinite] ring-2 ring-accent',
           )}
         >
           <Avatar.Fallback
@@ -474,12 +504,7 @@ function HistoryItem({
             {createElement(icon, { ...IC, size: 15 })}
           </Avatar.Fallback>
         </Avatar>
-        {!isLast && (
-          <Box
-            aria-hidden
-            className="my-1 w-0.5 flex-1 bg-accent-soft"
-          />
-        )}
+        {!isLast && <Box aria-hidden className="my-1 w-0.5 flex-1 bg-accent-soft" />}
       </Box>
       <Box className={cn('min-w-0 flex-1', !isLast && 'pb-4')}>
         <Box className="flex items-start justify-between gap-3">

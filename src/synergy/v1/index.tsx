@@ -1,14 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import { useCallback, useState } from 'react'
 import { matchPath, useHref, useLocation, useNavigate } from 'react-router'
 import {
   Avatar,
-  Breadcrumbs,
   Button,
   Card,
-  Chip,
   ComboBox,
   Drawer,
-  Dropdown,
   EmptyState,
   Header as SectionHeader,
   Input,
@@ -27,7 +24,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Ellipsis,
+  FileText,
   FolderOpen,
   House,
   Layers,
@@ -44,8 +41,15 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react'
-import { CURRENT_USER, avatarColor, initials, menuApps } from '@/synergy/shared/workflowData'
-import { inline } from '@/synergy/shared/tokens'
+import {
+  CURRENT_USER,
+  avatarColor,
+  findBox,
+  findProcess,
+  initials,
+  menuApps,
+} from '@/synergy/shared/workflowData'
+import { card, inline } from '@/synergy/shared/tokens'
 import { Box, Text } from '@/synergy/shared/ui'
 import { BASE, FrameContext, k, type Crumb, type Frame } from '@/synergy/v1/paths'
 import { IC, Tip } from '@/synergy/v1/parts'
@@ -53,7 +57,14 @@ import { LookContext, useThemeSettings } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
 import { V1_THEME } from '@/synergy/v1/theme'
 import { VersionSwitch } from '@/synergy/shared/version'
-import { Indicator, MotionScope, PageTransition } from '@/synergy/v1/motion'
+import { AnimatePresence } from 'framer-motion'
+import {
+  Indicator,
+  MotionBox,
+  MotionScope,
+  PageTransition,
+  useTransition,
+} from '@/synergy/v1/motion'
 
 /*
  * Kabuk: üst çubuk (logo, konum hapları, uygulama araması, kullanıcı) ve solda uygulama rafı
@@ -164,72 +175,106 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
   )
 }
 
-/** Konum hapı: bağlantılar birincil rengin yumuşak tonunda, bulunulan konum dolu birincil renkte. */
-function CrumbPill({ c, current, icon }: { c: Crumb; current: boolean; icon?: ReactNode }) {
-  return (
-    <Breadcrumbs.Item href={current ? undefined : c.href}>
-      <Chip
-        size="lg"
-        color="accent"
-        variant={current ? 'primary' : 'soft'}
-        className={current ? 'font-semibold' : 'text-foreground'}
+/** Konum ikonunun anahtarından ikonu (`Crumb.icon`). */
+function crumbIcon(key: string | undefined): LucideIcon | undefined {
+  if (!key) return undefined
+  if (key === 'home') return House
+  if (key === 'workflow') return Workflow
+  if (key === 'request') return FileText
+  const [kind, id] = key.split(':')
+  if (kind === 'box') return findBox(id)?.icon
+  if (kind === 'process') return findProcess(id)?.icon
+  if (kind === 'app') return menuApps.find((a) => a.id === id)?.icon
+  return undefined
+}
+
+/**
+ * Konum bölümü. Önceki konumlar yalnızca ikon (ad ipucunda ve ekran okuyucuda), bulunulan yer dolu
+ * birincil renkte ve adıyla açık. Bulunulan yer değişince eski bölümün adı büzülerek kapanır
+ * (öğe aynı kaldığı için `grid-template-columns` geçişi oynar).
+ */
+function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
+  const Icon = crumbIcon(c.icon)
+  const open = current || !Icon
+  const part = (
+    <Box
+      {...({ title: open ? undefined : c.label } as Record<string, unknown>)}
+      className={cn(
+        'flex h-9 min-w-0 items-center rounded-full px-2.5 text-sm whitespace-nowrap transition-colors duration-200',
+        current
+          ? 'bg-accent font-semibold text-accent-foreground'
+          : cn('bg-surface text-muted hover:text-foreground', card),
+      )}
+    >
+      {Icon && <Icon {...IC} size={16} className="shrink-0" />}
+      <Box
+        className={cn(
+          'grid min-w-0 transition-[grid-template-columns] duration-[calc(280ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
+          open ? 'grid-cols-[1fr]' : 'grid-cols-[0fr]',
+        )}
       >
-        {icon}
-        <Chip.Label>{c.label}</Chip.Label>
-      </Chip>
-    </Breadcrumbs.Item>
+        <Text
+          className={cn(
+            'min-w-0 overflow-hidden text-current',
+            current ? 'max-w-[28rem]' : 'max-w-80',
+            Icon && open && 'ps-1.5 pe-1',
+          )}
+        >
+          <Text className="block truncate text-current">{c.label}</Text>
+        </Text>
+      </Box>
+    </Box>
+  )
+  if (current || !c.href) return <Box aria-current={current ? 'page' : undefined}>{part}</Box>
+  return (
+    <Link
+      href={c.href}
+      aria-label={c.label}
+      className="rounded-full no-underline hover:no-underline"
+    >
+      {part}
+    </Link>
   )
 }
 
-/** Konum hapları; uzun yollarda aradakiler "…" menüsüne katlanır (dar ekranda yalnızca son konum açık). */
-function Crumbs({ crumbs, compact = false }: { crumbs: Crumb[]; compact?: boolean }) {
-  // Tek hap bulunulan sayfanın kendisi (ör. Başlangıç); göstermeye gerek yok
-  if (crumbs.length < 2) return null
-  const [first, ...rest] = crumbs
-  const keep = compact ? 1 : 2
-  const folded = rest.slice(0, -keep)
-  const tail = rest.slice(-keep)
+/**
+ * Konum çubuğu: ayrı küçük haplar, aralarında ince oklar; tüm konum hep görünür (önceki konumlar
+ * ikon). Her değişiklik animasyonlu: giren bölüm genişleyerek sağdan kayar, çıkan bölüm sola kayıp
+ * kapanır; adı değişen bölümde eskisi kapanırken yenisi aynı yerde açılır.
+ */
+function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
+  const transition = useTransition({ duration: 0.3, ease: [0.22, 1, 0.36, 1] })
+  // Tek bölüm bulunulan sayfanın kendisi (ör. Başlangıç); göstermeye gerek yok (liste çıkış animasyonuyla boşalır)
+  const shown = crumbs.length < 2 ? [] : crumbs
   return (
-    // Üst çubukta tek satır (sarınca çubuktan taşıyordu); sayfa başındaki kısa sürüm sarabilir
-    <Breadcrumbs
-      aria-label="Konum"
-      className={cn('min-w-0 gap-1', compact ? 'flex-wrap' : 'flex-nowrap')}
-      separator={<ChevronRight strokeWidth={1.75} />}
-    >
-      <CrumbPill c={first!} current={!rest.length} icon={<House {...IC} size={14} />} />
-      {folded.length > 0 && (
-        <Breadcrumbs.Item>
-          {() => (
-            <>
-              <Dropdown>
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Diğer konumlar"
-                  className="bg-accent-soft text-accent-soft-foreground"
-                >
-                  <Ellipsis {...IC} />
-                </Button>
-                <Dropdown.Popover placement="bottom">
-                  <Dropdown.Menu aria-label="Diğer konumlar">
-                    {folded.map((c) => (
-                      <Dropdown.Item key={c.label} id={c.label} href={c.href} textValue={c.label}>
-                        {c.label}
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown>
-              <ChevronRight strokeWidth={1.75} className="breadcrumbs__separator" aria-hidden />
-            </>
-          )}
-        </Breadcrumbs.Item>
-      )}
-      {tail.map((c, i) => (
-        <CrumbPill key={`${c.label}-${i}`} c={c} current={i === tail.length - 1} />
-      ))}
-    </Breadcrumbs>
+    <Box role="navigation" aria-label="Konum" className="min-w-0">
+      <Box role="list" className="flex min-w-0 flex-nowrap items-center">
+        <AnimatePresence initial={false}>
+          {shown.map((c, i) => (
+            <MotionBox
+              key={`${i}-${c.label}`}
+              role="listitem"
+              initial={{ opacity: 0, width: 0, x: 12 }}
+              animate={{ opacity: 1, width: 'auto', x: 0 }}
+              exit={{ opacity: 0, width: 0, x: -8 }}
+              transition={transition}
+              // Kırpma genişlik animasyonu için; 1px pay hapın çerçevesi kesilmesin
+              className="flex shrink-0 items-center overflow-hidden p-px"
+            >
+              {i > 0 && (
+                <ChevronRight
+                  aria-hidden
+                  size={14}
+                  strokeWidth={1.75}
+                  className="mx-1 shrink-0 text-muted/60"
+                />
+              )}
+              <CrumbPart c={c} current={i === shown.length - 1} />
+            </MotionBox>
+          ))}
+        </AnimatePresence>
+      </Box>
+    </Box>
   )
 }
 
@@ -556,6 +601,11 @@ function pageOf(pathname: string) {
 function Shell() {
   const { pathname } = useLocation()
   const [frame, setFrame] = useState<Frame | null>(null)
+  // Sayfa geçişinde eski sayfa konumu silip yenisi yazana kadar konum çubuğu boşalmasın (yoksa
+  // bölümler yeniden takılır, bulunulan yerin ikona büzülme animasyonu oynamazdı)
+  const keepFrame = useCallback((f: Frame | null) => {
+    if (f) setFrame(f)
+  }, [])
   // Çekmece açıldığı adreste açık kalır; gezinince kendiliğinden kapanır
   const [drawerAt, setDrawerAt] = useState<string | null>(null)
   const setDrawer = (open: boolean) => setDrawerAt(open ? pathname : null)
@@ -571,7 +621,7 @@ function Shell() {
   return (
     <LookContext value={look}>
       <MotionScope>
-        <FrameContext value={setFrame}>
+        <FrameContext value={keepFrame}>
           <Box className="flex min-h-screen flex-col bg-background text-foreground antialiased">
             <TopBar crumbs={frame?.crumbs ?? []} onMenu={() => setDrawer(true)} />
             {topNav && <TopNav current={current} onTheme={() => setThemeOpen(true)} />}
@@ -587,7 +637,7 @@ function Shell() {
                 {/* 1280px altında konum, üst çubuk yerine sayfanın başında kısa haplarla (1024'te çubuğa sığmıyordu) */}
                 {(frame?.crumbs.length ?? 0) > 1 && (
                   <Box className="pt-1 xl:hidden">
-                    <Crumbs crumbs={frame!.crumbs} compact />
+                    <Crumbs crumbs={frame!.crumbs} />
                   </Box>
                 )}
                 <PageTransition page={pageOf(pathname)} className="flex min-w-0 flex-1 flex-col" />

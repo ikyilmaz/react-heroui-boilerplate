@@ -13,14 +13,15 @@ export function useMediaQuery(query: string) {
   return match
 }
 
-/** Sayfa `px` kadar aşağı kaydırıldı mı. */
-export function useScrolled(px: number) {
+/** Sayfa (ya da `root` verilirse o kaydırma kabı) `px` kadar aşağı kaydırıldı mı. */
+export function useScrolled(px: number, root?: HTMLElement | null) {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
-    const on = () => setScrolled(window.scrollY > px)
+    const target: HTMLElement | Window = root ?? window
+    const on = () => setScrolled((root ? root.scrollTop : window.scrollY) > px)
     on()
-    window.addEventListener('scroll', on, { passive: true })
-    return () => window.removeEventListener('scroll', on)
-  }, [px])
+    target.addEventListener('scroll', on, { passive: true })
+    return () => target.removeEventListener('scroll', on)
+  }, [px, root])
   return scrolled
 }

@@ -66,6 +66,7 @@ import { IC, SOFT_BAND, TintIcon, Tip } from '@/synergy/v1/parts'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { KaroConfirm, useKaroFlow } from '@/synergy/v1/flow'
 import { useMediaQuery, useScrolled } from '@/synergy/shared/hooks'
+import { FormTabs, usePaneNarrow, useTabScroller } from '@/synergy/v1/FormTabs'
 import {
   DocumentsList,
   FileBody,
@@ -109,9 +110,13 @@ export function DetailPage() {
       ? [
           START_CRUMB,
           WF_CRUMB,
-          { label: box.title, href: boxLink(box.id) },
-          { label: processCaption(process), href: processLink(box.id, process.id) },
-          { label: r.no },
+          { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
+          {
+            label: processCaption(process),
+            href: processLink(box.id, process.id),
+            icon: `process:${process.id}`,
+          },
+          { label: r.no, icon: 'request' },
         ]
       : [],
     box?.id ?? null,
@@ -126,17 +131,43 @@ export function DetailPage() {
     if (target) navigate(requestLink(target), { state: { ids } satisfies DetailNavState })
   }
 
+  // Form sekmeleri talebe bağlı: Geri / İleri ile talep değişince yeniden kurulur
+  return (
+    <FormTabs
+      key={r.id}
+      rootId={r.id}
+      root={
+        <Viewer
+          r={r}
+          process={process}
+          caption={processCaption(process)}
+          position={index >= 0 ? `${index + 1} / ${ids.length}` : null}
+          prev={index > 0 ? () => go(ids[index - 1]) : undefined}
+          next={index >= 0 && index < ids.length - 1 ? () => go(ids[index + 1]) : undefined}
+          onClose={() => navigate(processLink(box.id, process.id))}
+          onDeleted={() => navigate(boxLink('taslaklar'))}
+        />
+      }
+      renderTab={(id, close) => <ChildViewer id={id} onClose={close} />}
+    />
+  )
+}
+
+/** Child sekmesi: child talebin detayı (güncel hâliyle); Geri / İleri yok, kapat sekmede. */
+function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
+  const { request: r } = useRequest(id)
+  useEffect(() => markRead(id), [id])
+  const process = r && findProcess(r.processId)
+  if (!r || !process) return null
   return (
     <Viewer
-      key={r.id}
       r={r}
       process={process}
       caption={processCaption(process)}
-      position={index >= 0 ? `${index + 1} / ${ids.length}` : null}
-      prev={index > 0 ? () => go(ids[index - 1]) : undefined}
-      next={index >= 0 && index < ids.length - 1 ? () => go(ids[index + 1]) : undefined}
-      onClose={() => navigate(processLink(box.id, process.id))}
-      onDeleted={() => navigate(boxLink('taslaklar'))}
+      position={null}
+      onClose={onClose}
+      onDeleted={onClose}
+      isChild
     />
   )
 }
@@ -185,6 +216,7 @@ function Viewer({
   next,
   onClose,
   onDeleted,
+  isChild = false,
 }: {
   r: WorkRequest
   process: Process
@@ -194,6 +226,8 @@ function Viewer({
   next?: () => void
   onClose: () => void
   onDeleted: () => void
+  /** Child sekmesi: başlıkta Geri / İleri gösterilmez. */
+  isChild?: boolean
 }) {
   const documents = documentsOf(r)
   const form = documents.find((d) => d.kind === 'form')!
@@ -213,8 +247,15 @@ function Viewer({
   // Yan panel geniş ekranda sağa katlanır; form tam genişliğe yayılır
   const wide = useMediaQuery('(min-width: 1024px)')
   const [sideCollapsed, setSideCollapsed] = useState(loadSideCollapsed)
-  const collapsed = wide && sideCollapsed
+  // Yan yana bölmede panel katlı başlar (bölme dar); açılırsa yalnızca bu bölmede açık kalır
+  const narrow = usePaneNarrow()
+  const [openInPane, setOpenInPane] = useState(false)
+  const collapsed = narrow ? !openInPane : wide && sideCollapsed
   const setCollapsed = (v: boolean) => {
+    if (narrow) {
+      setOpenInPane(!v)
+      return
+    }
     setSideCollapsed(v)
     try {
       localStorage.setItem(SIDE_KEY, v ? '0' : '1')
@@ -230,7 +271,7 @@ function Viewer({
   const accent = useLook().accent
   const solid = accent === 'solid'
   const band = solid ? cn(STRIP, card) : accent === 'soft' ? cn(SOFT_BAND, card) : BAND
-  const scrolled = useScrolled(220)
+  const scrolled = useScrolled(220, useTabScroller())
 
   const flow = useKaroFlow(r, {
     onDocsRequired: () => {
@@ -334,7 +375,10 @@ function Viewer({
       <Card className={cn(band, 'gap-5 p-6')}>
         <Box className="flex flex-wrap items-start justify-between gap-4">
           <Box className="flex min-w-0 flex-1 items-center gap-4">
-            <Box aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-current/10">
+            <Box
+              aria-hidden
+              className="grid size-12 shrink-0 place-items-center rounded-2xl bg-current/10"
+            >
               <process.icon {...IC} size={22} />
             </Box>
             <Box className="min-w-0">
@@ -342,39 +386,43 @@ function Viewer({
                 {process.project}
               </Typography>
               <Box className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                {/* `data-tab-cue`: form sekmeleri arasında geçince kısa kayarak yenilenir (FormTabs.tsx) */}
                 <Typography.Heading
                   level={1}
                   truncate
                   title={caption}
+                  data-tab-cue
                   className="min-w-0 font-display text-2xl font-bold text-current! sm:text-[1.75rem]"
                 >
                   {isDraft ? process.form : process.name}
                 </Typography.Heading>
-                <Chip size="sm" variant="primary" color={status}>
+                <Chip size="sm" variant="primary" color={status} data-tab-cue>
                   {r.status}
                 </Chip>
               </Box>
             </Box>
           </Box>
-          <Box className={ROW}>
-            {position && (
-              <Typography type="body-sm" className={`font-mono ${FAINT}`}>
-                {position}
-              </Typography>
-            )}
-            <NavButton
-              label={VIEWER_LABELS.prev}
-              icon={ChevronLeft}
-              onPress={prev}
-              onStrip={solid}
-            />
-            <NavButton
-              label={VIEWER_LABELS.next}
-              icon={ChevronRight}
-              onPress={next}
-              onStrip={solid}
-            />
-          </Box>
+          {isChild ? null : (
+            <Box className={ROW}>
+              {position && (
+                <Typography type="body-sm" className={`font-mono ${FAINT}`}>
+                  {position}
+                </Typography>
+              )}
+              <NavButton
+                label={VIEWER_LABELS.prev}
+                icon={ChevronLeft}
+                onPress={prev}
+                onStrip={solid}
+              />
+              <NavButton
+                label={VIEWER_LABELS.next}
+                icon={ChevronRight}
+                onPress={next}
+                onStrip={solid}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* Şerit göründüğünde bant kopyası erişilebilirlik ağacından çıkar (tek olay grubu) */}
@@ -415,7 +463,6 @@ function Viewer({
           ) : active.kind === 'form' ? (
             <FormBody
               r={r}
-              form={form}
               files={documents.filter((d) => d.kind === 'file')}
               onOpenFile={openDocument}
             />

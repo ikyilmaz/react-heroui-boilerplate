@@ -103,3 +103,17 @@
     }
   }
 }
+
+/*
+ * Kaydırma çubukları (tüm uygulama): ince, yalnızca tutamak; iz görünmez. Renk yazı renginden
+ * türer (açık / koyu temaya kendiliğinden uyar); üzerine gelince biraz koyulaşır.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 20%, transparent) transparent;
+  }
+  *:hover {
+    scrollbar-color: color-mix(in oklab, var(--foreground) 34%, transparent) transparent;
+  }
+}

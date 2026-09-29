@@ -131,11 +131,26 @@ export const SHOW_ALL_BOXES: readonly BoxId[] = ['bekleyen', 'taslaklar']
  * Süreçler, olaylar, sütunlar
  * ------------------------------------------------------------------------------------------------- */
 
-interface LineItem {
+export interface LineItem {
   name: string
   qty: number
   unit: string
   price: number
+}
+
+/**
+ * Formdaki child form düğmesi (orijinalde form eylemi `OpenProcessArgs` / `OpenFormArgs`): düğme
+ * formun içinde `after` alanının hemen ardında durur; basınca `id` talebi açılır.
+ */
+export interface ChildLink {
+  /** Child talebin kimliği (`child-…`). */
+  id: string
+  /** Düğme metni ("Tedarikçi Teklifi Ekle"). */
+  label: string
+  /** Düğmenin ardına geldiği form alanı. */
+  after: string
+  /** Ekleme (yeni kayıt) mı, var olanı açma mı; ikon buna göre. */
+  action: 'add' | 'open'
 }
 
 /** Talebin formu: listede ve ayrıntıda gösterilen alanlar. */
@@ -149,6 +164,8 @@ interface RequestTemplate {
   items?: LineItem[]
   /** Forma eklenmiş dosyalar (Dokümanlar penceresinde "dosya" olarak listelenir). */
   attachments?: string[]
+  /** Formun içindeki child form düğmeleri (child'ın da child'ları olabilir). */
+  children?: ChildLink[]
 }
 
 /**
@@ -283,6 +300,11 @@ const processes: Process[] = [
           { name: 'Kurulum ve veri taşıma hizmeti', qty: 1, unit: 'hizmet', price: 6_500 },
         ],
         attachments: ['Teklif_TeknoPlus.pdf', 'Teklif_BilisimAS.pdf', 'BT_Konfigurasyon_Onerisi.docx'],
+        children: [
+          { id: 'child-tedarikci-teklif-0', label: 'Tedarikçi Teklifi Ekle', after: 'Tercih edilen tedarikçi', action: 'add' },
+          { id: 'child-tedarikci-teklif-1', label: 'Alternatif Teklif Ekle', after: 'Alternatif tedarikçi', action: 'add' },
+          { id: 'child-butce-kontrol-0', label: 'Bütçe Kontrolü Başlat', after: 'Bütçe kodu', action: 'add' },
+        ],
       },
       {
         title: 'Depo forkliftleri için yıllık bakım hizmeti',
@@ -833,12 +855,198 @@ export function requestsOf(box: BoxId): WorkRequest[] {
   return cache.get(box)!
 }
 
+/* -------------------------------------------------------------------------------------------------
+ * Child süreçler (maket): bir formdan açılan talepler. Kutu listelerinde görünmezler; yalnızca
+ * parent formdaki bağlantıyla açılırlar (`childrenOf`). Hepsi kullanıcının onayını bekler.
+ * ------------------------------------------------------------------------------------------------- */
+
+const childProcesses: Process[] = [
+  {
+    id: 'tedarikci-teklif',
+    project: 'Satın Alma Yönetimi',
+    name: 'Tedarikçi Teklifi',
+    form: 'Tedarikçi Teklif Formu',
+    icon: Receipt,
+    prefix: 'TKL',
+    steps: ['Teklif girildi', 'Satın alma kontrolü', 'Satın alma müdürü onayı'],
+    approverStep: 2,
+    events: [approve(), reject(), sendBack({ description: 'Revizyon İste', reasonTitle: 'Revizyon Nedeni' }), forward()],
+    columns: ['Tedarikçi', 'Teklif tutarı'],
+    packageVersion: 6,
+    templates: [
+      {
+        title: 'TeknoPlus teklifi · 6 adet dizüstü bilgisayar',
+        fields: {
+          Tedarikçi: 'TeknoPlus Bilişim A.Ş.',
+          'Teklif no': 'TP-2026-0918',
+          'Teklif tarihi': '18 Eylül 2026',
+          'Geçerlilik tarihi': '18 Ekim 2026',
+          'Teklif tutarı': '₺325.800',
+          'Ödeme koşulu': '60 gün vadeli',
+          'Teslim süresi': '10 iş günü',
+          'Para birimi': 'TRY',
+        },
+        reason: 'Fiyatlara kurulum ve eski cihazlardan veri taşıma dahildir. Teslimat tek seferde Genel Müdürlük adresine yapılacaktır.',
+        items: [
+          { name: 'Dizüstü bilgisayar 14" · i7 / 32 GB / 1 TB', qty: 6, unit: 'adet', price: 32_400 },
+          { name: '27" monitör', qty: 8, unit: 'adet', price: 4_800 },
+          { name: 'Uzatılmış garanti · 3 yıl yerinde servis', qty: 6, unit: 'adet', price: 2_900 },
+        ],
+        attachments: ['Teklif_TeknoPlus.pdf'],
+        children: [
+          { id: 'child-tedarikci-karti-0', label: 'Tedarikçi Kartını Aç', after: 'Tedarikçi', action: 'open' },
+          { id: 'child-teklif-kalemi-0', label: 'Kalem Detayı Ekle', after: 'Teslim süresi', action: 'add' },
+        ],
+      },
+      {
+        title: 'Bilişim A.Ş. teklifi · 6 adet dizüstü bilgisayar',
+        fields: {
+          Tedarikçi: 'Bilişim A.Ş.',
+          'Teklif no': 'BA-26-4471',
+          'Teklif tarihi': '19 Eylül 2026',
+          'Geçerlilik tarihi': '3 Ekim 2026',
+          'Teklif tutarı': '₺350.600',
+          'Ödeme koşulu': '30 gün vadeli',
+          'Teslim süresi': '15 iş günü',
+          'Para birimi': 'TRY',
+        },
+        reason: 'Kurulum hizmeti teklife dahil değildir; ayrıca fiyatlandırılacaktır.',
+        attachments: ['Teklif_BilisimAS.pdf'],
+      },
+    ],
+  },
+  {
+    id: 'teklif-kalemi',
+    project: 'Satın Alma Yönetimi',
+    name: 'Teklif Kalemi Detayı',
+    form: 'Teklif Kalemi Detay Formu',
+    icon: ClipboardCheck,
+    prefix: 'TKD',
+    steps: ['Kalem girildi', 'Teknik uygunluk onayı'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Kalem', 'Birim fiyat'],
+    packageVersion: 3,
+    templates: [
+      {
+        title: 'ThinkPad T14 Gen 5 · teknik uygunluk',
+        fields: {
+          Kalem: 'Dizüstü bilgisayar 14"',
+          Marka: 'Lenovo',
+          Model: 'ThinkPad T14 Gen 5',
+          İşlemci: 'Intel Core i7-1365U',
+          Bellek: '32 GB',
+          Disk: '1 TB SSD',
+          Ekran: '14" WUXGA IPS',
+          Garanti: '3 yıl yerinde servis',
+          Adet: '6',
+          'Birim fiyat': '₺32.400',
+        },
+        reason: 'Konfigürasyon BT standardıyla uyumlu; imaj ve cihaz yönetimi yazılımı destekleniyor.',
+      },
+    ],
+  },
+  {
+    id: 'tedarikci-karti',
+    project: 'Satın Alma Yönetimi',
+    name: 'Tedarikçi Kartı',
+    form: 'Tedarikçi Kartı Formu',
+    icon: Users,
+    prefix: 'TDK',
+    steps: ['Kart güncellendi', 'Tedarikçi onayı'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Unvan', 'Tedarikçi puanı'],
+    packageVersion: 4,
+    templates: [
+      {
+        title: 'TeknoPlus Bilişim · kart güncelleme',
+        fields: {
+          Unvan: 'TeknoPlus Bilişim Teknolojileri A.Ş.',
+          'Vergi dairesi': 'Kozyatağı',
+          'Vergi no': '8410293756',
+          Yetkili: 'Murat Kılıç',
+          Telefon: '0216 555 18 40',
+          Adres: 'Ataşehir, İstanbul',
+          'Çalışma başlangıcı': '12 Mart 2021',
+          'Tedarikçi puanı': '4,6 / 5',
+        },
+        reason: 'Yetkili kişi ve telefon bilgisi güncellendi.',
+      },
+    ],
+  },
+  {
+    id: 'butce-kontrol',
+    project: 'Finans',
+    name: 'Bütçe Kontrolü',
+    form: 'Bütçe Kontrol Formu',
+    icon: BarChart3,
+    prefix: 'BTK',
+    steps: ['Kontrol başlatıldı', 'Bütçe sorumlusu onayı'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Bütçe kalemi', 'Talep sonrası kalan'],
+    packageVersion: 9,
+    templates: [
+      {
+        title: 'BT Donanım 2026 · bütçe uygunluğu',
+        fields: {
+          'Bütçe kalemi': 'BT Donanım 2026',
+          'Yıllık bütçe': '₺1.200.000',
+          Harcanan: '₺612.400',
+          'Bu talep': '₺325.800',
+          'Talep sonrası kalan': '₺261.800',
+          'Bütçe sorumlusu': 'Kerem Aksoy',
+        },
+        reason: 'Talep yıllık bütçe içinde kalıyor; kalan tutar yıl sonu yenilemeleri için yeterli.',
+      },
+    ],
+  },
+]
+
+let childCache: WorkRequest[] | null = null
+
+/** Child talepler: her child süreç şablonundan bir talep (`child-<süreç>-<şablon>`), onay bekler. */
+function childRequests(): WorkRequest[] {
+  if (childCache) return childCache
+  childCache = childProcesses.flatMap((p, pi) =>
+    p.templates.map((template, i) => {
+      const seq = pi * 3 + i
+      const id = `child-${p.id}-${i}`
+      const requester = people[(seq * 5 + 2) % people.length]
+      const requestDate = new Date(NOW - (3 + seq * 4) * HOUR)
+      const startDate = new Date(requestDate.getTime() - p.approverStep * 10 * HOUR)
+      const step = p.approverStep
+      const status: RequestStatus = 'Onay bekliyor'
+      return {
+        id,
+        box: 'bekleyen' as BoxId,
+        no: `${p.prefix}-2026-${String(1180 + seq * 23).padStart(4, '0')}`,
+        processNo: 28_000 + seq * 7,
+        processId: p.id,
+        template,
+        requester,
+        startDate,
+        requestDate,
+        createdAt: startDate,
+        read: true,
+        status,
+        step,
+        packageVersion: p.packageVersion,
+        history: buildHistory(p, { id, requester, startDate, requestDate, step, status }, { mine: true, seed: seq, notify: false }),
+      }
+    }),
+  )
+  return childCache
+}
+
+
 export function findBox(id: string | undefined) {
   return boxes.find((b) => b.id === id)
 }
 
 export function findProcess(id: string | undefined) {
-  return processes.find((p) => p.id === id)
+  return processes.find((p) => p.id === id) ?? childProcesses.find((p) => p.id === id)
 }
 
 export function processOf(r: WorkRequest): Process {
@@ -848,6 +1056,7 @@ export function processOf(r: WorkRequest): Process {
 /** Kimliğe göre ham talep (tüm kutularda; kimliğin öneki kutuyu söyler). */
 export function findRequest(id: string | undefined): WorkRequest | undefined {
   if (!id) return undefined
+  if (id.startsWith('child-')) return childRequests().find((r) => r.id === id)
   // Uzun önekler önce: "gecmis-baslattiklarim-..." "baslattiklarim-..." ile karışmasın
   const box = [...boxes].sort((a, b) => b.id.length - a.id.length).find((b) => id.startsWith(`${b.id}-`))
   return box ? requestsOf(box.id).find((r) => r.id === id) : undefined

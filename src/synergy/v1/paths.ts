@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect } from 'react'
-import { boxHref, processHref, requestHref, type BoxId, type WorkRequest } from '@/synergy/shared/workflowData'
+import {
+  boxHref,
+  processHref,
+  requestHref,
+  type BoxId,
+  type WorkRequest,
+} from '@/synergy/shared/workflowData'
 
 /* Adresler ve çerçeve bağlamı. Ortak yardımcılar zaten uygulama adreslerini döndürür; kök Başlangıç'a gider. */
 
@@ -14,6 +20,11 @@ export const requestLink = (r: WorkRequest) => k(requestHref(r))
 export interface Crumb {
   label: string
   href?: string
+  /**
+   * Konum çubuğundaki ikon (metin; `useFrame` karşılaştırması için JSON'a girer): `home`,
+   * `workflow`, `box:<kutu>`, `process:<süreç>`, `app:<uygulama>`, `request`.
+   */
+  icon?: string
 }
 
 export interface Frame {
@@ -32,5 +43,9 @@ export function useFrame(crumbs: Crumb[], _scope?: unknown) {
   }, [set, key])
 }
 
-export const START_CRUMB: Crumb = { label: 'Başlangıç', href: BASE }
-export const WF_CRUMB: Crumb = { label: 'İş Akış Yönetimi', href: boxLink('bekleyen') }
+export const START_CRUMB: Crumb = { label: 'Başlangıç', href: BASE, icon: 'home' }
+export const WF_CRUMB: Crumb = {
+  label: 'İş Akış Yönetimi',
+  href: boxLink('bekleyen'),
+  icon: 'workflow',
+}

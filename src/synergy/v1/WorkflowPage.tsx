@@ -100,8 +100,11 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
     START_CRUMB,
     WF_CRUMB,
     ...(process
-      ? [{ label: box.title, href: boxLink(box.id) }, { label: boxProcessCaption(box, process) }]
-      : [{ label: box.title }]),
+      ? [
+          { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
+          { label: boxProcessCaption(box, process), icon: `process:${process.id}` },
+        ]
+      : [{ label: box.title, icon: `box:${box.id}` }]),
   ])
 
   if (processId && !process) return <Navigate to={boxLink(box.id)} replace />
