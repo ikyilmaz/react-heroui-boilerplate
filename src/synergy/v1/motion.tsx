@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AnimatePresence, MotionConfig, animate, motion, useIsPresent, type Transition } from 'framer-motion'
+import {
+  AnimatePresence,
+  MotionConfig,
+  animate,
+  motion,
+  useIsPresent,
+  type Transition,
+} from 'framer-motion'
 import { useOutlet } from 'react-router'
 import { Typography, cn } from '@heroui/react'
 import { inline } from '@/synergy/shared/tokens'
@@ -35,9 +42,26 @@ export function MotionScope({ children }: { children: ReactNode }) {
   )
 }
 
-/** Düzeye göre geçiş: kapalıda anında. */
+/**
+ * Geçişi hız çarpanıyla ölçekler (tema paneli › Animasyon hızı): süre ve gecikme bölünür; yayda
+ * sertlik hızın karesiyle, sönüm hızla çarpılır (yayın karakteri korunur, süresi ölçeklenir).
+ */
+export function scaleTransition(t: Transition, speed: number): Transition {
+  if (speed === 1) return t
+  const out = { ...t } as Record<string, unknown>
+  if (out.type === 'spring' && out.duration == null) {
+    out.stiffness = ((out.stiffness as number) ?? 100) * speed * speed
+    out.damping = ((out.damping as number) ?? 10) * speed
+  }
+  if (typeof out.duration === 'number') out.duration = out.duration / speed
+  if (typeof out.delay === 'number') out.delay = out.delay / speed
+  return out as Transition
+}
+
+/** Düzeye ve hıza göre geçiş: kapalıda anında. */
 export function useTransition(t: Transition = SPRING): Transition {
-  return useLook().motion === 'off' ? INSTANT : t
+  const { motion: level, speed } = useLook()
+  return level === 'off' ? INSTANT : scaleTransition(t, speed)
 }
 
 /* --- Giriş ------------------------------------------------------------------------------------ */
@@ -54,6 +78,7 @@ const LEAVE_MS = 280
  * Birden çok satır birden değişirse (arama, sayfa) beklemeden güncellenir.
  */
 export function useLeaving<T extends { id: string }>(rows: T[]) {
+  const look = useLook()
   const [snap, setSnap] = useState<{ rows: T[]; gone: { item: T; index: number } | null }>({
     rows,
     gone: null,
@@ -69,9 +94,11 @@ export function useLeaving<T extends { id: string }>(rows: T[]) {
   const gone = snap.gone
   useEffect(() => {
     if (!gone) return
-    const t = window.setTimeout(() => setSnap((s) => ({ ...s, gone: null })), LEAVE_MS)
+    // Çıkış animasyonu kadar bekler (hız çarpanı ve kapalı animasyon dahil)
+    const ms = look.motion === 'off' ? 0 : LEAVE_MS / look.speed
+    const t = window.setTimeout(() => setSnap((s) => ({ ...s, gone: null })), ms)
     return () => window.clearTimeout(t)
-  }, [gone])
+  }, [gone, look.motion, look.speed])
   const shown =
     gone && !rows.some((x) => x.id === gone.item.id)
       ? [...rows.slice(0, gone.index), gone.item, ...rows.slice(gone.index)]
@@ -88,7 +115,7 @@ export function useLeaving<T extends { id: string }>(rows: T[]) {
  * (azalış) kayarak girer. Üst öğenin yazı tipini ve rengini alır.
  */
 export function Count({ value, className }: { value: number; className?: string }) {
-  const level = useLook().motion
+  const { motion: level, speed } = useLook()
   const [shown, setShown] = useState(level === 'full' ? 0 : value)
   const shownRef = useRef(shown)
   const counting = useRef(level === 'full')
@@ -107,7 +134,7 @@ export function Count({ value, className }: { value: number; className?: string 
       return
     }
     const run = animate(shownRef.current, value, {
-      duration: Math.min(1.1, 0.5 + value / 400),
+      duration: Math.min(1.1, 0.5 + value / 400) / speed,
       ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => {
         shownRef.current = Math.round(v)
@@ -118,7 +145,7 @@ export function Count({ value, className }: { value: number; className?: string 
       },
     })
     return () => run.stop()
-  }, [value, level])
+  }, [value, level, speed])
 
   return (
     <Typography
@@ -174,18 +201,69 @@ const PAGE_OUT: Transition = { duration: 0.16, ease: [0.55, 0, 1, 0.45] }
  * (kutu, süreç değişimi) geçiş oynatmaz. Geçiş arasında sayfa başa kaydırılır.
  */
 export function PageTransition({ page, className }: { page: string; className?: string }) {
-  const off = useLook().motion === 'off'
+  const pageIn = useTransition(PAGE_IN)
+  const pageOut = useTransition(PAGE_OUT)
   return (
     <AnimatePresence mode="wait" initial={false} onExitComplete={() => window.scrollTo(0, 0)}>
       <MotionBox
         key={page}
         initial={{ opacity: 0, y: 18, scale: 0.995 }}
-        animate={{ opacity: 1, y: 0, scale: 1, transition: off ? INSTANT : PAGE_IN }}
-        exit={{ opacity: 0, y: -10, scale: 0.995, transition: off ? INSTANT : PAGE_OUT }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: pageIn }}
+        exit={{ opacity: 0, y: -10, scale: 0.995, transition: pageOut }}
         className={className}
       >
         <PageOutlet />
       </MotionBox>
     </AnimatePresence>
+  )
+}
+
+/* --- Yönlü sekme içeriği ----------------------------------------------------------------------- */
+
+const TAB_SHIFT = 24
+
+/**
+ * Sekme içeriği geçişi, sekmenin yönüyle orantılı: sağdaki sekmeye geçince yeni içerik sağdan
+ * gelir, eskisi sola çıkar; soldakine geçince tersi. İkisi kısa süre üst üste (eski içerik akıştan
+ * çıkar, yükseklik yeni içeriğe göre). Az / kapalı animasyonda yalnızca solma / anında.
+ */
+export function DirectionalPanels<T extends string>({
+  ids,
+  active,
+  render,
+  className,
+}: {
+  ids: readonly T[]
+  active: T
+  render: (id: T) => ReactNode
+  className?: string
+}) {
+  const index = ids.indexOf(active)
+  const prev = useRef(index)
+  const dir = index >= prev.current ? 1 : -1
+  useEffect(() => {
+    prev.current = index
+  }, [index])
+  const transition = useTransition({ duration: 0.26, ease: [0.22, 1, 0.36, 1] })
+  return (
+    <Box role="tabpanel" className={cn('relative overflow-x-clip', className)}>
+      <AnimatePresence initial={false} mode="popLayout" custom={dir}>
+        <MotionBox
+          key={active}
+          custom={dir}
+          variants={{
+            enter: (d: number) => ({ x: d * TAB_SHIFT, opacity: 0 }),
+            center: { x: 0, opacity: 1 },
+            exit: (d: number) => ({ x: -d * TAB_SHIFT, opacity: 0 }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={transition}
+        >
+          {render(active)}
+        </MotionBox>
+      </AnimatePresence>
+    </Box>
   )
 }

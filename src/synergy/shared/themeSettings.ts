@@ -15,8 +15,11 @@ export type Background = 'neutral' | 'cool' | 'warm' | 'tinted'
 export type FontId = 'bricolage' | 'inter' | 'jakarta' | 'figtree' | 'geist'
 export type Shadow = 'none' | 'soft' | 'strong'
 export type CardStyle = 'filled' | 'outlined' | 'elevated'
-/** `default`: sürümün kendi karışımı (ör. v1'de karşılama dolu, talep başlığı beyaz). */
-export type AccentStrength = 'default' | 'soft' | 'solid'
+/**
+ * `default`: sürümün kendi karışımı (ör. v1'de karşılama dolu, talep başlığı beyaz). `medium`:
+ * belirgin açık ton, `outline`: beyaz zemin + birincil çerçeve, `ink`: nötr koyu zemin.
+ */
+export type AccentStrength = 'default' | 'soft' | 'medium' | 'solid' | 'outline' | 'ink'
 export type ButtonShape = 'default' | 'pill' | 'square'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
@@ -47,6 +50,12 @@ export interface ThemeSettings {
   nav: string
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. Hazır temalar buna dokunmaz. */
   motion: MotionLevel
+  /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
+  motionSpeed: number
+  /** Sağ üstte FPS ve performans kutusu. */
+  showFps: boolean
+  /** Kayan alanlarda kenar gölgesi. */
+  scrollShadow: boolean
 }
 
 export interface ThemePreset {
@@ -81,6 +90,9 @@ export const BASE_LOOK = {
   buttonShape: 'default',
   nav: 'default',
   motion: 'full',
+  motionSpeed: 1,
+  showFps: false,
+  scrollShadow: true,
 } as const
 
 export const FONTS: { id: FontId; label: string; stack: string }[] = [
@@ -132,12 +144,23 @@ const VARS = [
 
 type VarName = (typeof VARS)[number]
 
-export const same = (a: ThemeSettings, b: ThemeSettings, skip?: keyof ThemeSettings) =>
-  (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => k === skip || a[k] === b[k])
+export const same = (
+  a: ThemeSettings,
+  b: ThemeSettings,
+  skip: readonly (keyof ThemeSettings)[] = [],
+) => (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => skip.includes(k) || a[k] === b[k])
 
-/** Ayarlar bir hazır temaya eşitse onun kimliği (animasyon düzeyi görünüşten sayılmaz). */
+/** Görünüşten sayılmayan tercihler: hazır temalar bunlara dokunmaz, eşleşmede sayılmaz. */
+export const PREFERENCES = [
+  'motion',
+  'motionSpeed',
+  'showFps',
+  'scrollShadow',
+] as const satisfies readonly (keyof ThemeSettings)[]
+
+/** Ayarlar bir hazır temaya eşitse onun kimliği (tercihler görünüşten sayılmaz). */
 export function presetOf(kit: ThemeKit, s: ThemeSettings) {
-  return kit.presets.find((p) => same(p.settings, s, 'motion'))?.id ?? null
+  return kit.presets.find((p) => same(p.settings, s, PREFERENCES))?.id ?? null
 }
 
 const ok = (l: number, c: number, h: number) =>
@@ -223,7 +246,10 @@ function variables(
   if (s.spacing !== d.spacing) out['--spacing'] = `${s.spacing}rem`
   // Animasyon: az = kayma / ölçek yok, kapalı = süre de yok
   if (motion !== 'full') out['--motion-shift'] = '0'
+  // Hız çarpanı süreleri böler (2× → yarı süre); kapalıda süre 0
   if (motion === 'off') out['--motion-time'] = '0'
+  else if (s.motionSpeed !== 1)
+    out['--motion-time'] = String(Math.round((1 / s.motionSpeed) * 1000) / 1000)
   return out
 }
 
@@ -249,12 +275,19 @@ export interface Look {
   nav: string
   /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
   motion: MotionLevel
+  /** Animasyon hızı çarpanı. */
+  speed: number
+  showFps: boolean
+  scrollShadow: boolean
 }
 
 export const LookContext = createContext<Look>({
   accent: 'default',
   nav: 'default',
   motion: 'full',
+  speed: 1,
+  showFps: false,
+  scrollShadow: true,
 })
 
 const REDUCE = '(prefers-reduced-motion: reduce)'
@@ -306,6 +339,13 @@ export function useThemeSettings(kit: ThemeKit) {
     }
   }
 
-  const look: Look = { accent: settings.accent, nav: settings.nav, motion }
+  const look: Look = {
+    accent: settings.accent,
+    nav: settings.nav,
+    motion,
+    speed: settings.motionSpeed,
+    showFps: settings.showFps,
+    scrollShadow: settings.scrollShadow,
+  }
   return [settings, update, look] as const
 }

@@ -11,12 +11,12 @@ import {
 } from 'react'
 import { ArrowLeftRight, Columns2, X } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
-import { Button, ScrollShadow, Separator, Typography, cn } from '@heroui/react'
+import { Button, Separator, Typography, cn } from '@heroui/react'
 import { findRequest, processOf } from '@/synergy/shared/workflowData'
 import { inline } from '@/synergy/shared/tokens'
 import { Box } from '@/synergy/shared/ui'
 import { useMediaQuery } from '@/synergy/shared/hooks'
-import { IC, Tip } from '@/synergy/v1/parts'
+import { IC, Tip, Scroll } from '@/synergy/v1/parts'
 import { MotionBox, useTransition } from '@/synergy/v1/motion'
 
 /* -------------------------------------------------------------------------------------------------
@@ -476,7 +476,7 @@ function TabRow({
 
   return (
     <Box className={cn('flex min-w-0 shrink-0 items-end', split && 'animate-slide-in', className)}>
-      <ScrollShadow orientation="horizontal" hideScrollBar className="min-w-0 flex-1">
+      <Scroll orientation="horizontal" hideScrollBar className="min-w-0 flex-1">
         <Box
           ref={setRowEl}
           role="group"
@@ -509,7 +509,7 @@ function TabRow({
             ))}
           </AnimatePresence>
         </Box>
-      </ScrollShadow>
+      </Scroll>
       {(onSwap || onCloseGroup) && (
         <Box className="flex shrink-0 items-center gap-0.5 pb-2 ps-1">
           {onSwap && (

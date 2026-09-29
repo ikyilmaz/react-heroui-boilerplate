@@ -13,17 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import {
-  Avatar,
-  Button,
-  Card,
-  Chip,
-  ScrollShadow,
-  Separator,
-  Tabs,
-  Typography,
-  cn,
-} from '@heroui/react'
+import { Avatar, Button, Card, Chip, Separator, Tabs, Typography, cn } from '@heroui/react'
 import {
   deleteDraft,
   markDocumentViewed,
@@ -62,10 +52,10 @@ import {
   requestLink,
   useFrame,
 } from '@/synergy/v1/paths'
-import { IC, SOFT_BAND, TintIcon, Tip } from '@/synergy/v1/parts'
-import { useLook } from '@/synergy/shared/themeSettings'
+import { IC, TintIcon, Tip, useBand, Scroll } from '@/synergy/v1/parts'
 import { KaroConfirm, useKaroFlow } from '@/synergy/v1/flow'
 import { useMediaQuery, useScrolled } from '@/synergy/shared/hooks'
+import { DirectionalPanels } from '@/synergy/v1/motion'
 import { FormTabs, usePaneNarrow, useTabScroller } from '@/synergy/v1/FormTabs'
 import {
   DocumentsList,
@@ -191,8 +181,6 @@ function loadSideCollapsed() {
   }
 }
 
-/** Başlık bandı: diğer karolar gibi beyaz, çerçeveli; dolu öğe birincil renkte, çizgili öğe nötr. */
-const BAND = cn('bg-surface text-foreground', card)
 const ON_BAND = 'bg-accent text-accent-foreground hover:bg-accent/90'
 const OUTLINE_ON_BAND = 'border-border bg-surface text-foreground hover:bg-surface-secondary'
 /** Kaydırınca beliren şerit: dolu birincil renk; üstünde dolu öğe beyaz, çizgili öğe rengini şeritten alır. */
@@ -267,10 +255,10 @@ function Viewer({
     setSideTab(tab)
     setCollapsed(false)
   }
-  // Vurgu gücü: varsayılan beyaz bant, hafif açık ton, dolu birincil renk (öğeler şerit gibi ters renkte)
-  const accent = useLook().accent
-  const solid = accent === 'solid'
-  const band = solid ? cn(STRIP, card) : accent === 'soft' ? cn(SOFT_BAND, card) : BAND
+  // Vurgu gücü (tema paneli): varsayılanda beyaz bant; koyu zeminli bantlarda öğeler şerit gibi ters renkte
+  const bandStyle = useBand('record')
+  const solid = !bandStyle.light
+  const band = cn(card, bandStyle.band)
   const scrolled = useScrolled(220, useTabScroller())
 
   const flow = useKaroFlow(r, {
@@ -322,9 +310,9 @@ function Viewer({
     history:
       r.history.length > 0 ? (
         <Box className="flex flex-col gap-3">
-          <ScrollShadow className="max-h-104 pe-1">
+          <Scroll className="max-h-104 pe-1">
             <HistoryTimeline r={r} options={historyOptions} compact />
-          </ScrollShadow>
+          </Scroll>
           {/* Görünüm seçenekleri (bilgilendirmeler, ham tarih) tam tarihçe düğmesinin yanında */}
           <Box className="flex items-center gap-2">
             <Button variant="secondary" onPress={() => setView('history')} className="flex-1">
@@ -516,48 +504,52 @@ function Viewer({
               ))}
             </>
           ) : (
-            <Tabs
-              selectedKey={sideTab}
-              onSelectionChange={(key) => setSideTab(key as SideTab)}
-              className="min-w-0 animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out_both]"
-            >
-              <Box className="flex items-center gap-2">
-                <Tabs.ListContainer className="min-w-0 flex-1">
-                  <Tabs.List aria-label="Ayrıntılar" className="w-full">
-                    {SIDE_TABS.map(({ id, label }) => (
-                      <Tabs.Tab
-                        key={id}
-                        id={id}
-                        className="flex-1 whitespace-nowrap data-[selected=true]:text-accent-foreground"
+            <>
+              <Tabs
+                selectedKey={sideTab}
+                onSelectionChange={(key) => setSideTab(key as SideTab)}
+                className="min-w-0 animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out_both]"
+              >
+                <Box className="flex items-center gap-2">
+                  <Tabs.ListContainer className="min-w-0 flex-1">
+                    <Tabs.List aria-label="Ayrıntılar" className="w-full">
+                      {SIDE_TABS.map(({ id, label }) => (
+                        <Tabs.Tab
+                          key={id}
+                          id={id}
+                          className="flex-1 whitespace-nowrap data-[selected=true]:text-accent-foreground"
+                        >
+                          <Tabs.Indicator className="bg-accent" />
+                          {label}
+                        </Tabs.Tab>
+                      ))}
+                    </Tabs.List>
+                  </Tabs.ListContainer>
+                  {wide && (
+                    <Tip label="Paneli katla" placement="left">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Paneli katla"
+                        aria-expanded
+                        onPress={() => setCollapsed(true)}
+                        className="shrink-0 text-muted"
                       >
-                        <Tabs.Indicator className="bg-accent" />
-                        {label}
-                      </Tabs.Tab>
-                    ))}
-                  </Tabs.List>
-                </Tabs.ListContainer>
-                {wide && (
-                  <Tip label="Paneli katla" placement="left">
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant="ghost"
-                      aria-label="Paneli katla"
-                      aria-expanded
-                      onPress={() => setCollapsed(true)}
-                      className="shrink-0 text-muted"
-                    >
-                      <PanelRightClose {...IC} size={18} />
-                    </Button>
-                  </Tip>
-                )}
-              </Box>
-              {SIDE_TABS.map(({ id }) => (
-                <Tabs.Panel key={id} id={id} className="mt-2 animate-rise p-0">
-                  {side[id]}
-                </Tabs.Panel>
-              ))}
-            </Tabs>
+                        <PanelRightClose {...IC} size={18} />
+                      </Button>
+                    </Tip>
+                  )}
+                </Box>
+              </Tabs>
+              {/* İçerik sekmenin yönüyle gelir: sağdaki sekmeye sağdan, soldakine soldan */}
+              <DirectionalPanels
+                ids={SIDE_TABS.map((t) => t.id)}
+                active={sideTab}
+                render={(id) => side[id]}
+                className="mt-2"
+              />
+            </>
           )}
         </Card>
       </Box>

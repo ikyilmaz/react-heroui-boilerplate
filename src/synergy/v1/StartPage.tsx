@@ -15,7 +15,6 @@ import {
   Chip,
   Link,
   ListBox,
-  ScrollShadow,
   Select,
   Separator,
   Skeleton,
@@ -79,12 +78,12 @@ import {
   IC,
   IC_BLOCK,
   KaroSearch,
-  SOFT_BAND,
   SortMenu,
   Tip,
   compareBy,
+  useBand,
+  Scroll,
 } from '@/synergy/v1/parts'
-import { useLook } from '@/synergy/shared/themeSettings'
 import { FastMenu } from '@/synergy/v1/rows'
 import { useKaroFlow } from '@/synergy/v1/flow'
 import { useMediaQuery } from '@/synergy/shared/hooks'
@@ -293,19 +292,13 @@ function Greeting({ refreshing, onRefresh }: { refreshing: boolean; onRefresh: (
   const { text, daytime } = greetingOf(now)
   const Icon = daytime ? Sun : Moon
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  // Vurgu gücü: varsayılan / dolu birincil renk, hafif açık ton
-  const soft = useLook().accent === 'soft'
+  // Vurgu gücüne göre band (tema paneli)
+  const band = useBand()
   // Cümledeki sayı sayarak gelir; metnin geri kalanı yerelleştirmeden
   const pending = counts.get('bekleyen') ?? 0
   const [before, after = ''] = pendingSentence(pending).split(String(pending))
   return (
-    <Card
-      className={cn(
-        BLOCK,
-        'justify-center gap-2 p-5 lg:col-span-5',
-        soft ? SOFT_BAND : 'bg-accent text-accent-foreground',
-      )}
-    >
+    <Card className={cn(BLOCK, 'justify-center gap-2 p-5 lg:col-span-5', band.band)}>
       <Box className="flex items-center gap-3">
         <Icon {...IC_BLOCK} className="size-6 shrink-0" />
         <Typography.Heading
@@ -319,10 +312,7 @@ function Greeting({ refreshing, onRefresh }: { refreshing: boolean; onRefresh: (
         <Refresh
           pending={refreshing}
           onPress={onRefresh}
-          className={cn(
-            'text-current',
-            soft ? 'hover:bg-accent/10' : 'hover:bg-accent-foreground/15',
-          )}
+          className="text-current hover:bg-current/10"
         />
       </Box>
       <Typography className="text-current!">
@@ -423,7 +413,7 @@ function AppsBlock() {
             {lists[id].length === 0 ? (
               <EmptyNote text="Kullanılabilir öğe yok." className="py-3" />
             ) : (
-              <ScrollShadow orientation="horizontal" hideScrollBar>
+              <Scroll orientation="horizontal" hideScrollBar>
                 {/* Favoriye eklenen / çıkarılan karo yerine süzülür, diğerleri kayarak yer açar */}
                 <Box
                   role="list"
@@ -447,7 +437,7 @@ function AppsBlock() {
                     ))}
                   </AnimatePresence>
                 </Box>
-              </ScrollShadow>
+              </Scroll>
             )}
           </Tabs.Panel>
         ))}
@@ -461,7 +451,7 @@ function AppsBlock() {
 function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: BoxId) => void }) {
   const counts = useBoxCounts({ unreadInfo: true })
   return (
-    <ScrollShadow orientation="horizontal" hideScrollBar className="mt-3">
+    <Scroll orientation="horizontal" hideScrollBar className="mt-3">
       <ToggleButtonGroup
         aria-label={START_LABELS.categories}
         isDetached
@@ -518,7 +508,7 @@ function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: Box
           )
         })}
       </ToggleButtonGroup>
-    </ScrollShadow>
+    </Scroll>
   )
 }
 
@@ -676,59 +666,61 @@ function GroupList({
       ) : (
         // Liste kalan yüksekliği doldurur, sığmazsa kendi içinde kayar; yüksekliği bloğu uzatmaz
         <Box className="relative min-h-[26rem] flex-1 lg:min-h-48">
-          <ListBox
-            aria-label={label}
-            selectionMode="single"
-            selectedKeys={selectedId ? [selectedId] : []}
-            onSelectionChange={(keys) => {
-              const [key] = keys === 'all' ? [] : [...keys]
-              onSelect(key == null ? null : String(key))
-            }}
-            className={cn(LIST, 'absolute inset-0 overflow-y-auto')}
-          >
-            {groups.map(({ process: p, count }) => {
-              const Icon = p.icon
-              return (
-                <ListBox.Item
-                  key={p.id}
-                  id={p.id}
-                  textValue={`${processCaption(p)}, ${countLabel} ${count}`}
-                  // Seçili zemin satırdan satıra kayar
-                  className={cn(
-                    ITEM,
-                    'group relative data-selected:bg-transparent data-selected:text-accent-foreground',
-                  )}
-                >
-                  {({ isSelected }) => (
-                    <>
-                      {isSelected && <Indicator id="start-group" className="bg-accent" />}
-                      <Icon {...IC} className="relative opacity-80" />
-                      <Box className="relative min-w-0 flex-1">
-                        <Typography
-                          {...inline}
-                          truncate
-                          className="text-xs text-current! opacity-65"
-                        >
-                          {p.project}
-                        </Typography>
-                        <Typography
-                          {...inline}
-                          truncate
-                          weight="medium"
-                          className="text-sm text-current!"
-                        >
-                          {isDraft ? p.form : p.name}
-                        </Typography>
-                      </Box>
-                      <Chip className="relative min-w-8 justify-center bg-surface-secondary font-semibold group-data-selected:bg-surface">
-                        <Count value={count} />
-                      </Chip>
-                    </>
-                  )}
-                </ListBox.Item>
-              )
-            })}
-          </ListBox>
+          <Scroll className="absolute inset-0">
+            <ListBox
+              aria-label={label}
+              selectionMode="single"
+              selectedKeys={selectedId ? [selectedId] : []}
+              onSelectionChange={(keys) => {
+                const [key] = keys === 'all' ? [] : [...keys]
+                onSelect(key == null ? null : String(key))
+              }}
+              className={LIST}
+            >
+              {groups.map(({ process: p, count }) => {
+                const Icon = p.icon
+                return (
+                  <ListBox.Item
+                    key={p.id}
+                    id={p.id}
+                    textValue={`${processCaption(p)}, ${countLabel} ${count}`}
+                    // Seçili zemin satırdan satıra kayar
+                    className={cn(
+                      ITEM,
+                      'group relative data-selected:bg-transparent data-selected:text-accent-foreground',
+                    )}
+                  >
+                    {({ isSelected }) => (
+                      <>
+                        {isSelected && <Indicator id="start-group" className="bg-accent" />}
+                        <Icon {...IC} className="relative opacity-80" />
+                        <Box className="relative min-w-0 flex-1">
+                          <Typography
+                            {...inline}
+                            truncate
+                            className="text-xs text-current! opacity-65"
+                          >
+                            {p.project}
+                          </Typography>
+                          <Typography
+                            {...inline}
+                            truncate
+                            weight="medium"
+                            className="text-sm text-current!"
+                          >
+                            {isDraft ? p.form : p.name}
+                          </Typography>
+                        </Box>
+                        <Chip className="relative min-w-8 justify-center bg-surface-secondary font-semibold group-data-selected:bg-surface">
+                          <Count value={count} />
+                        </Chip>
+                      </>
+                    )}
+                  </ListBox.Item>
+                )
+              })}
+            </ListBox>
+          </Scroll>
         </Box>
       )}
     </Box>

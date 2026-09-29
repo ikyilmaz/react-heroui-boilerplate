@@ -65,7 +65,11 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   process groups ↔ "Süreç Talepleri"), `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (box column
   incl. Geçmiş, box band, process tiles, request grid with date buckets / sort / paging, fast approve,
   draft delete), `DetailPage.tsx` + `DetailTiles.tsx` (Flow Viewer), `flow.tsx` (decision dialogs),
-  `parts.tsx`, `paths.ts`, `AppPage.tsx`, `theme.ts`.
+  `parts.tsx`, `paths.ts`, `AppPage.tsx`, `theme.ts`. `hr/` is İnsan Kaynakları
+  (`/insan-kaynaklari/:module[/:recordId]`, original `modules/hr`): module navigator, band with
+  search / company / status filters, sortable paged table and a slide-in edit card, all driven by
+  `hr/modules.ts`; company admins and property relations have their own views (`HrSpecial.tsx`).
+  Data and in-memory store in `shared/hrData.ts`.
 - `v2/` (Bento): the same pages as bento grids, flat colour, no gradients (`HERO`, `FILL`, `TINT` in
   `parts.tsx`): top header + floating bottom dock, Başlangıç with a vertical apps panel on the right,
   İş Akış Yönetimi with navigation pills in the header card and process content cards.

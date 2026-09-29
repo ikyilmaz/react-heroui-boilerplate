@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowDownUp } from 'lucide-react'
 import { CalendarDate, getLocalTimeZone } from '@internationalized/date'
@@ -14,6 +14,7 @@ import {
   EmptyState,
   Header,
   Label,
+  ScrollShadow,
   SearchField,
   Tooltip,
   Typography,
@@ -36,6 +37,7 @@ import {
 import { RANGE_LABELS } from '@/synergy/shared/range'
 import { inline, timeOf } from '@/synergy/shared/tokens'
 import { Box, Text } from '@/synergy/shared/ui'
+import { useLook } from '@/synergy/shared/themeSettings'
 
 /* Sayfaların ortak küçük parçaları (yalnızca HeroUI JSX'ini gruplayan yerel işlevler) */
 
@@ -45,6 +47,65 @@ export const IC_BLOCK = { ...IC, size: 20 } as const
 
 /** Hafif vurgulu bant: yüzeyle karışmış açık birincil ton (opak), koyu metin (tema paneli › Vurgu gücü). */
 export const SOFT_BAND = 'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] text-foreground'
+
+export interface BandStyle {
+  /** Bandın zemini ve yazı rengi. */
+  band: string
+  /** Bandın üstündeki dolu denetim (Yeni, Sıralama, kutu seçici). */
+  on: string
+  /** Açık zemin mi (koyu yazı); değilse koyu zemin, açık yazı. */
+  light: boolean
+}
+
+/** Vurgu gücüne göre bandlar (tema paneli › Vurgu gücü). */
+const BANDS: Record<string, BandStyle> = {
+  accent: {
+    band: 'bg-accent text-accent-foreground',
+    on: 'bg-accent-foreground text-accent',
+    light: false,
+  },
+  soft: { band: SOFT_BAND, on: 'bg-surface text-foreground', light: true },
+  medium: {
+    band: 'bg-[color-mix(in_oklab,var(--accent)_24%,var(--surface))] text-foreground',
+    on: 'bg-surface text-foreground',
+    light: true,
+  },
+  outline: {
+    band: 'border-2 border-accent bg-surface text-foreground',
+    on: 'bg-accent text-accent-foreground',
+    light: true,
+  },
+  ink: { band: 'bg-foreground text-background', on: 'bg-background text-foreground', light: false },
+  white: {
+    band: 'bg-surface text-foreground',
+    on: 'bg-accent text-accent-foreground',
+    light: true,
+  },
+}
+
+/**
+ * Bandın görünüşü. `hero` (karşılama, kutu bandı, İK bandı): varsayılanda dolu birincil renk;
+ * `record` (talep başlığı): varsayılanda beyaz.
+ */
+export function useBand(kind: 'hero' | 'record' = 'hero'): BandStyle {
+  const a = useLook().accent
+  if (a === 'default') return kind === 'record' ? BANDS.white! : BANDS.accent!
+  if (a === 'solid') return BANDS.accent!
+  return BANDS[a] ?? BANDS.accent!
+}
+
+/**
+ * Kayan alan: kenarlarda içeriğin devam ettiğini gösteren yumuşak gölge (HeroUI ScrollShadow).
+ * Gölge tema panelinden kapatılabilir (Kaydırma gölgesi); kapalıyken yalnızca kayan alan.
+ */
+export function Scroll({
+  isEnabled = true,
+  visibility,
+  ...props
+}: ComponentProps<typeof ScrollShadow>) {
+  const on = useLook().scrollShadow && isEnabled
+  return <ScrollShadow {...props} isEnabled={on} visibility={on ? visibility : 'none'} />
+}
 
 /** İpucu (içerik portal ile basılır). */
 export function Tip({

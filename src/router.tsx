@@ -7,6 +7,7 @@ import { StartPage } from '@/synergy/v1/StartPage'
 import { WorkflowPage } from '@/synergy/v1/WorkflowPage'
 import { DetailPage } from '@/synergy/v1/DetailPage'
 import { KaroAppPage } from '@/synergy/v1/AppPage'
+import { HrPage } from '@/synergy/v1/hr/HrPage'
 import { BentoShell } from '@/synergy/v2'
 import { BentoStart } from '@/synergy/v2/StartPage'
 import { BentoWorkflow } from '@/synergy/v2/WorkflowPage'
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       { path: '/is-akislari/:box/:processId', Component: WorkflowPage },
       // Talep ayrıntısı (Flow Viewer)
       { path: '/is-akislari/:box/:processId/:requestId', Component: DetailPage },
+      // İnsan Kaynakları: modül listesi ve kayıt düzenleme (orijinal modules/hr)
+      { path: '/insan-kaynaklari', element: <Navigate to="/insan-kaynaklari/kullanicilar" replace /> },
+      { path: '/insan-kaynaklari/:module', Component: HrPage },
+      { path: '/insan-kaynaklari/:module/:recordId', Component: HrPage },
     ],
   },
   // v2 ("Bento"): aynı sayfalar `/v2` önekiyle, kendi kabuğu ve teması ile

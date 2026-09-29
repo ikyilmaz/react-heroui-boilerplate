@@ -8,7 +8,6 @@ import {
   Header,
   Link,
   ListBox,
-  ScrollShadow,
   Tabs,
   Typography,
   cn,
@@ -40,12 +39,12 @@ import {
   IC_BLOCK,
   KaroSearch,
   RangeFields,
-  SOFT_BAND,
   SortMenu,
   TintIcon,
+  useBand,
   type SortValue,
+  Scroll,
 } from '@/synergy/v1/parts'
-import { useLook } from '@/synergy/shared/themeSettings'
 import { RequestGrid } from '@/synergy/v1/RequestGrid'
 import { Count, Indicator, RISE } from '@/synergy/v1/motion'
 
@@ -60,10 +59,6 @@ interface ListSettings {
   sort: SortValue
   range: DateRange
 }
-
-/** Bandın üstündeki denetimler: dolu bantta beyaz, hafif bantta yüzey. */
-const ON_BAND = 'bg-accent-foreground text-accent'
-const ON_SOFT_BAND = 'bg-surface text-foreground'
 
 export function WorkflowPage() {
   const params = useParams()
@@ -203,7 +198,7 @@ function BoxColumn({ current }: { current: WorkBox }) {
 /** Dar ekran: bandın başında kutu seçici (kutular ikonlarıyla). */
 function BoxSwitcher({ current }: { current: WorkBox }) {
   const Icon = current.icon
-  const soft = useLook().accent === 'soft'
+  const band = useBand()
   const items = (boxes: WorkBox[]) =>
     boxes.map((b) => (
       <Dropdown.Item key={b.id} id={b.id} href={boxLink(b.id)} textValue={b.label}>
@@ -217,7 +212,7 @@ function BoxSwitcher({ current }: { current: WorkBox }) {
       <Button
         variant="secondary"
         aria-label={`Kutu: ${current.label}`}
-        className={cn(soft ? ON_SOFT_BAND : ON_BAND, 'xl:hidden')}
+        className={cn(band.on, 'xl:hidden')}
       >
         <Icon {...IC} />
         {current.label}
@@ -258,14 +253,14 @@ function Band({
   processId: string | undefined
 }) {
   const Icon = box.icon
-  // Vurgu gücü: varsayılan / dolu birincil renk, hafif açık ton
-  const soft = useLook().accent === 'soft'
+  // Vurgu gücüne göre band (tema paneli)
+  const band = useBand()
   return (
     // Band yerinde durur (kutu değişince yalnızca altındaki içerik belirir); süreç seçilince iç boşluğu yumuşakça daralır
     <Card
       className={cn(
         'gap-4 transition-[padding] duration-300 [--field-background:var(--surface)]',
-        soft ? SOFT_BAND : 'bg-accent text-accent-foreground',
+        band.band,
         compact ? 'p-4' : 'p-6',
       )}
     >
@@ -307,7 +302,7 @@ function Band({
             sort={settings.sort}
             onSort={(sort) => onChange({ ...settings, sort })}
             trigger="label"
-            className={soft ? ON_SOFT_BAND : ON_BAND}
+            className={band.on}
           />
         </Box>
       </Box>
@@ -321,9 +316,9 @@ function Band({
       {/* Süreç sekmeleri: kap birincil rengin üstünde yarı saydam, seçili sekme beyaz */}
       {compact && (
         <Tabs selectedKey={processId ?? ''} className="min-w-0 animate-rise">
-          <ScrollShadow orientation="horizontal" hideScrollBar className="min-w-0">
+          <Scroll orientation="horizontal" hideScrollBar className="min-w-0">
             <Tabs.ListContainer
-              className={cn('w-max', soft ? 'bg-surface/70' : 'bg-accent-foreground/10')}
+              className={cn('w-max', band.light ? 'bg-surface/70' : 'bg-current/10')}
             >
               <Tabs.List aria-label={box.title}>
                 {groups.map(({ process: p, count }) => (
@@ -333,7 +328,7 @@ function Band({
                     href={processLink(box.id, p.id)}
                     className={cn(
                       'gap-2 whitespace-nowrap data-selected:text-foreground',
-                      soft ? 'text-foreground/75' : 'text-accent-foreground',
+                      band.light ? 'text-foreground/75' : 'text-current',
                     )}
                   >
                     <Tabs.Indicator />
@@ -351,7 +346,7 @@ function Band({
                 ))}
               </Tabs.List>
             </Tabs.ListContainer>
-          </ScrollShadow>
+          </Scroll>
         </Tabs>
       )}
     </Card>

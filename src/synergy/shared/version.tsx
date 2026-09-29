@@ -21,6 +21,9 @@ function bare(pathname: string) {
   return rest || '/calisma-alani'
 }
 
+/** Sayfa o sürümde var mı (İnsan Kaynakları yalnızca v1'de; yoksa Başlangıç'a gidilir). */
+const hasPage = (id: VersionId, path: string) => id === 'v1' || !path.startsWith('/insan-kaynaklari')
+
 export function VersionSwitch({ current, className }: { current: VersionId; className?: string }) {
   const { pathname } = useLocation()
   const path = bare(pathname)
@@ -34,7 +37,7 @@ export function VersionSwitch({ current, className }: { current: VersionId; clas
       <Dropdown.Popover placement="bottom end">
         <Dropdown.Menu aria-label="Tasarım sürümü" selectionMode="single" selectedKeys={[current]}>
           {VERSIONS.map((v) => (
-            <Dropdown.Item key={v.id} id={v.id} href={`${v.prefix}${path}`} textValue={v.label}>
+            <Dropdown.Item key={v.id} id={v.id} href={`${v.prefix}${hasPage(v.id, path) ? path : '/calisma-alani'}`} textValue={v.label}>
               {v.label}
               <Dropdown.ItemIndicator />
             </Dropdown.Item>

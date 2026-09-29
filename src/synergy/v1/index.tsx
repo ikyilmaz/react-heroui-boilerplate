@@ -56,6 +56,7 @@ import { IC, Tip } from '@/synergy/v1/parts'
 import { LookContext, useThemeSettings } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
 import { V1_THEME } from '@/synergy/v1/theme'
+import { PARENTS, findModule } from '@/synergy/v1/hr/modules'
 import { VersionSwitch } from '@/synergy/shared/version'
 import { AnimatePresence } from 'framer-motion'
 import {
@@ -65,6 +66,7 @@ import {
   PageTransition,
   useTransition,
 } from '@/synergy/v1/motion'
+import { PerfOverlay } from '@/synergy/v1/PerfOverlay'
 
 /*
  * Kabuk: üst çubuk (logo, konum hapları, uygulama araması, kullanıcı) ve solda uygulama rafı
@@ -93,7 +95,13 @@ const dockEntries: DockEntry[] = [
     href: '/is-akislari/bekleyen',
     match: '/is-akislari',
   },
-  { id: 'insan-kaynaklari', label: 'İnsan Kaynakları', icon: Users },
+  {
+    id: 'insan-kaynaklari',
+    label: 'İnsan Kaynakları',
+    icon: Users,
+    href: '/insan-kaynaklari',
+    match: '/insan-kaynaklari',
+  },
 ]
 
 const DOCK_KEY = 'synergy-dock-expanded'
@@ -181,10 +189,14 @@ function crumbIcon(key: string | undefined): LucideIcon | undefined {
   if (key === 'home') return House
   if (key === 'workflow') return Workflow
   if (key === 'request') return FileText
+  if (key === 'hr') return Users
+  if (key === 'hr-record') return FileText
   const [kind, id] = key.split(':')
   if (kind === 'box') return findBox(id)?.icon
   if (kind === 'process') return findProcess(id)?.icon
   if (kind === 'app') return menuApps.find((a) => a.id === id)?.icon
+  if (kind === 'hr') return findModule(id)?.icon
+  if (kind === 'hr-parent') return PARENTS[id as keyof typeof PARENTS]?.icon
   return undefined
 }
 
@@ -593,6 +605,8 @@ function ThemeButton({ onPress }: { onPress: () => void }) {
 function pageOf(pathname: string) {
   if (matchPath('/is-akislari/:box/:processId/:requestId', pathname)) return 'detail'
   if (matchPath({ path: '/is-akislari', end: false }, pathname)) return 'workflow'
+  // İK: modüller ve kayıtlar arası gezinme aynı ekran (geçiş yok)
+  if (matchPath({ path: '/insan-kaynaklari', end: false }, pathname)) return 'hr'
   const app = matchPath('/uygulamalar/:appId', pathname)
   if (app) return `app:${app.params.appId}`
   return pathname
@@ -677,6 +691,8 @@ function Shell() {
               </Drawer.Content>
             </Drawer.Root>
 
+            {/* Tema paneli › Performans › FPS'i göster */}
+            {look.showFps && <PerfOverlay />}
             <ThemePanel
               kit={V1_THEME}
               isOpen={themeOpen}

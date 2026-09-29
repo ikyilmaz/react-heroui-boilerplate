@@ -8,6 +8,7 @@ import {
   Select,
   Separator,
   Slider,
+  Switch,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -73,7 +74,10 @@ const CARD_STYLES: { id: CardStyle; label: string }[] = [
 const ACCENTS: { id: AccentStrength; label: string }[] = [
   { id: 'default', label: 'Varsayılan' },
   { id: 'soft', label: 'Hafif' },
+  { id: 'medium', label: 'Orta' },
   { id: 'solid', label: 'Dolu' },
+  { id: 'outline', label: 'Çizgili' },
+  { id: 'ink', label: 'Koyu' },
 ]
 
 const SHAPES: { id: ButtonShape; label: string }[] = [
@@ -129,11 +133,14 @@ function Segments<T extends string | number>({
   value,
   options,
   onChange,
+  grid = false,
 }: {
   label: string
   value: T
   options: { id: T; label: string }[]
   onChange: (v: T) => void
+  /** Çok seçenekte üçerli satırlar (tek satıra sığmayınca). */
+  grid?: boolean
 }) {
   return (
     <ToggleButtonGroup
@@ -141,20 +148,47 @@ function Segments<T extends string | number>({
       size="sm"
       selectionMode="single"
       disallowEmptySelection
+      isDetached={grid}
       selectedKeys={[String(value)]}
       onSelectionChange={(keys) => {
         const [k] = [...keys]
         const hit = options.find((o) => String(o.id) === String(k))
         if (hit) onChange(hit.id)
       }}
-      className="w-full"
+      className={grid ? 'grid w-full grid-cols-3 gap-1' : 'w-full'}
     >
       {options.map((o) => (
-        <ToggleButton key={String(o.id)} id={String(o.id)} className={SEGMENT}>
+        <ToggleButton
+          key={String(o.id)}
+          id={String(o.id)}
+          className={cn(SEGMENT, grid && 'w-full rounded-lg border border-border')}
+        >
           {o.label}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
+  )
+}
+
+/** Açıklamalı anahtar (tema paneli). */
+function PanelSwitch({
+  label,
+  isSelected,
+  onChange,
+}: {
+  label: string
+  isSelected: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <Switch isSelected={isSelected} onChange={onChange}>
+      <Switch.Content>
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+        <Text className="text-sm text-current">{label}</Text>
+      </Switch.Content>
+    </Switch>
   )
 }
 
@@ -262,7 +296,15 @@ export function ThemePanel({
                 selectedKeys={preset ? [preset] : []}
                 onSelectionChange={(keys) => {
                   const p = kit.presets.find((x) => x.id === [...keys][0])
-                  if (p) onChange({ ...p.settings, motion: settings.motion })
+                  if (p)
+                    onChange({
+                      ...p.settings,
+                      // Tercihler (animasyon, FPS, kaydırma gölgesi) hazır temayla değişmez
+                      motion: settings.motion,
+                      motionSpeed: settings.motionSpeed,
+                      showFps: settings.showFps,
+                      scrollShadow: settings.scrollShadow,
+                    })
                 }}
                 className="grid grid-cols-1 gap-2"
               >
@@ -391,10 +433,11 @@ export function ThemePanel({
                 value={settings.accent}
                 options={ACCENTS}
                 onChange={(accent) => set({ accent })}
+                grid
               />
               <Text tone="muted" className="text-xs">
-                Karşılama kartı, başlık bantları ve öne çıkan karolar birincil rengin açık tonunda
-                mı, dolu renkte mi dursun.
+                Karşılama kartı, başlık bantları ve öne çıkan karolar: birincil rengin açık ya da
+                belirgin tonu, dolu rengi, beyaz zeminde çerçeve ya da koyu zemin.
               </Text>
             </Section>
 
@@ -526,6 +569,37 @@ export function ThemePanel({
                       Sistem hareketi azaltıyor; animasyonlar az düzeyde.
                     </Text>
                   )}
+                </Section>
+                <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
+                  <Range
+                    label="Animasyon hızı"
+                    value={settings.motionSpeed}
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
+                  />
+                  <Box className="flex justify-between">
+                    {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
+                      <Text key={t} tone="muted" className="font-mono text-[0.6875rem]">
+                        {t}
+                      </Text>
+                    ))}
+                  </Box>
+                </Section>
+                <Section title="Kaydırma gölgesi">
+                  <PanelSwitch
+                    label="Kayan alanların kenarında gölge"
+                    isSelected={settings.scrollShadow}
+                    onChange={(scrollShadow) => set({ scrollShadow })}
+                  />
+                </Section>
+                <Section title="Performans">
+                  <PanelSwitch
+                    label="FPS'i göster"
+                    isSelected={settings.showFps}
+                    onChange={(showFps) => set({ showFps })}
+                  />
                 </Section>
               </>
             )}

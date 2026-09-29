@@ -232,11 +232,7 @@ export function RequestGrid({
             <Table.Body renderEmptyState={() => <EmptyNote text="Gösterilecek veri yok." />}>
               {groups.flatMap(({ bucket, rows: items }) => {
                 return [
-                  <Table.Row
-                    key={`g-${bucket.id}`}
-                    id={`g-${bucket.id}`}
-                    className={BUCKET_ROW}
-                  >
+                  <Table.Row key={`g-${bucket.id}`} id={`g-${bucket.id}`} className={BUCKET_ROW}>
                     <Table.Cell colSpan={span}>
                       <Box className="flex items-center gap-2">
                         <Text tone="primary" className="text-sm font-semibold">
