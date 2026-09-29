@@ -89,6 +89,7 @@ import { useKaroFlow } from '@/synergy/v1/flow'
 import { useMediaQuery } from '@/synergy/shared/hooks'
 import { AnimatePresence } from 'framer-motion'
 import { Count, Indicator, MotionBox, useLeaving, useTransition } from '@/synergy/v1/motion'
+import { GRID_CONTENT, GRID_HEAD } from '@/synergy/v1/DataGrid'
 
 /* -------------------------------------------------------------------------------------------------
  * Karo · Başlangıç: sabit 12 sütunlu bento
@@ -121,8 +122,10 @@ const FLARE_R =
   "after:absolute after:bottom-0 after:-end-4 after:size-4 after:bg-[radial-gradient(circle_at_100%_0,transparent_1rem,var(--surface)_1rem)] after:content-['']"
 
 /** Tablo başlığı / hücresi: çizgisiz; satırın üzerine gelince soluk birincil şerit. */
-const COLUMN = 'whitespace-nowrap text-foreground/70 after:hidden'
-const CELL = 'h-11 border-b-0 py-1 group-hover/row:bg-accent/6'
+/** Izgara görünümü DataGrid.tsx'teki gibi: sade başlık, çizgisiz satırlar, yuvarlak üzerine gelme zemini. */
+const COLUMN = GRID_HEAD
+const CELL =
+  'h-11 border-b-0 bg-transparent py-1 transition-colors first:rounded-s-xl last:rounded-e-xl group-hover/row:bg-surface-secondary'
 
 /** Olaylar sütunu en solda; tablo yatay kaysa da görünür kalır (hızlı onay hiç gizlenmez); köşeleri düz ki arkası görünmesin. */
 const STICKY_START = 'sticky start-0 z-10 bg-surface'
@@ -858,16 +861,14 @@ function RequestsTile({
           <Table.ScrollContainer>
             <Table.Content
               aria-label={`${title}: ${processCaption(process)}`}
+              className={GRID_CONTENT}
               sortDescriptor={sort ?? undefined}
               onSortChange={setSort}
               onRowAction={open}
             >
               <Table.Header>
                 {box.decisions && (
-                  <Table.Column
-                    id="__events"
-                    className={cn(COLUMN, STICKY_START, 'w-px bg-surface-secondary')}
-                  >
+                  <Table.Column id="__events" className={cn(COLUMN, STICKY_START, 'w-px')}>
                     <Text className="sr-only">Olaylar</Text>
                   </Table.Column>
                 )}

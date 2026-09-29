@@ -310,7 +310,9 @@ function Viewer({
     history:
       r.history.length > 0 ? (
         <Box className="flex flex-col gap-3">
-          <Scroll className="max-h-104 pe-1">
+          {/* Halka kadar (0.75rem; tema boşluk ölçeğinden bağımsız) iç boşluk + eşit negatif boşluk:
+              bekleyen adımın nabız halkası kaydırma kabında kesilmesin, yerleşim değişmesin */}
+          <Scroll className="-m-[0.75rem] max-h-[27.5rem] p-[0.75rem] pe-[1rem]">
             <HistoryTimeline r={r} options={historyOptions} compact />
           </Scroll>
           {/* Görünüm seçenekleri (bilgilendirmeler, ham tarih) tam tarihçe düğmesinin yanında */}
@@ -547,7 +549,8 @@ function Viewer({
                 ids={SIDE_TABS.map((t) => t.id)}
                 active={sideTab}
                 render={(id) => side[id]}
-                className="mt-2"
+                // Kırpma kutusu yanlara halka kadar (0.75rem) taşar: tarihçedeki nabız halkası kesilmesin
+                className="-mx-[0.75rem] mt-2 px-[0.75rem]"
               />
             </>
           )}

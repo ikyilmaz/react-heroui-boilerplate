@@ -19,6 +19,18 @@ import { EmptyNote, IC, KaroSearch, Scroll } from '@/synergy/v1/parts'
 import { UserAvatar } from '@/synergy/v1/hr/HrCells'
 import { refLabel } from '@/synergy/v1/hr/modules'
 import { useTransition } from '@/synergy/v1/motion'
+import {
+  CardGroup,
+  CardList,
+  GRID_CELL,
+  GRID_CONTENT,
+  GRID_HEAD,
+  GRID_ROW_SELECTED,
+  GRID_ROW_STATIC,
+  GridCard,
+  ViewSwitch,
+  useGridView,
+} from '@/synergy/v1/DataGrid'
 
 /* İK'nın tablo dışı iki görünümü: şirket yöneticileri (anında kaydeden anahtar) ve nesne özellik
    ilişkileri (sürükleyerek sıralama, zorunlu / aktif anahtarları). */
@@ -68,6 +80,17 @@ export function CompanyAdmins({
         ),
   )
   const list = admins[company] ?? []
+  const [view, setView] = useGridView('hr:sirket-yoneticileri')
+  const toggle = (u: HrRecord) => (
+    <Toggle
+      label={`${HR_LABELS.active}: ${fullName(u)}`}
+      isSelected={list.includes(u.id)}
+      onChange={(v) => {
+        setCompanyAdmin(company, u.id, v)
+        toast.success(HR_LABELS.success, { description: fullName(u) })
+      }}
+    />
+  )
   const controls = (
     <>
       <KaroSearch value={query} onChange={setQuery} className="w-64" />
@@ -97,36 +120,61 @@ export function CompanyAdmins({
   return (
     <>
       {header(controls, list.length)}
-      {/* Tam yükseklik; tablo kendi içinde kayar, başlık satırı üstte kalır */}
-      <Card className={cn(card, 'p-2 xl:min-h-0 xl:flex-1')}>
-        <Table variant="secondary" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-          <Table.ScrollContainer className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            <Table.Content aria-label="Şirket Yöneticileri">
-              <Table.Header className="sticky top-0 z-10">
-                {['Kullanıcı', 'E-posta', 'Departman', 'Ünvan'].map((c, i) => (
-                  <Table.Column
-                    key={c}
-                    id={c}
-                    isRowHeader={i === 0}
-                    className="whitespace-nowrap after:content-none"
-                  >
-                    {c}
-                  </Table.Column>
+      {/* Tam yükseklik; tablo (ya da kartlar) kendi içinde kayar, başlık satırı üstte kalır */}
+      <Card className={cn(card, 'gap-3 p-4 xl:min-h-0 xl:flex-1')}>
+        <Box className="flex shrink-0 items-center">
+          <ViewSwitch view={view} onChange={setView} className="ms-auto" />
+        </Box>
+        {view === 'cards' ? (
+          <CardList className="xl:min-h-0 xl:flex-1">
+            {rows.length === 0 && <EmptyNote text={HR_LABELS.noData} />}
+            {rows.length > 0 && (
+              <CardGroup listLabel="Şirket Yöneticileri">
+                {rows.map((u) => (
+                  <GridCard
+                    key={u.id}
+                    selected={list.includes(u.id)}
+                    lead={<UserAvatar user={u} />}
+                    title={fullName(u)}
+                    eyebrow={
+                      <Typography {...inline} className="font-mono text-xs text-muted!">
+                        {u.username as string}
+                      </Typography>
+                    }
+                    fields={[
+                      { label: 'E-posta', value: u.eMail as string },
+                      { label: 'Departman', value: refLabel('departmanlar', u.departmentId) },
+                      { label: 'Ünvan', value: refLabel('unvanlar', u.professionId) },
+                    ]}
+                    footer={HR_LABELS.active}
+                    actions={toggle(u)}
+                  />
                 ))}
-                <Table.Column id="admin" className="w-px text-end after:content-none">
-                  {HR_LABELS.active}
-                </Table.Column>
-              </Table.Header>
-              <Table.Body renderEmptyState={() => <EmptyNote text={HR_LABELS.noData} />}>
-                {rows.map((u) => {
-                  const on = list.includes(u.id)
-                  return (
+              </CardGroup>
+            )}
+          </CardList>
+        ) : (
+          <Table variant="secondary" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+            <Table.ScrollContainer className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+              <Table.Content aria-label="Şirket Yöneticileri" className={GRID_CONTENT}>
+                <Table.Header className="sticky top-0 z-10">
+                  {['Kullanıcı', 'E-posta', 'Departman', 'Ünvan'].map((c, i) => (
+                    <Table.Column key={c} id={c} isRowHeader={i === 0} className={GRID_HEAD}>
+                      {c}
+                    </Table.Column>
+                  ))}
+                  <Table.Column id="admin" className={cn(GRID_HEAD, 'w-px text-end')}>
+                    {HR_LABELS.active}
+                  </Table.Column>
+                </Table.Header>
+                <Table.Body renderEmptyState={() => <EmptyNote text={HR_LABELS.noData} />}>
+                  {rows.map((u) => (
                     <Table.Row
                       key={u.id}
                       id={u.id}
-                      className={cn('transition-colors *:border-b-0', on && '*:bg-accent-soft/40')}
+                      className={cn(GRID_ROW_STATIC, list.includes(u.id) && GRID_ROW_SELECTED)}
                     >
-                      <Table.Cell>
+                      <Table.Cell className="text-foreground">
                         <Box className="flex items-center gap-3">
                           <UserAvatar user={u} />
                           <Box className="min-w-0">
@@ -139,26 +187,21 @@ export function CompanyAdmins({
                           </Box>
                         </Box>
                       </Table.Cell>
-                      <Table.Cell>{u.eMail as string}</Table.Cell>
-                      <Table.Cell>{refLabel('departmanlar', u.departmentId)}</Table.Cell>
-                      <Table.Cell>{refLabel('unvanlar', u.professionId)}</Table.Cell>
-                      <Table.Cell className="text-end">
-                        <Toggle
-                          label={`${HR_LABELS.active}: ${fullName(u)}`}
-                          isSelected={on}
-                          onChange={(v) => {
-                            setCompanyAdmin(company, u.id, v)
-                            toast.success(HR_LABELS.success, { description: fullName(u) })
-                          }}
-                        />
+                      <Table.Cell className={GRID_CELL}>{u.eMail as string}</Table.Cell>
+                      <Table.Cell className={GRID_CELL}>
+                        {refLabel('departmanlar', u.departmentId)}
                       </Table.Cell>
+                      <Table.Cell className={GRID_CELL}>
+                        {refLabel('unvanlar', u.professionId)}
+                      </Table.Cell>
+                      <Table.Cell className="text-end">{toggle(u)}</Table.Cell>
                     </Table.Row>
-                  )
-                })}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
+        )}
       </Card>
     </>
   )

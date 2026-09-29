@@ -25,15 +25,20 @@ export const router = createBrowserRouter([
       { path: '/uygulamalar/:appId', Component: KaroAppPage },
       // İş Akış Yönetimi: kutu → süreç → talepler
       { path: '/is-akislari', element: <Navigate to="/is-akislari/bekleyen" replace /> },
-      { path: '/is-akislari/gecmis', element: <Navigate to="/is-akislari/gecmis-onaylar" replace /> },
-      { path: '/is-akislari/:box', Component: WorkflowPage },
-      { path: '/is-akislari/:box/:processId', Component: WorkflowPage },
+      {
+        path: '/is-akislari/gecmis',
+        element: <Navigate to="/is-akislari/gecmis-onaylar" replace />,
+      },
+      // Tek rota (isteğe bağlı süreç): kutuya girip ilk sürece geçerken sayfa yeniden kurulmaz
+      { path: '/is-akislari/:box/:processId?', Component: WorkflowPage },
       // Talep ayrıntısı (Flow Viewer)
       { path: '/is-akislari/:box/:processId/:requestId', Component: DetailPage },
       // İnsan Kaynakları: modül listesi ve kayıt düzenleme (orijinal modules/hr)
-      { path: '/insan-kaynaklari', element: <Navigate to="/insan-kaynaklari/kullanicilar" replace /> },
-      { path: '/insan-kaynaklari/:module', Component: HrPage },
-      { path: '/insan-kaynaklari/:module/:recordId', Component: HrPage },
+      {
+        path: '/insan-kaynaklari',
+        element: <Navigate to="/insan-kaynaklari/kullanicilar" replace />,
+      },
+      { path: '/insan-kaynaklari/:module/:recordId?', Component: HrPage },
     ],
   },
   // v2 ("Bento"): aynı sayfalar `/v2` önekiyle, kendi kabuğu ve teması ile
@@ -45,9 +50,11 @@ export const router = createBrowserRouter([
       { path: 'calisma-alani', Component: BentoStart },
       { path: 'uygulamalar/:appId', Component: BentoAppPage },
       { path: 'is-akislari', element: <Navigate to="/v2/is-akislari/bekleyen" replace /> },
-      { path: 'is-akislari/gecmis', element: <Navigate to="/v2/is-akislari/gecmis-onaylar" replace /> },
-      { path: 'is-akislari/:box', Component: BentoWorkflow },
-      { path: 'is-akislari/:box/:processId', Component: BentoWorkflow },
+      {
+        path: 'is-akislari/gecmis',
+        element: <Navigate to="/v2/is-akislari/gecmis-onaylar" replace />,
+      },
+      { path: 'is-akislari/:box/:processId?', Component: BentoWorkflow },
       { path: 'is-akislari/:box/:processId/:requestId', Component: BentoDetail },
     ],
   },

@@ -58,6 +58,7 @@ import { IC, StatusChip, TintIcon, Tip } from '@/synergy/v1/parts'
 import { TextBox } from '@/components/TextBox'
 import { FormField, LongField } from '@/synergy/shared/FormFields'
 import { useOpenChild } from '@/synergy/v1/FormTabs'
+import { GRID_CONTENT, GRID_HEAD } from '@/synergy/v1/DataGrid'
 
 /* Flow Viewer karoları: form (ve child form bağlantıları), ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
 
@@ -66,8 +67,8 @@ const TITLE = 'font-display text-lg'
 /* --- Form -------------------------------------------------------------------------------------- */
 
 /** Kalem tablosu: ayırıcısız başlık şeridi; satırlar çizgisiz, üzerine gelince yuvarlak şerit. */
-const colCls = 'whitespace-nowrap after:content-none'
-const cellCls = 'border-b-0'
+const colCls = GRID_HEAD
+const cellCls = 'border-b-0 bg-transparent'
 const numCls = cn(cellCls, 'text-end whitespace-nowrap tabular-nums')
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -102,7 +103,7 @@ export function ItemsTable({ items }: { items: LineItem[] }) {
   return (
     <Table variant="secondary">
       <Table.ScrollContainer>
-        <Table.Content aria-label="Kalemler">
+        <Table.Content aria-label="Kalemler" className={GRID_CONTENT}>
           <Table.Header>
             <Table.Column isRowHeader className={colCls}>
               Kalem

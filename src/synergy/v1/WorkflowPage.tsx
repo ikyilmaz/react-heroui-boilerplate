@@ -1,18 +1,6 @@
-import { useMemo } from 'react'
-import { Navigate, useParams } from 'react-router'
-import {
-  Button,
-  Card,
-  Chip,
-  Dropdown,
-  Header,
-  Link,
-  ListBox,
-  Tabs,
-  Typography,
-  cn,
-} from '@heroui/react'
-import { ChevronDown } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router'
+import { Card, Chip, Link, Typography, cn } from '@heroui/react'
 import { useBoxRequests } from '@/synergy/shared/decisions'
 import { useRemembered } from '@/synergy/shared/remembered'
 import {
@@ -39,19 +27,21 @@ import {
   IC_BLOCK,
   KaroSearch,
   RangeFields,
+  Scroll,
   SortMenu,
-  TintIcon,
   useBand,
   type SortValue,
-  Scroll,
 } from '@/synergy/v1/parts'
 import { RequestGrid } from '@/synergy/v1/RequestGrid'
-import { Count, Indicator, RISE } from '@/synergy/v1/motion'
+import { AgendaTabs, type AgendaTab } from '@/synergy/v1/AgendaTabs'
+import { Count, Indicator, TabEnter } from '@/synergy/v1/motion'
 
 /*
- * İş Akış Yönetimi (/is-akislari/:box[/:processId]). Solda kutu sütunu (dar ekranda bandda kutu
- * seçici), sağda birincil renkte kutu bandı. Süreç seçili değilse süreç karoları; seçiliyse band
- * daralır, süreçler bandda sekmelere döner ve altında talep ızgarası çıkar.
+ * İş Akış Yönetimi (/is-akislari/:box/:processId). Kutular üstte ajanda sekmeleri (geçmiş kutuları
+ * "Geçmiş" başlığıyla şeridin sağında); seçili sekme içeriği saran kaba kaynaşır. Kabın içinde
+ * kutu bandı (başlık, arama, sıralama, geçmişte tarih aralığı), altında solda süreç listesi (%20),
+ * sağda seçili sürecin talep ızgarası. Kutuya girince listedeki ilk süreç seçilir. Kutu değişince
+ * içerik anında değişir, yalnızca başlık kısa kayar (form sekmelerindeki gibi).
  */
 
 interface ListSettings {
@@ -60,21 +50,32 @@ interface ListSettings {
   range: DateRange
 }
 
+const TABS: AgendaTab[] = [
+  ...mainBoxes.map((b) => ({ id: b.id, label: b.label, href: boxLink(b.id), icon: b.icon })),
+  ...historyBoxes.map((b) => ({
+    id: b.id,
+    label: b.label,
+    href: boxLink(b.id),
+    icon: b.icon,
+    group: HISTORY_GROUP_LABEL,
+  })),
+]
+
 export function WorkflowPage() {
   const params = useParams()
   const box = findBox(params.box)
   if (!box) return <Navigate to={boxLink('bekleyen')} replace />
-  // Kutu sütunu kutu değişince yeniden takılmaz (seçim göstergesi kayar); sağdaki görünüm yeniden takılıp belirir
   return (
-    <Box className="flex items-start gap-3">
-      <BoxColumn current={box} />
-      <BoxView key={box.id} box={box} processId={params.processId} />
-    </Box>
+    <AgendaTabs label="İş Akış Yönetimi" tabs={TABS} active={box.id}>
+      <TabEnter active={box.id} className="flex flex-col lg:min-h-0 lg:flex-1">
+        <BoxView key={box.id} box={box} processId={params.processId} />
+      </TabEnter>
+    </AgendaTabs>
   )
 }
 
 function BoxView({ box, processId }: { box: WorkBox; processId: string | undefined }) {
-  const process = findProcess(processId)
+  const navigate = useNavigate()
   const [settings, setSettings] = useRemembered<ListSettings>(`karo:list:${box.id}`, () => ({
     search: '',
     sort: DEFAULT_SORT,
@@ -90,148 +91,46 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
       }),
     [box, requests, settings],
   )
+  // Süreç seçili değilse (ya da adresteki süreç yoksa) listedeki ilk süreç seçilir. İçerik hemen
+  // ilk süreçle çizilir, adres arkadan düzeltilir (araya boş kare ve ikinci kurulum girmez).
+  const first = groups[0]?.process.id
+  const process = findProcess(processId) ?? (first ? findProcess(first) : undefined)
+  const fix = !findProcess(processId) && first ? processLink(box.id, first) : null
+  useEffect(() => {
+    if (fix) navigate(fix, { replace: true })
+  }, [fix, navigate])
 
   useFrame([
     START_CRUMB,
     WF_CRUMB,
-    ...(process
-      ? [
-          { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
-          { label: boxProcessCaption(box, process), icon: `process:${process.id}` },
-        ]
-      : [{ label: box.title, icon: `box:${box.id}` }]),
+    { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
+    ...(process ? [{ label: boxProcessCaption(box, process), icon: `process:${process.id}` }] : []),
   ])
 
-  if (processId && !process) return <Navigate to={boxLink(box.id)} replace />
-
   return (
-    <Box className="flex min-w-0 flex-1 flex-col gap-3">
-      <Band
-        box={box}
-        compact={!!process}
-        settings={settings}
-        onChange={setSettings}
-        groups={groups}
-        processId={process?.id}
-      />
-      {process ? (
-        <RequestGrid
-          key={`${box.id}/${process.id}`}
-          box={box}
-          process={process}
-          range={box.history ? settings.range : undefined}
-        />
+    <Box className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
+      <Band box={box} settings={settings} onChange={setSettings} />
+      {groups.length === 0 && !process ? (
+        <Card className={cn(card, 'lg:flex-1')}>
+          <EmptyNote text="Gösterilecek veri yok." />
+        </Card>
       ) : (
-        <ProcessBento box={box} groups={groups} />
-      )}
-    </Box>
-  )
-}
-
-/* --- Kutu sütunu ------------------------------------------------------------------------------- */
-
-/** Seçili kutunun zemini kutudan kutuya kayar (geçmiş kutularında açık ton + halka). */
-function BoxItem({ b, washed }: { b: WorkBox; washed?: boolean }) {
-  const Icon = b.icon
-  return (
-    <ListBox.Item
-      id={b.id}
-      href={boxLink(b.id)}
-      textValue={b.label}
-      className={cn(
-        // Ana ve geçmiş kutuları aynı yükseklikte; ana kutular kalın yazıyla ayrışır
-        'relative h-11 bg-surface px-4 transition-colors data-hovered:bg-surface-hover',
-        !washed && 'data-selected:text-accent-foreground',
-      )}
-    >
-      {({ isSelected }) => (
-        <>
-          {isSelected && (
-            <Indicator
-              id="box-column"
-              className={
-                washed
-                  ? 'bg-accent-soft ring-2 ring-accent-soft-foreground ring-inset'
-                  : 'bg-accent'
-              }
-            />
+        // Süreç kartı ızgarayla aynı boyda (aşağıya kadar uzanır)
+        <Box className="flex flex-col gap-3 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch">
+          <ProcessList box={box} groups={groups} selectedId={process?.id} />
+          {process && (
+            <Box className="flex w-full min-w-0 flex-1 flex-col lg:min-h-0">
+              <RequestGrid
+                key={`${box.id}/${process.id}`}
+                box={box}
+                process={process}
+                range={box.history ? settings.range : undefined}
+              />
+            </Box>
           )}
-          <Icon {...IC} size={washed ? 16 : 18} className="relative" />
-          <Text
-            slot="label"
-            truncate
-            className={cn('relative text-current', washed ? 'text-sm' : 'font-semibold')}
-          >
-            {b.label}
-          </Text>
-        </>
+        </Box>
       )}
-    </ListBox.Item>
-  )
-}
-
-function BoxColumn({ current }: { current: WorkBox }) {
-  return (
-    <Box className="sticky top-0 hidden w-60 xl:block">
-      <ListBox
-        aria-label="İş Akış Yönetimi"
-        selectionMode="single"
-        selectedKeys={[current.id]}
-        className="p-0"
-      >
-        <ListBox.Section className="gap-2">
-          {mainBoxes.map((b) => (
-            <BoxItem key={b.id} b={b} />
-          ))}
-        </ListBox.Section>
-        <ListBox.Section className="mt-4 gap-2">
-          <Header>{HISTORY_GROUP_LABEL}</Header>
-          {historyBoxes.map((b) => (
-            <BoxItem key={b.id} b={b} washed />
-          ))}
-        </ListBox.Section>
-      </ListBox>
     </Box>
-  )
-}
-
-/** Dar ekran: bandın başında kutu seçici (kutular ikonlarıyla). */
-function BoxSwitcher({ current }: { current: WorkBox }) {
-  const Icon = current.icon
-  const band = useBand()
-  const items = (boxes: WorkBox[]) =>
-    boxes.map((b) => (
-      <Dropdown.Item key={b.id} id={b.id} href={boxLink(b.id)} textValue={b.label}>
-        <b.icon {...IC} className="text-muted" />
-        {b.label}
-        <Dropdown.ItemIndicator />
-      </Dropdown.Item>
-    ))
-  return (
-    <Dropdown>
-      <Button
-        variant="secondary"
-        aria-label={`Kutu: ${current.label}`}
-        className={cn(band.on, 'xl:hidden')}
-      >
-        <Icon {...IC} />
-        {current.label}
-        <ChevronDown {...IC} size={14} />
-      </Button>
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu
-          aria-label="İş Akış Yönetimi"
-          selectionMode="single"
-          selectedKeys={[current.id]}
-        >
-          <Dropdown.Section>{items(mainBoxes)}</Dropdown.Section>
-          <Dropdown.Section>
-            <Header>{HISTORY_GROUP_LABEL}</Header>
-            {items(historyBoxes)}
-          </Dropdown.Section>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
   )
 }
 
@@ -239,57 +138,31 @@ function BoxSwitcher({ current }: { current: WorkBox }) {
 
 function Band({
   box,
-  compact,
   settings,
   onChange,
-  groups,
-  processId,
 }: {
   box: WorkBox
-  compact: boolean
   settings: ListSettings
   onChange: (s: ListSettings) => void
-  groups: ProcessGroup[]
-  processId: string | undefined
 }) {
   const Icon = box.icon
   // Vurgu gücüne göre band (tema paneli)
   const band = useBand()
   return (
-    // Band yerinde durur (kutu değişince yalnızca altındaki içerik belirir); süreç seçilince iç boşluğu yumuşakça daralır
-    <Card
-      className={cn(
-        'gap-4 transition-[padding] duration-300 [--field-background:var(--surface)]',
-        band.band,
-        compact ? 'p-4' : 'p-6',
-      )}
-    >
+    <Card className={cn('shrink-0 gap-4 p-5 [--field-background:var(--surface)]', band.band)}>
       <Box className="flex flex-wrap items-center gap-3">
-        <BoxSwitcher current={box} />
-        {/* `min-w-48`: telefonda geçiş düğmesinin yanında "Bekleye…" diye kırpılıyordu; sığmazsa alt satıra iner */}
         <Box className="flex min-w-48 flex-1 items-center gap-3">
-          {!compact && <Icon {...IC_BLOCK} size={26} />}
-          {compact ? (
-            <Link href={boxLink(box.id)} className="min-w-0 text-current">
-              <Typography
-                {...inline}
-                truncate
-                weight="bold"
-                className="font-display text-2xl text-current"
-              >
-                {box.title}
-              </Typography>
-            </Link>
-          ) : (
-            <Typography.Heading
-              level={1}
-              truncate
-              weight="bold"
-              className="font-display text-2xl text-current sm:text-[2rem]"
-            >
-              {box.title}
-            </Typography.Heading>
-          )}
+          <Icon {...IC_BLOCK} size={26} />
+          <Typography.Heading
+            level={1}
+            truncate
+            weight="bold"
+            // `data-tab-cue`: kutu değişince kısa kayarak yenilenir (TabEnter)
+            data-tab-cue
+            className="font-display text-2xl text-current"
+          >
+            {box.title}
+          </Typography.Heading>
         </Box>
         <Box className="flex flex-wrap items-end gap-2">
           <KaroSearch
@@ -312,104 +185,88 @@ function Band({
           onChange={(range) => onChange({ ...settings, range })}
         />
       )}
-
-      {/* Süreç sekmeleri: kap birincil rengin üstünde yarı saydam, seçili sekme beyaz */}
-      {compact && (
-        <Tabs selectedKey={processId ?? ''} className="min-w-0 animate-rise">
-          <Scroll orientation="horizontal" hideScrollBar className="min-w-0">
-            <Tabs.ListContainer
-              className={cn('w-max', band.light ? 'bg-surface/70' : 'bg-current/10')}
-            >
-              <Tabs.List aria-label={box.title}>
-                {groups.map(({ process: p, count }) => (
-                  <Tabs.Tab
-                    key={p.id}
-                    id={p.id}
-                    href={processLink(box.id, p.id)}
-                    className={cn(
-                      'gap-2 whitespace-nowrap data-selected:text-foreground',
-                      band.light ? 'text-foreground/75' : 'text-current',
-                    )}
-                  >
-                    <Tabs.Indicator />
-                    <Typography
-                      {...inline}
-                      className="relative text-sm text-current"
-                      title={processCaption(p)}
-                    >
-                      {box.id === 'taslaklar' ? p.form : p.name}
-                    </Typography>
-                    <Chip size="sm" variant="soft" className="relative min-w-6 justify-center">
-                      <Count value={count} />
-                    </Chip>
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs.ListContainer>
-          </Scroll>
-        </Tabs>
-      )}
     </Card>
   )
 }
 
-/* --- A: süreç karoları ------------------------------------------------------------------------- */
+/* --- Süreç listesi ----------------------------------------------------------------------------- */
 
-function ProcessBento({ box, groups }: { box: WorkBox; groups: ProcessGroup[] }) {
-  if (!groups.length)
-    return (
-      <Card className={RISE}>
-        <EmptyNote text="Gösterilecek veri yok." />
-      </Card>
-    )
-  const countLabel = box.id === 'taslaklar' ? 'Taslak Sayısı' : 'Talep Sayısı'
+/**
+ * Soldaki süreç listesi (%20): proje üstte küçük, süreç adı, talep sayısı; seçili süreç dolu
+ * birincil renkte ve seçim zemini süreçten sürece kayar. Uzun listede kendi içinde kayar.
+ */
+function ProcessList({
+  box,
+  groups,
+  selectedId,
+}: {
+  box: WorkBox
+  groups: ProcessGroup[]
+  selectedId: string | undefined
+}) {
+  const isDraft = box.id === 'taslaklar'
+  const countLabel = isDraft ? 'Taslak Sayısı' : 'Talep Sayısı'
   return (
-    // Kompakt kartlar: geniş ekranda satırda 6
-    <Box
-      role="list"
-      aria-label={box.title}
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
-    >
-      {/* Karo üzerine gelince kalkar, gölge derinleşir, ikon büyür */}
-      {groups.map(({ process: p, count }) => (
-        <Box role="listitem" key={p.id} className="flex">
-          <Link
-            href={processLink(box.id, p.id)}
-            aria-label={`${processCaption(p)}, ${countLabel} ${count}`}
-            className="w-full no-underline"
-          >
-            <Card
+    <Card className={cn(card, 'w-full shrink-0 gap-1 p-2 lg:min-h-0 lg:w-1/5 lg:min-w-56')}>
+      <Box aria-hidden className="flex justify-between px-3 pt-1 pb-1.5">
+        {['Süreç', countLabel].map((t) => (
+          <Text key={t} tone="muted" className="text-xs">
+            {t}
+          </Text>
+        ))}
+      </Box>
+      <Scroll
+        className="flex max-h-[60dvh] flex-col gap-0.5 lg:max-h-none lg:min-h-0 lg:flex-1"
+        role="navigation"
+        aria-label={box.title}
+      >
+        {groups.length === 0 && (
+          <Text tone="muted" className="px-3 py-6 text-center text-sm">
+            Gösterilecek veri yok.
+          </Text>
+        )}
+        {groups.map(({ process: p, count }) => {
+          const on = p.id === selectedId
+          const Icon = p.icon
+          return (
+            <Link
+              key={p.id}
+              href={processLink(box.id, p.id)}
+              aria-current={on ? 'page' : undefined}
+              aria-label={`${processCaption(p)}, ${countLabel} ${count}`}
               className={cn(
-                'group/tile h-full min-h-28 w-full gap-3 p-4 transition duration-200 hover:-translate-y-1 hover:bg-surface-secondary hover:shadow-[0_12px_28px_-14px_oklch(0_0_0/0.3)]',
-                card,
+                'relative flex w-full items-center gap-3 rounded-xl px-3 py-2 no-underline transition-colors hover:no-underline',
+                on ? 'text-accent-foreground' : 'text-foreground hover:bg-surface-secondary',
               )}
             >
-              <Box className="flex items-start justify-between gap-2">
-                <TintIcon
-                  icon={p.icon}
-                  size="sm"
-                  className="transition-transform duration-200 group-hover/tile:scale-110"
-                />
+              {on && <Indicator id="wf-process" className="bg-accent" />}
+              <Icon {...IC} className="relative shrink-0 opacity-80" />
+              <Box className="relative min-w-0 flex-1">
+                <Typography {...inline} truncate className="block text-xs text-current! opacity-65">
+                  {p.project}
+                </Typography>
                 <Typography
                   {...inline}
-                  weight="bold"
-                  className="font-display text-2xl leading-none"
+                  truncate
+                  weight="medium"
+                  className="block text-sm text-current!"
                 >
-                  <Count value={count} />
+                  {isDraft ? p.form : p.name}
                 </Typography>
               </Box>
-              <Box className="mt-auto min-w-0">
-                <Text tone="muted" truncate className="block text-xs">
-                  {p.project}
-                </Text>
-                <Typography {...inline} weight="semibold" className="line-clamp-2 text-sm">
-                  {box.id === 'taslaklar' ? p.form : p.name}
-                </Typography>
-              </Box>
-            </Card>
-          </Link>
-        </Box>
-      ))}
-    </Box>
+              <Chip
+                size="sm"
+                className={cn(
+                  'relative min-w-7 justify-center font-semibold',
+                  on ? 'bg-accent-foreground text-accent' : 'bg-surface-secondary',
+                )}
+              >
+                <Count value={count} />
+              </Chip>
+            </Link>
+          )
+        })}
+      </Scroll>
+    </Card>
   )
 }

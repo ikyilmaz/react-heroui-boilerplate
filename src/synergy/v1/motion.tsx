@@ -246,7 +246,7 @@ export function DirectionalPanels<T extends string>({
   }, [index])
   const transition = useTransition({ duration: 0.26, ease: [0.22, 1, 0.36, 1] })
   return (
-    <Box role="tabpanel" className={cn('relative overflow-x-clip', className)}>
+    <Box role="tabpanel" className={cn('relative overflow-clip', className)}>
       <AnimatePresence initial={false} mode="popLayout" custom={dir}>
         <MotionBox
           key={active}
@@ -264,6 +264,42 @@ export function DirectionalPanels<T extends string>({
           {render(active)}
         </MotionBox>
       </AnimatePresence>
+    </Box>
+  )
+}
+
+/**
+ * Sekme içeriği geçişi, form sekmelerindeki gibi (FormTabs.tsx): içerik kaymadan, solmadan anında
+ * değişir; yalnızca başlıktaki işaretli öğeler (`data-tab-cue`: başlık, sayı) sayaçlardaki gibi
+ * aşağıdan kısa kayar. İlk açılışta oynamaz.
+ */
+export function TabEnter<T extends string>({
+  active,
+  children,
+  className,
+}: {
+  active: T
+  children: ReactNode
+  className?: string
+}) {
+  const prev = useRef(active)
+  // Yalnızca sekme gerçekten değişince oynar (ilk açılışta değil)
+  const moved = useRef(false)
+  if (active !== prev.current) moved.current = true
+  useEffect(() => {
+    prev.current = active
+  }, [active])
+  return (
+    <Box
+      key={active}
+      role="tabpanel"
+      className={cn(
+        moved.current &&
+          '[&_[data-tab-cue]]:animate-[tick-up_calc(0.18s*var(--motion-time,1))_cubic-bezier(0.22,1,0.36,1)_both]',
+        className,
+      )}
+    >
+      {children}
     </Box>
   )
 }

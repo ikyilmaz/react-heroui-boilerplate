@@ -8,7 +8,6 @@ import {
   Card,
   Link,
   ListBox,
-  Pagination,
   Select,
   Table,
   ToggleButton,
@@ -39,6 +38,19 @@ import { Cell, cellValue } from '@/synergy/v1/hr/HrCells'
 import { STATUS_DOT } from '@/synergy/v1/hr/HrFields'
 import { HrInspector } from '@/synergy/v1/hr/HrInspector'
 import { CompanyAdmins, PropertyRelations } from '@/synergy/v1/hr/HrSpecial'
+import {
+  CardGroup,
+  CardList,
+  GRID_CELL,
+  GRID_CONTENT,
+  GRID_HEAD,
+  GRID_ROW,
+  GRID_ROW_SELECTED,
+  GridCard,
+  GridFooter,
+  ViewSwitch,
+  useGridView,
+} from '@/synergy/v1/DataGrid'
 import { MENU, MODULES, PARENTS, findModule, type ModuleDef } from '@/synergy/v1/hr/modules'
 
 /*
@@ -52,6 +64,9 @@ export const HR_BASE = '/insan-kaynaklari'
 const hrLink = (module: HrModule, id?: string) => `${HR_BASE}/${module}${id ? `/${id}` : ''}`
 
 const PAGE_SIZES = [10, 20, 50] as const
+
+/** Düzenleme kartının genişliği (geniş ekran); açılış animasyonu da bu değere gider. */
+const INSPECTOR_W = '30rem'
 
 interface ListState {
   search: string
@@ -292,15 +307,6 @@ function Band({ def, count, children }: { def: ModuleDef; count: number; childre
 
 /* --- Tablo modülleri --------------------------------------------------------------------------- */
 
-function pageItems(page: number, count: number): (number | 'gap')[] {
-  const out: (number | 'gap')[] = []
-  for (let i = 1; i <= count; i++) {
-    if (i === 1 || i === count || Math.abs(i - page) <= 1) out.push(i)
-    else if (out[out.length - 1] !== 'gap') out.push('gap')
-  }
-  return out
-}
-
 function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | undefined }) {
   const navigate = useNavigate()
   const all = useHrRecords(def.id)
@@ -358,6 +364,23 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
     !!st.sort ||
     (def.status && st.status !== 'Aktif') ||
     (def.company && st.company !== 'Tümü')
+
+  const [view, setView] = useGridView(`hr:${def.id}`)
+  const statusCol = def.columns.find((c) => c.kind === 'status')
+  const deleteButton = (r: HrRecord) => (
+    <Tip label={HR_LABELS.delete}>
+      <Button
+        isIconOnly
+        size="sm"
+        variant="ghost"
+        aria-label={`${HR_LABELS.delete}: ${def.titleOf(r)}`}
+        onPress={() => setDeleting(r)}
+        className="text-muted data-hovered:text-danger"
+      >
+        <Trash2 {...IC} />
+      </Button>
+    </Tip>
+  )
 
   useFrame([
     START_CRUMB,
@@ -431,200 +454,164 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
 
       <Box className="flex flex-col items-start gap-3 xl:min-h-0 xl:flex-1 xl:flex-row xl:items-stretch">
         <Card className={cn(card, 'w-full min-w-0 flex-1 gap-3 p-4 xl:min-h-0')}>
-          {/* Durum süzgeci: bölümlü seçici, sayılarıyla */}
-          {def.status && (
-            <ToggleButtonGroup
-              aria-label={HR_LABELS.status}
-              selectionMode="single"
-              disallowEmptySelection
-              selectedKeys={[st.status]}
-              onSelectionChange={(k) => set({ status: String([...k][0]), page: 1 })}
-              isDetached
-              className="w-fit gap-1 rounded-xl bg-surface-secondary p-1"
-            >
-              {[...STATUSES, 'Tümü'].map((s) => (
-                <ToggleButton
-                  key={s}
-                  id={s}
-                  size="sm"
-                  variant="ghost"
-                  className="relative gap-1.5 rounded-lg px-3 data-selected:bg-transparent data-selected:font-semibold"
+          {/* Solda durum süzgeci (bölümlü seçici, sayılarıyla), sağda tablo / kart seçici */}
+          <Box className="flex shrink-0 flex-wrap items-center gap-3">
+            {def.status && (
+              <ToggleButtonGroup
+                aria-label={HR_LABELS.status}
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={[st.status]}
+                onSelectionChange={(k) => set({ status: String([...k][0]), page: 1 })}
+                isDetached
+                className="w-fit gap-1 rounded-xl bg-surface-secondary p-1"
+              >
+                {[...STATUSES, 'Tümü'].map((s) => (
+                  <ToggleButton
+                    key={s}
+                    id={s}
+                    size="sm"
+                    variant="ghost"
+                    className="relative gap-1.5 rounded-lg px-3 data-selected:bg-transparent data-selected:font-semibold"
+                  >
+                    {({ isSelected }) => (
+                      <>
+                        {isSelected && (
+                          <Indicator id={`hr-status-${def.id}`} className="bg-surface shadow-sm" />
+                        )}
+                        {s !== 'Tümü' && (
+                          <Box
+                            aria-hidden
+                            className={cn(
+                              'relative size-2 rounded-full',
+                              STATUS_DOT[s as keyof typeof STATUS_DOT],
+                            )}
+                          />
+                        )}
+                        <Text className="relative text-current">
+                          {s === 'Tümü' ? HR_LABELS.all : s}
+                        </Text>
+                        <Typography {...inline} className="relative font-mono text-xs text-muted!">
+                          {s === 'Tümü' ? all.length : all.filter((r) => r.status === s).length}
+                        </Typography>
+                      </>
+                    )}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            )}
+            <ViewSwitch view={view} onChange={setView} className="ms-auto" />
+          </Box>
+
+          {view === 'cards' ? (
+            // Kart görünümü: ilk sütun başlık, durum rozet, kalan sütunlar alan; kendi içinde kayar
+            <CardList className="xl:min-h-0 xl:flex-1">
+              {pageRows.length === 0 && <EmptyNote text={HR_LABELS.noData} />}
+              {pageRows.length > 0 && (
+                <CardGroup listLabel={def.label}>
+                  {pageRows.map((r) => (
+                    <GridCard
+                      key={r.id}
+                      onOpen={() => navigate(hrLink(def.id, r.id))}
+                      selected={r.id === recordId}
+                      className={leaving(r.id) || undefined}
+                      title={<Cell r={r} col={def.columns[0]!} />}
+                      badge={statusCol && <Cell r={r} col={statusCol} />}
+                      fields={def.columns
+                        .slice(1)
+                        .filter((c) => c !== statusCol)
+                        .map((c) => ({ label: c.label, value: <Cell r={r} col={c} /> }))}
+                      actions={def.deletable && deleteButton(r)}
+                    />
+                  ))}
+                </CardGroup>
+              )}
+            </CardList>
+          ) : (
+            <Table variant="secondary" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+              {/* Tablo kendi içinde kayar; başlık satırı üstte kalır */}
+              <Table.ScrollContainer className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+                <Table.Content
+                  aria-label={def.label}
+                  className={GRID_CONTENT}
+                  sortDescriptor={st.sort ?? undefined}
+                  onSortChange={(sort) => set({ sort, page: 1 })}
+                  onRowAction={(key) => navigate(hrLink(def.id, String(key)))}
                 >
-                  {({ isSelected }) => (
-                    <>
-                      {isSelected && (
-                        <Indicator id={`hr-status-${def.id}`} className="bg-surface shadow-sm" />
-                      )}
-                      {s !== 'Tümü' && (
-                        <Box
-                          aria-hidden
-                          className={cn(
-                            'relative size-2 rounded-full',
-                            STATUS_DOT[s as keyof typeof STATUS_DOT],
+                  <Table.Header className="sticky top-0 z-10">
+                    {[
+                      ...def.columns.map((c, i) => (
+                        <Table.Column
+                          key={c.key}
+                          id={c.key}
+                          allowsSorting
+                          isRowHeader={i === 0}
+                          className={GRID_HEAD}
+                        >
+                          {({ sortDirection }) => (
+                            <Table.SortableColumnHeader sortDirection={sortDirection}>
+                              {c.label}
+                            </Table.SortableColumnHeader>
                           )}
-                        />
-                      )}
-                      <Text className="relative text-current">
-                        {s === 'Tümü' ? HR_LABELS.all : s}
-                      </Text>
-                      <Typography {...inline} className="relative font-mono text-xs text-muted!">
-                        {s === 'Tümü' ? all.length : all.filter((r) => r.status === s).length}
-                      </Typography>
-                    </>
-                  )}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
+                        </Table.Column>
+                      )),
+                      ...(def.deletable
+                        ? [
+                            <Table.Column key="__del" id="__del" className={cn(GRID_HEAD, 'w-px')}>
+                              <Text className="sr-only">{HR_LABELS.delete}</Text>
+                            </Table.Column>,
+                          ]
+                        : []),
+                    ]}
+                  </Table.Header>
+                  <Table.Body renderEmptyState={() => <EmptyNote text={HR_LABELS.noData} />}>
+                    {pageRows.map((r) => (
+                      <Table.Row
+                        key={r.id}
+                        id={r.id}
+                        className={cn(
+                          GRID_ROW,
+                          r.id === recordId && GRID_ROW_SELECTED,
+                          leaving(r.id),
+                        )}
+                      >
+                        {[
+                          ...def.columns.map((c, i) => (
+                            <Table.Cell
+                              key={c.key}
+                              className={cn(GRID_CELL, i === 0 && 'font-medium text-foreground')}
+                            >
+                              <Cell r={r} col={c} />
+                            </Table.Cell>
+                          )),
+                          ...(def.deletable
+                            ? [
+                                <Table.Cell key="__del" className="w-px">
+                                  {deleteButton(r)}
+                                </Table.Cell>,
+                              ]
+                            : []),
+                        ]}
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
           )}
 
-          <Table variant="secondary" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-            {/* Tablo kendi içinde kayar; başlık satırı üstte kalır */}
-            <Table.ScrollContainer className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-              <Table.Content
-                aria-label={def.label}
-                sortDescriptor={st.sort ?? undefined}
-                onSortChange={(sort) => set({ sort, page: 1 })}
-                onRowAction={(key) => navigate(hrLink(def.id, String(key)))}
-              >
-                <Table.Header className="sticky top-0 z-10">
-                  {[
-                    ...def.columns.map((c, i) => (
-                      <Table.Column
-                        key={c.key}
-                        id={c.key}
-                        allowsSorting
-                        isRowHeader={i === 0}
-                        className="whitespace-nowrap after:content-none"
-                      >
-                        {({ sortDirection }) => (
-                          <Table.SortableColumnHeader sortDirection={sortDirection}>
-                            {c.label}
-                          </Table.SortableColumnHeader>
-                        )}
-                      </Table.Column>
-                    )),
-                    ...(def.deletable
-                      ? [
-                          <Table.Column key="__del" id="__del" className="w-px after:content-none">
-                            <Text className="sr-only">{HR_LABELS.delete}</Text>
-                          </Table.Column>,
-                        ]
-                      : []),
-                  ]}
-                </Table.Header>
-                <Table.Body renderEmptyState={() => <EmptyNote text={HR_LABELS.noData} />}>
-                  {pageRows.map((r) => (
-                    <Table.Row
-                      key={r.id}
-                      id={r.id}
-                      className={cn(
-                        'cursor-pointer transition-colors *:h-12 *:border-b-0 hover:*:bg-accent-soft/40',
-                        r.id === recordId && '*:bg-accent-soft/70 hover:*:bg-accent-soft/70',
-                        leaving(r.id),
-                      )}
-                    >
-                      {[
-                        ...def.columns.map((c) => (
-                          <Table.Cell key={c.key} className="whitespace-nowrap">
-                            <Cell r={r} col={c} />
-                          </Table.Cell>
-                        )),
-                        ...(def.deletable
-                          ? [
-                              <Table.Cell key="__del" className="w-px">
-                                <Tip label={HR_LABELS.delete}>
-                                  <Button
-                                    isIconOnly
-                                    size="sm"
-                                    variant="ghost"
-                                    aria-label={`${HR_LABELS.delete}: ${def.titleOf(r)}`}
-                                    onPress={() => setDeleting(r)}
-                                    className="text-muted data-hovered:text-danger"
-                                  >
-                                    <Trash2 {...IC} />
-                                  </Button>
-                                </Tip>
-                              </Table.Cell>,
-                            ]
-                          : []),
-                      ]}
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Content>
-            </Table.ScrollContainer>
-          </Table>
-
           {rows.length > 0 && (
-            <Box className="flex flex-wrap items-center justify-between gap-3">
-              <Select
-                aria-label="Sayfa boyutu"
-                value={String(st.pageSize)}
-                onChange={(v) => v && set({ pageSize: Number(v), page: 1 })}
-                className="w-32"
-              >
-                <Select.Trigger>
-                  <Select.Value />
-                  <Select.Indicator />
-                </Select.Trigger>
-                <Select.Popover>
-                  <ListBox aria-label="Sayfa boyutu seçenekleri">
-                    {PAGE_SIZES.map((n) => (
-                      <ListBox.Item key={n} id={String(n)} textValue={`${n} satır`}>
-                        {n} satır
-                        <ListBox.ItemIndicator />
-                      </ListBox.Item>
-                    ))}
-                  </ListBox>
-                </Select.Popover>
-              </Select>
-              <Pagination aria-label="Sayfalar" size="sm">
-                <Pagination.Summary>
-                  <Typography type="body-xs" color="muted">
-                    {from + 1}–{Math.min(from + st.pageSize, rows.length)} / {rows.length}
-                  </Typography>
-                </Pagination.Summary>
-                <Pagination.Content>
-                  <Pagination.Item>
-                    <Pagination.Previous
-                      aria-label="Önceki sayfa"
-                      isDisabled={page <= 1}
-                      onPress={() => set({ page: page - 1 })}
-                    >
-                      <Pagination.PreviousIcon />
-                    </Pagination.Previous>
-                  </Pagination.Item>
-                  {pageItems(page, pageCount).map((it, i) =>
-                    it === 'gap' ? (
-                      <Pagination.Item key={`gap-${i}`}>
-                        <Pagination.Ellipsis />
-                      </Pagination.Item>
-                    ) : (
-                      <Pagination.Item key={it}>
-                        <Pagination.Link
-                          aria-label={`Sayfa ${it}`}
-                          aria-current={it === page ? 'page' : undefined}
-                          isActive={it === page}
-                          onPress={() => set({ page: it })}
-                          className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-                        >
-                          {it}
-                        </Pagination.Link>
-                      </Pagination.Item>
-                    ),
-                  )}
-                  <Pagination.Item>
-                    <Pagination.Next
-                      aria-label="Sonraki sayfa"
-                      isDisabled={page >= pageCount}
-                      onPress={() => set({ page: page + 1 })}
-                    >
-                      <Pagination.NextIcon />
-                    </Pagination.Next>
-                  </Pagination.Item>
-                </Pagination.Content>
-              </Pagination>
-            </Box>
+            <GridFooter
+              page={page}
+              pageCount={pageCount}
+              from={from}
+              shown={Math.min(st.pageSize, rows.length - from)}
+              total={rows.length}
+              pageSize={st.pageSize}
+              sizes={PAGE_SIZES}
+              onPage={(p) => set({ page: p })}
+              onPageSize={(pageSize) => set({ pageSize, page: 1 })}
+            />
           )}
         </Card>
 
@@ -634,11 +621,13 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
             <MotionBox
               key="inspector"
               initial={wide ? { width: 0, opacity: 0 } : { opacity: 0, y: 12 }}
-              animate={wide ? { width: 480, opacity: 1 } : { opacity: 1, y: 0 }}
+              // Kartın kendi genişliğiyle aynı birim (rem): tema ölçeği değişince sağda boşluk kalmasın
+              animate={wide ? { width: INSPECTOR_W, opacity: 1 } : { opacity: 1, y: 0 }}
               exit={wide ? { width: 0, opacity: 0 } : { opacity: 0, y: 12 }}
               transition={slide}
               className="w-full shrink-0 overflow-hidden xl:h-full"
             >
+              {/* Genişlik `INSPECTOR_W` ile aynı */}
               <Box className="w-full xl:h-full xl:w-[30rem]">
                 <HrInspector
                   key={recordId}

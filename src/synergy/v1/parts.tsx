@@ -112,13 +112,16 @@ export function Tip({
   label,
   children,
   placement = 'top',
+  isDisabled,
 }: {
   label: string
   children: ReactElement
   placement?: 'top' | 'bottom' | 'right' | 'left'
+  /** Kapalıyken ipucu açılmaz (yapı aynı kalır). */
+  isDisabled?: boolean
 }) {
   return (
-    <Tooltip delay={400}>
+    <Tooltip delay={400} isDisabled={isDisabled}>
       {children}
       <Tooltip.Content placement={placement}>{label}</Tooltip.Content>
     </Tooltip>

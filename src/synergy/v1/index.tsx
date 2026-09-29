@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { matchPath, useHref, useLocation, useNavigate } from 'react-router'
 import {
   Avatar,
@@ -23,7 +23,6 @@ import {
 } from '@heroui/react'
 import {
   ChevronLeft,
-  ChevronRight,
   FileText,
   FolderOpen,
   House,
@@ -53,20 +52,14 @@ import { card, inline } from '@/synergy/shared/tokens'
 import { Box, Text } from '@/synergy/shared/ui'
 import { BASE, FrameContext, k, type Crumb, type Frame } from '@/synergy/v1/paths'
 import { IC, Tip } from '@/synergy/v1/parts'
-import { LookContext, useThemeSettings } from '@/synergy/shared/themeSettings'
+import { LookContext, useLook, useThemeSettings } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
 import { V1_THEME } from '@/synergy/v1/theme'
 import { PARENTS, findModule } from '@/synergy/v1/hr/modules'
 import { VersionSwitch } from '@/synergy/shared/version'
-import { AnimatePresence } from 'framer-motion'
-import {
-  Indicator,
-  MotionBox,
-  MotionScope,
-  PageTransition,
-  useTransition,
-} from '@/synergy/v1/motion'
+import { Indicator, MotionScope, PageTransition } from '@/synergy/v1/motion'
 import { PerfOverlay } from '@/synergy/v1/PerfOverlay'
+import { AllAppsButton, AllAppsPanel } from '@/synergy/v1/AllApps'
 
 /*
  * Kabuk: üst çubuk (logo, konum hapları, uygulama araması, kullanıcı) ve solda uygulama rafı
@@ -201,94 +194,145 @@ function crumbIcon(key: string | undefined): LucideIcon | undefined {
 }
 
 /**
- * Konum bölümü. Önceki konumlar yalnızca ikon (ad ipucunda ve ekran okuyucuda), bulunulan yer dolu
- * birincil renkte ve adıyla açık. Bulunulan yer değişince eski bölümün adı büzülerek kapanır
- * (öğe aynı kaldığı için `grid-template-columns` geçişi oynar).
+ * Konum bölümü. Önceki konumlar yalnızca ikon (adı ipucunda ve ekran okuyucuda), bulunulan yer dolu
+ * birincil renkte ve adıyla açık. Bölüm sıraya göre anahtarlı olduğundan aynı öğe kalır:
+ * - bulunulan yer değişince eski bölümün adı solarak büzülür, zemini birincil renkten yüzeye döner
+ *   (yukarı çıkınca tersi: ad açılır, zemin dolar);
+ * - aynı sıradaki konum değişince (ör. başka süreç) hap yerinde kalır, yalnızca ikon ve ad kısa bir
+ *   bulanık solmayla yenilenir (ilk kurulumda değil; girişi `Crumbs` oynatır).
  */
 function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
   const Icon = crumbIcon(c.icon)
   const open = current || !Icon
+  // Ad değişince (aynı sırada başka konum) içerik yenilenme animasyonuyla yeniden kurulur; ilk
+  // kurulumda oynamaz. Bir kez değişince sınıf kalır (aynı öğede yeniden oynamaz)
+  const prevLabel = useRef(c.label)
+  const swapped = useRef(false)
+  if (prevLabel.current !== c.label) {
+    swapped.current = true
+    prevLabel.current = c.label
+  }
   const part = (
     <Box
-      {...({ title: open ? undefined : c.label } as Record<string, unknown>)}
       className={cn(
-        'flex h-9 min-w-0 items-center rounded-full px-2.5 text-sm whitespace-nowrap transition-colors duration-200',
+        'flex h-8 min-w-0 items-center rounded-full px-2 text-sm whitespace-nowrap transition-[background-color,color,box-shadow] duration-[calc(240ms*var(--motion-time,1))] ease-out',
         current
           ? 'bg-accent font-semibold text-accent-foreground'
-          : cn('bg-surface text-muted hover:text-foreground', card),
+          : cn(
+              'bg-surface text-muted group-hover:bg-surface-secondary group-hover:text-foreground group-data-[hovered=true]:bg-surface-secondary group-data-[hovered=true]:text-foreground',
+              card,
+            ),
       )}
     >
-      {Icon && <Icon {...IC} size={16} className="shrink-0" />}
       <Box
-        className={cn(
-          'grid min-w-0 transition-[grid-template-columns] duration-[calc(280ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
-          open ? 'grid-cols-[1fr]' : 'grid-cols-[0fr]',
-        )}
+        key={c.label}
+        className={cn('flex min-w-0 items-center', swapped.current && 'animate-crumb-swap')}
       >
-        <Text
+        {Icon && <Icon {...IC} size={16} className="shrink-0" />}
+        <Box
           className={cn(
-            'min-w-0 overflow-hidden text-current',
-            current ? 'max-w-[28rem]' : 'max-w-80',
-            Icon && open && 'ps-1.5 pe-1',
+            'grid min-w-0 transition-[grid-template-columns] duration-[calc(300ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
+            open ? 'grid-cols-[1fr]' : 'grid-cols-[0fr]',
           )}
         >
-          <Text className="block truncate text-current">{c.label}</Text>
-        </Text>
+          <Text
+            className={cn(
+              'min-w-0 overflow-hidden text-current transition-opacity duration-[calc(180ms*var(--motion-time,1))]',
+              current ? 'max-w-[28rem]' : 'max-w-80',
+              open ? 'opacity-100' : 'opacity-0',
+            )}
+          >
+            {/* İç boşluk kırpılan kutunun içinde: kapanınca hap tam yuvarlak kalır */}
+            <Text className={cn('block truncate text-current', Icon && 'ps-1.5 pe-1')}>
+              {c.label}
+            </Text>
+          </Text>
+        </Box>
       </Box>
     </Box>
   )
-  if (current || !c.href) return <Box aria-current={current ? 'page' : undefined}>{part}</Box>
+  // Yapı hep aynı (ipucu + bağlantı) ki bulunulan yer değişince öğe yeniden kurulmasın ve ad
+  // büzülme / açılma geçişi oynasın; adresi olmayan bölüm (ör. süreç) pasif bağlantı
   return (
-    <Link
-      href={c.href}
-      aria-label={c.label}
-      className="rounded-full no-underline hover:no-underline"
-    >
-      {part}
-    </Link>
+    <Tip label={c.label} placement="bottom" isDisabled={open}>
+      <Link
+        href={c.href}
+        isDisabled={!c.href}
+        aria-current={current ? 'page' : undefined}
+        aria-label={c.label}
+        // Basınca hafifçe içe göçer (büyüme yok)
+        className="group rounded-full no-underline transition-transform duration-150 hover:no-underline active:scale-95 data-[disabled=true]:cursor-default data-[disabled=true]:opacity-100 data-[disabled=true]:active:scale-100"
+      >
+        {part}
+      </Link>
+    </Tip>
   )
 }
 
+/** Çıkan bölümün solma süresi (ms; hız çarpanıyla bölünür). */
+const CRUMB_OUT_MS = 180
+
 /**
- * Konum çubuğu: ayrı küçük haplar, aralarında ince oklar; tüm konum hep görünür (önceki konumlar
- * ikon). Her değişiklik animasyonlu: giren bölüm genişleyerek sağdan kayar, çıkan bölüm sola kayıp
- * kapanır; adı değişen bölümde eskisi kapanırken yenisi aynı yerde açılır.
+ * Konum çubuğu: ayrı küçük haplar, aralarında eğik çizgi; tüm konum hep görünür (önceki konumlar
+ * ikon). Animasyonlar:
+ * - yeni bölüm (derine inince) çizgisiyle birlikte soldan hafifçe kayıp büyüyerek belirir;
+ * - çıkan bölüm (yukarı çıkınca) kısa süre yerinde küçülerek solar, sonra kalkar; sondan çıktığı
+ *   için diğer bölümler kıpırdamaz;
+ * - bölümlerin kendi değişimleri `CrumbPart`'ta (ad büzülmesi, renk, yenilenme).
+ * Kademeli (stagger) giriş yok; animasyon kapalıyken hepsi anında.
  */
 function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
-  const transition = useTransition({ duration: 0.3, ease: [0.22, 1, 0.36, 1] })
-  // Tek bölüm bulunulan sayfanın kendisi (ör. Başlangıç); göstermeye gerek yok (liste çıkış animasyonuyla boşalır)
-  const shown = crumbs.length < 2 ? [] : crumbs
+  const look = useLook()
+  // Tek bölüm bulunulan sayfanın kendisi (ör. Başlangıç); göstermeye gerek yok
+  const shown = crumbs.length < 2 ? NO_CRUMBS : crumbs
+  const key = JSON.stringify(shown)
+  const [state, setState] = useState({ key, list: shown, tail: NO_CRUMBS })
+  if (state.key !== key) {
+    // Sondan düşen bölümler solarak çıksın diye kısa süre tutulur
+    const tail = state.list.length > shown.length ? state.list.slice(shown.length) : NO_CRUMBS
+    setState({ key, list: shown, tail })
+  }
+  const tail = state.tail
+  useEffect(() => {
+    if (!tail.length) return
+    const ms = look.motion === 'off' ? 0 : CRUMB_OUT_MS / look.speed
+    const t = window.setTimeout(() => setState((s) => ({ ...s, tail: NO_CRUMBS })), ms)
+    return () => window.clearTimeout(t)
+  }, [tail, look.motion, look.speed])
+
+  if (!shown.length && !tail.length) return null
+  const items = [
+    ...shown.map((c) => ({ c, leaving: false })),
+    ...tail.map((c) => ({ c, leaving: true })),
+  ]
   return (
     <Box role="navigation" aria-label="Konum" className="min-w-0">
       <Box role="list" className="flex min-w-0 flex-nowrap items-center">
-        <AnimatePresence initial={false}>
-          {shown.map((c, i) => (
-            <MotionBox
-              key={`${i}-${c.label}`}
-              role="listitem"
-              initial={{ opacity: 0, width: 0, x: 12 }}
-              animate={{ opacity: 1, width: 'auto', x: 0 }}
-              exit={{ opacity: 0, width: 0, x: -8 }}
-              transition={transition}
-              // Kırpma genişlik animasyonu için; 1px pay hapın çerçevesi kesilmesin
-              className="flex shrink-0 items-center overflow-hidden p-px"
-            >
-              {i > 0 && (
-                <ChevronRight
-                  aria-hidden
-                  size={14}
-                  strokeWidth={1.75}
-                  className="mx-1 shrink-0 text-muted/60"
-                />
-              )}
-              <CrumbPart c={c} current={i === shown.length - 1} />
-            </MotionBox>
-          ))}
-        </AnimatePresence>
+        {items.map(({ c, leaving }, i) => (
+          // Sıraya göre anahtarlı: bölüm yerinde kalır; yalnızca yeni sıra girer, düşen sıra çıkar
+          <Box
+            key={i}
+            role={leaving ? undefined : 'listitem'}
+            aria-hidden={leaving || undefined}
+            className={cn(
+              'flex shrink-0 origin-left items-center',
+              leaving ? 'pointer-events-none animate-crumb-out' : 'animate-crumb-in',
+            )}
+          >
+            {i > 0 && (
+              <Text aria-hidden className="mx-1.5 text-sm text-muted/50 select-none">
+                /
+              </Text>
+            )}
+            <CrumbPart c={c} current={!leaving && i === shown.length - 1} />
+          </Box>
+        ))}
       </Box>
     </Box>
   )
 }
+
+const NO_CRUMBS: Crumb[] = []
 
 function TopBar({ crumbs, onMenu }: { crumbs: Crumb[]; onMenu: () => void }) {
   return (
@@ -494,7 +538,15 @@ function ThemeSwitch({ vertical, group }: { vertical: boolean; group: string }) 
   )
 }
 
-function Dock({ current, onTheme }: { current: string | undefined; onTheme: () => void }) {
+function Dock({
+  current,
+  onTheme,
+  onApps,
+}: {
+  current: string | undefined
+  onTheme: () => void
+  onApps: () => void
+}) {
   const [expanded, setExpanded] = useState(loadExpanded)
   const toggle = () =>
     setExpanded((v) => {
@@ -531,18 +583,30 @@ function Dock({ current, onTheme }: { current: string | undefined; onTheme: () =
         </Tip>
         <DockList expanded={expanded} current={current} />
       </Box>
-      <Box
-        className={cn('flex gap-2', expanded ? 'flex-row items-center' : 'flex-col items-start')}
-      >
-        <ThemeButton onPress={onTheme} />
-        <ThemeSwitch vertical={!expanded} group="dock" />
+      <Box className="flex flex-col gap-3">
+        {/* Orijinal menünün alt bandı: tüm uygulamalar paneli */}
+        <AllAppsButton expanded={expanded} onPress={onApps} />
+        <Box
+          className={cn('flex gap-2', expanded ? 'flex-row items-center' : 'flex-col items-start')}
+        >
+          <ThemeButton onPress={onTheme} />
+          <ThemeSwitch vertical={!expanded} group="dock" />
+        </Box>
       </Box>
     </Box>
   )
 }
 
 /** Gezinme "Üstte": uygulamalar üst çubuğun altında yatay; sağda tema paneli ve tema geçişi. */
-function TopNav({ current, onTheme }: { current: string | undefined; onTheme: () => void }) {
+function TopNav({
+  current,
+  onTheme,
+  onApps,
+}: {
+  current: string | undefined
+  onTheme: () => void
+  onApps: () => void
+}) {
   return (
     <Box
       role="navigation"
@@ -568,6 +632,7 @@ function TopNav({ current, onTheme }: { current: string | undefined; onTheme: ()
           {id !== 'geri' && <Text className="relative text-current">{label}</Text>}
         </Link>
       ))}
+      <AllAppsButton expanded={false} onPress={onApps} />
       <Box className="ms-auto flex items-center gap-2">
         <ThemeButton onPress={onTheme} />
         <ThemeSwitch vertical={false} group="topnav" />
@@ -627,6 +692,7 @@ function Shell() {
   const [theme, setTheme, look] = useThemeSettings(V1_THEME)
   const topNav = look.nav === 'top'
   const [themeOpen, setThemeOpen] = useState(false)
+  const [appsOpen, setAppsOpen] = useState(false)
 
   const current = dockEntries.find(
     (e) => e.match && matchPath({ path: e.match, end: false }, pathname),
@@ -638,9 +704,21 @@ function Shell() {
         <FrameContext value={keepFrame}>
           <Box className="flex min-h-screen flex-col bg-background text-foreground antialiased">
             <TopBar crumbs={frame?.crumbs ?? []} onMenu={() => setDrawer(true)} />
-            {topNav && <TopNav current={current} onTheme={() => setThemeOpen(true)} />}
+            {topNav && (
+              <TopNav
+                current={current}
+                onTheme={() => setThemeOpen(true)}
+                onApps={() => setAppsOpen(true)}
+              />
+            )}
             <Box className="flex flex-1">
-              {!topNav && <Dock current={current} onTheme={() => setThemeOpen(true)} />}
+              {!topNav && (
+                <Dock
+                  current={current}
+                  onTheme={() => setThemeOpen(true)}
+                  onApps={() => setAppsOpen(true)}
+                />
+              )}
               <Box
                 role="main"
                 className={cn(
@@ -677,6 +755,13 @@ function Shell() {
                       onNavigate={() => setDrawer(false)}
                       group="drawer"
                     />
+                    <AllAppsButton
+                      expanded
+                      onPress={() => {
+                        setDrawer(false)
+                        setAppsOpen(true)
+                      }}
+                    />
                     <Box className="flex items-center gap-2">
                       <ThemeButton
                         onPress={() => {
@@ -690,6 +775,8 @@ function Shell() {
                 </Drawer.Dialog>
               </Drawer.Content>
             </Drawer.Root>
+
+            <AllAppsPanel isOpen={appsOpen} onOpenChange={setAppsOpen} />
 
             {/* Tema paneli › Performans › FPS'i göster */}
             {look.showFps && <PerfOverlay />}

@@ -62,10 +62,13 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 
 - `v1/` (Karo): `index.tsx` › `AppShell` (top bar, left dock, theme switch + tema paneli, `Drawer` on
   phones), `StartPage.tsx` (greeting, Favoriler / Son Kullanılan Uygulamalar, 5 category blocks,
-  process groups ↔ "Süreç Talepleri"), `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (box column
-  incl. Geçmiş, box band, process tiles, request grid with date buckets / sort / paging, fast approve,
-  draft delete), `DetailPage.tsx` + `DetailTiles.tsx` (Flow Viewer), `flow.tsx` (decision dialogs),
-  `parts.tsx`, `paths.ts`, `AppPage.tsx`, `theme.ts`. `hr/` is İnsan Kaynakları
+  process groups ↔ "Süreç Talepleri"), `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as
+  agenda tabs incl. Geçmiş (`AgendaTabs.tsx`), box band, process list (20 %) + request grid with date buckets / sort / paging, fast approve,
+  draft delete), `DataGrid.tsx` (shared grid look for every v1 table: `GRID_*` class tokens, table /
+  card `ViewSwitch` remembered per grid kind via `useGridView`, `CardList` / `CardGroup` / `GridCard`,
+  `GridFooter` with page size + pagination), `DetailPage.tsx` + `DetailTiles.tsx` (Flow Viewer), `flow.tsx` (decision dialogs),
+  `parts.tsx`, `paths.ts`, `AppPage.tsx`, `theme.ts`, `AllApps.tsx` ("Tüm uygulamalar" panel of the
+  left menu: search, order ↔ alphabetic sort, collapsible app tree from `shared/menuTree.ts`; no menu editing). `hr/` is İnsan Kaynakları
   (`/insan-kaynaklari/:module[/:recordId]`, original `modules/hr`): module navigator, band with
   search / company / status filters, sortable paged table and a slide-in edit card, all driven by
   `hr/modules.ts`; company admins and property relations have their own views (`HrSpecial.tsx`).
