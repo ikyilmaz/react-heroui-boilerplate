@@ -1,13 +1,14 @@
 /*
-  Widget look: the grid's root is the outer card and carries the toolbar, its body is the inner card.
+  Widget look: the grid's root is one card and carries the toolbar and the table.
 
-  Tones: page (0.970) → outer card `tertiary` (0.937) → header strip `surface-secondary` (0.952)
-  → inner card `default` (white). The outer card used to be `secondary`, exactly the header
-  strip's tone, so the strip disappeared. `.card` has no border, only a background; the inner card
-  gets `border-border`, or white on white shows no edge.
+  Tones: page `background` (0.953) → card `default` (the theme white, like the showcase's demo
+  cards) → header strip `surface-secondary` (0.975) and fields `field-background`. The card used to
+  be `tertiary` (0.95), which is the page tone, so it vanished; and a second white card for the
+  body only nested white in white. `.card` has no border, only a background, so it gets
+  `border-border`.
 */
 export const GRID_CARD_CLASS_NAMES = {
-  root: 'card card--tertiary w-full',
+  root: 'card card--default w-full border border-border',
   toolbar: 'justify-between gap-3',
-  body: 'card card--default min-w-0 border border-border p-2',
+  body: 'min-w-0',
 }

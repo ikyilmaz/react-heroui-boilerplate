@@ -1,0 +1,112 @@
+/*
+ * Synergy v2 — "Bento" teması (HeroUI v3 tema değişkenleri)
+ *
+ * Yalnızca v2 kabuğu açıkken geçerli: kabuk <html>'e `data-synergy="v2"` yazar. Kurallar `theme`
+ * katmanında doğrudan (alt katmansız) durur; v1 temasının ve Tailwind'in `:root` değişkenlerinin
+ * önüne geçer.
+ *
+ * Tek birincil renk mavi, degrade yok; açık tonlar sayfalarda `color-mix` ile bu renkten
+ * türetilir. Hafif mavimsi zemin, beyaz karolar, büyük yarıçap.
+ * Yazı: Plus Jakarta Sans (başlıklar kalın), numaralar JetBrains Mono.
+ */
+:root[data-synergy='v2'],
+:root[data-synergy='v2'].light,
+:root[data-synergy='v2'][data-theme='light'] {
+  color-scheme: light;
+
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius: 0.75rem;
+  --field-radius: 0.875rem;
+  --field-border-width: 1px;
+
+  --background: oklch(0.968 0.01 255);
+  --foreground: oklch(0.22 0.02 255);
+  --muted: oklch(0.53 0.015 255);
+
+  --surface: oklch(1 0 0);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: oklch(0.972 0.008 255);
+  --surface-tertiary: oklch(0.945 0.014 255);
+
+  --overlay: oklch(1 0 0);
+  --overlay-foreground: var(--foreground);
+
+  --default: oklch(0.95 0.012 255);
+  --default-foreground: var(--foreground);
+
+  --field-background: oklch(1 0 0);
+  --field-foreground: var(--foreground);
+  --field-placeholder: oklch(0.62 0.02 255);
+  --field-border: oklch(0.22 0.02 255 / 0.12);
+
+  --border: oklch(0.22 0.02 255 / 0.08);
+  --separator: oklch(0.22 0.02 255 / 0.07);
+
+  /* Tek birincil renk: mavi, üstünde beyaz metin */
+  --accent: oklch(0.56 0.16 255);
+  --accent-foreground: oklch(1 0 0);
+  --accent-soft-foreground: oklch(0.49 0.16 255);
+  --focus: oklch(0.62 0.16 255);
+
+  --success: oklch(0.62 0.15 155);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.77 0.15 75);
+  --warning-foreground: oklch(0.22 0.02 255);
+  --danger: oklch(0.6 0.21 22);
+  --danger-foreground: oklch(1 0 0);
+
+  --segment: oklch(1 0 0);
+  --segment-foreground: var(--foreground);
+  --link: var(--accent-soft-foreground);
+  --backdrop: oklch(0.22 0.02 255 / 0.35);
+
+  /* Karolar: yumuşak, hafif gölge */
+  --surface-shadow: 0 1px 2px 0 oklch(0.3 0.08 255 / 0.05), 0 8px 24px -14px oklch(0.3 0.06 255 / 0.1);
+  --overlay-shadow: 0 0 0 1px var(--border), 0 16px 40px -12px oklch(0.3 0.06 255 / 0.14);
+  --field-shadow: 0 1px 2px 0 oklch(0.3 0.08 255 / 0.05);
+}
+
+:root[data-synergy='v2'].dark,
+:root[data-synergy='v2'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --background: oklch(0.15 0.015 255);
+  --foreground: oklch(0.95 0.008 255);
+  --muted: oklch(0.68 0.02 255);
+
+  --surface: oklch(0.2 0.02 255);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: oklch(0.23 0.022 255);
+  --surface-tertiary: oklch(0.26 0.024 255);
+
+  --overlay: oklch(0.22 0.022 255);
+  --overlay-foreground: var(--foreground);
+
+  --default: oklch(0.26 0.024 255);
+  --default-foreground: var(--foreground);
+
+  --field-background: oklch(0.2 0.02 255);
+  --field-foreground: var(--foreground);
+  --field-placeholder: oklch(0.56 0.02 255);
+  --field-border: oklch(1 0 0 / 0.12);
+
+  --border: oklch(1 0 0 / 0.08);
+  --separator: oklch(1 0 0 / 0.07);
+
+  --accent: oklch(0.56 0.15 255);
+  --accent-foreground: oklch(1 0 0);
+  --accent-soft-foreground: oklch(0.8 0.1 255);
+  --focus: oklch(0.72 0.13 255);
+
+  --segment: var(--surface-tertiary);
+  --segment-foreground: var(--foreground);
+  --link: var(--accent-soft-foreground);
+  --backdrop: oklch(0 0 0 / 0.6);
+
+  --surface-shadow: 0 0 0 1px var(--border);
+  --overlay-shadow: 0 0 0 1px var(--border), 0 20px 48px -12px oklch(0 0 0 / 0.6);
+  --field-shadow: none;
+}

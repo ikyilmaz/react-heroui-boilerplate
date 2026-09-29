@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import {
   Button,
+  Card,
   Checkbox,
   EmptyState,
   ListBox,
@@ -256,11 +257,12 @@ function TransferList({
   }
 
   return (
-    <Surface
+    // Card: the panel's radius comes from HeroUI
+    <Card
       className={cn(
         // `basis-56 flex-1 min-w-0`: the two list panels share the width; a fixed one overflowed the card.
         // `max-w-[230px]`: an upper bound on growth — in a narrow container they still shrink together.
-        'flex h-72 min-w-0 max-w-[230px] flex-1 basis-56 flex-col overflow-hidden rounded-xl border border-border',
+        'h-72 min-w-0 max-w-[230px] flex-1 basis-56 gap-0 overflow-hidden border border-border p-0',
         isDisabled && 'opacity-50',
         className,
       )}
@@ -376,6 +378,6 @@ function TransferList({
           </ListBox.Item>
         ))}
       </ListBox>
-    </Surface>
+    </Card>
   )
 }

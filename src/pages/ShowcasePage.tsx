@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import {
   Button,
   Card,
@@ -37,13 +37,7 @@ import { TimePicker } from '@/components/TimePicker'
 import { Transfer, type TransferItem } from '@/components/Transfer'
 import { TreeSelect, type TreeSelectNode } from '@/components/TreeSelect'
 import { DataGridShowcase } from '@/pages/dataGridShowcase/DataGridShowcase'
-
-/**
- * Typography varsayılan olarak <p> basar; buton/etiket/satır içi kullanımda <span> gerekir.
- * `slot: null` ayrıca koleksiyon bağlamlarındaki "A slot prop is required" hatasını önler.
- * İkisi de runtime'da uygulanıyor ama tipte yok.
- */
-const inlineText = { elementType: 'span', slot: null } as unknown as Record<string, never>
+import { useMediaQuery } from '@/synergy/shared/hooks'
 
 /* -------------------------------------------------------------------------------------------------
  * Slaytlar
@@ -159,13 +153,14 @@ const DILLER = [
   { code: 'fr', label: 'Français' },
 ]
 
-
 /* -------------------------------------------------------------------------------------------------
  * Sayfa
  * ------------------------------------------------------------------------------------------------- */
 
 export function ShowcasePage() {
   const [slide, setSlide] = useState(slides[0].id)
+  // Dar ekranda dikey şerit paneli ~120px'e sıkıştırıyordu; orada şerit yatay ve kayar
+  const wide = useMediaQuery('(min-width: 768px)')
 
   // Demo durumları sayfada tutulur: RAC yalnızca seçili paneli render eder, sekme
   // değişince panel içinde tutulan durum sıfırlanırdı.
@@ -187,7 +182,6 @@ export function ShowcasePage() {
     requestAnimationFrame(() => setAnnouncement(msg))
   }, [])
 
-
   const [baslik, setBaslik] = useState('')
   const [aciklama, setAciklama] = useState('Talep formu')
   const [urunAdi, setUrunAdi] = useState('Kablosuz klavye')
@@ -197,72 +191,47 @@ export function ShowcasePage() {
   const [notMetni, setNotMetni] = useState('')
   const [notCevirileri, setNotCevirileri] = useState<Record<string, string>>({})
 
-
-  useEffect(() => {
-    document.title = 'Vitrin'
-  }, [])
-
-  const index = useMemo(
-    () =>
-      Math.max(
-        0,
-        slides.findIndex((s) => s.id === slide),
-      ),
-    [slide],
-  )
+  const index = slides.findIndex((s) => s.id === slide)
   const prev = index > 0 ? slides[index - 1] : null
   const next = index < slides.length - 1 ? slides[index + 1] : null
 
-  const goTo = (target: SlideMeta) => {
-    setSlide(target.id)
-    announce(`${target.label}, ${slides.indexOf(target) + 1} / ${slides.length}`)
-  }
+  const goTo = (target: SlideMeta) => setSlide(target.id)
 
   return (
     <Surface variant="transparent" className="flex flex-col gap-6">
-      {/* Canlı bölge: slayt ve tablo duyuruları */}
+      {/* Canlı bölge: tablo duyuruları */}
       <Typography role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </Typography>
 
-      <Typography.Heading level={1} className="text-3xl font-bold tracking-tight">
-        Vitrin
-      </Typography.Heading>
+      <Typography.Heading level={1}>Vitrin</Typography.Heading>
 
       {/* Dikey sekmeler: şerit solda, panel sağda; DOM sırası da liste → panel */}
       <Tabs
-        orientation="vertical"
+        orientation={wide ? 'vertical' : 'horizontal'}
         align="start"
         selectedKey={slide}
-        onSelectionChange={(k) => goTo(slides.find((s) => s.id === k) ?? slides[0])}
-        className="items-start gap-6"
+        onSelectionChange={(k) => setSlide(String(k))}
+        className={cn('gap-6', wide && 'items-start')}
       >
-        <Tabs.ListContainer>
-          <Tabs.List aria-label="Bileşenler" className="w-48">
+        {/* Dikey şerit hiç kaymıyor, ama HeroUI'nin kaydırma düğmesi ilk ölçümden kalma bir
+            boyamayla "HeroUI" sekmesinin altında görünüyordu; dikeyde düğmeler kapalı */}
+        <Tabs.ListContainer className={cn(wide ? '[&>button]:hidden' : 'w-full')}>
+          <Tabs.List aria-label="Bileşenler" className={cn(wide && 'w-48')}>
             {slides.map((s) => (
-              <Tabs.Tab key={s.id} id={s.id} className="gap-2">
+              <Tabs.Tab key={s.id} id={s.id} className="gap-2 whitespace-nowrap">
                 <Tabs.Indicator />
-                <Typography aria-hidden className="inline-flex" {...inlineText}>
-                  {s.icon}
-                </Typography>
-                <Typography className="whitespace-nowrap" {...inlineText}>
-                  {s.label}
-                </Typography>
+                {s.icon}
+                {s.label}
               </Tabs.Tab>
             ))}
           </Tabs.List>
         </Tabs.ListContainer>
 
-        {/* Panel sütunu: gezinme çubuğu ve slaytlar sekme şeridinin solunda akar */}
         <Surface variant="transparent" className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* Slayt gezinmesi: sekme şeridinin klavye desteğine ek olarak ileri/geri ve konum */}
-          <Toolbar aria-label="Slayt gezinmesi" className="flex w-full items-center gap-2 px-1">
-            <Chip
-              size="sm"
-              variant="soft"
-              color="default"
-              className="min-w-16 justify-center tabular-nums"
-            >
+          {/* `px-2` = Tabs.Panel'in dolgusu; çubuk slayt içeriğiyle aynı kenarlarda durur */}
+          <Toolbar aria-label="Slayt gezinmesi" className="flex w-full px-2">
+            <Chip size="sm" className="tabular-nums">
               {index + 1} / {slides.length}
             </Chip>
             <Button
@@ -272,7 +241,7 @@ export function ShowcasePage() {
               className="ml-auto"
               isDisabled={!prev}
               onPress={() => prev && goTo(prev)}
-              aria-label={prev ? `Önceki: ${prev.label}` : 'Önceki slayt yok'}
+              aria-label="Önceki slayt"
             >
               <ArrowLeft size={16} aria-hidden />
             </Button>
@@ -282,7 +251,7 @@ export function ShowcasePage() {
               isIconOnly
               isDisabled={!next}
               onPress={() => next && goTo(next)}
-              aria-label={next ? `Sonraki: ${next.label}` : 'Sonraki slayt yok'}
+              aria-label="Sonraki slayt"
             >
               <ArrowRight size={16} aria-hidden />
             </Button>
@@ -292,10 +261,8 @@ export function ShowcasePage() {
           <Tabs.Panel id="overview">
             <Surface variant="transparent" className="flex flex-col gap-2">
               {slides.slice(1).map((s) => (
-                <Card key={s.id} variant="secondary" className="flex-row items-center gap-3 py-3">
-                  <Typography color="muted" aria-hidden className="inline-flex" {...inlineText}>
-                    {s.icon}
-                  </Typography>
+                <Card key={s.id} className="flex-row items-center border border-border py-3">
+                  {s.icon}
                   <Card.Title className="flex-1">{s.label}</Card.Title>
                   <Button
                     size="sm"
@@ -356,7 +323,7 @@ export function ShowcasePage() {
                 />
               </Demo>
               <Demo title="Saat">
-                <TimePicker aria-label="Saat" value={time} onChange={setTime} className="w-96" />
+                <TimePicker aria-label="Saat" value={time} onChange={setTime} />
               </Demo>
               <Demo title="Saat, saniyeli ve 5 dk adımlı">
                 <TimePicker
@@ -364,7 +331,6 @@ export function ShowcasePage() {
                   showSecond
                   minuteStep={5}
                   defaultValue={new Time(12, 25, 30)}
-                  className="w-96"
                 />
               </Demo>
             </Slide>
@@ -505,7 +471,7 @@ export function ShowcasePage() {
           {/* ------------------------------ Transfer ------------------------------ */}
           <Tabs.Panel id="transfer">
             <Slide title="Transfer" subtitle="İki listeli seçim">
-              {/* İki liste yan yana; tek sütunda başlıklar sıkışıyor */}
+              {/* İki liste yan yana; yarım kartta başlıklar sıkışıyor */}
               <Demo title="Aramalı" full>
                 <Transfer
                   dataSource={transferData}
@@ -571,16 +537,14 @@ export function ShowcasePage() {
               </Demo>
 
               <Demo title="Salt okunur / hatalı">
-                <Surface variant="transparent" className="flex w-full flex-col items-center gap-3">
-                  <TextBox label="Kayıt no" value="#152356" isReadOnly />
-                  <TextBox
-                    label="E-posta"
-                    value="ornek(at)site"
-                    isInvalid
-                    errorMessage="Geçerli bir e-posta girin"
-                    allowClear
-                  />
-                </Surface>
+                <TextBox label="Kayıt no" value="#152356" isReadOnly />
+                <TextBox
+                  label="E-posta"
+                  value="ornek(at)site"
+                  isInvalid
+                  errorMessage="Geçerli bir e-posta girin"
+                  allowClear
+                />
               </Demo>
             </Slide>
           </Tabs.Panel>
@@ -588,10 +552,10 @@ export function ShowcasePage() {
           {/* ------------------------------ DataGrid ------------------------------ */}
           <Tabs.Panel id="table">
             <Slide title="DataGrid" subtitle="DevExtreme API'li veri tablosu — örnekler">
-              {/* Örnekler kendi kartlarını kuruyor; üstüne bir kat daha eklemiyoruz */}
-              <Surface variant="transparent" className="col-span-full min-w-0">
+              {/* Örnekler beyaz kartta (diğer bölümlerin kartlarıyla aynı çerçeve) */}
+              <Card className="col-span-full min-w-0 border border-border bg-surface p-4 sm:p-5">
                 <DataGridShowcase onAnnounce={announce} />
-              </Surface>
+              </Card>
             </Slide>
           </Tabs.Panel>
 
@@ -599,7 +563,7 @@ export function ShowcasePage() {
           <Tabs.Panel id="basics">
             <Slide title="HeroUI temelleri" subtitle="Butonlar, sayaç ve anahtarlar">
               <Demo title="Butonlar">
-                <Surface variant="transparent" className="flex flex-row flex-wrap gap-2">
+                <Surface variant="transparent" className="flex flex-wrap gap-2">
                   <Button variant="primary">Primary</Button>
                   <Button variant="secondary">Secondary</Button>
                   <Button variant="tertiary">Tertiary</Button>
@@ -610,8 +574,8 @@ export function ShowcasePage() {
                 </Surface>
               </Demo>
               <Demo title="Sayaç">
-                <Surface variant="transparent" className="flex flex-row items-center gap-3">
-                  <Typography className="min-w-12 text-3xl font-semibold tabular-nums">
+                <Surface variant="transparent" className="flex items-center gap-3">
+                  <Typography type="h3" className="min-w-8 tabular-nums">
                     {count}
                   </Typography>
                   <Button
@@ -636,16 +600,18 @@ export function ShowcasePage() {
                 </Surface>
               </Demo>
               <Demo title="Metin alanı">
-                <TextField value={name} onChange={setName} fullWidth aria-label="Metin alanı">
+                <TextField value={name} onChange={setName} aria-label="Metin alanı">
                   <Input />
                 </TextField>
               </Demo>
               <Demo title="Anahtar">
                 <Switch isSelected={notifications} onChange={setNotifications}>
-                  <Switch.Control>
-                    <Switch.Thumb />
-                  </Switch.Control>
-                  <Switch.Content>Bildirimler</Switch.Content>
+                  <Switch.Content>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                    Bildirimler
+                  </Switch.Content>
                 </Switch>
               </Demo>
             </Slide>
@@ -660,19 +626,7 @@ export function ShowcasePage() {
  * Parçalar
  * ------------------------------------------------------------------------------------------------- */
 
-/**
- * Slaydın gövdesi: demolar alt alta.
- *
- * Bilerek çerçevesiz. HeroUI'nin varsayılan (primary) alan arka planı `bg-surface`, Card'ınki de
- * öyle; kart içine alınca alanlar zemine karışıp görünmez oluyor.
- */
-/**
- * Bir slayt = sunumda bir ekran.
- *
- * Başlık + kısa bir alt satır, altında örneklerin **ızgarası**. Örnekler tek sütunda alt alta
- * dizildiğinde slayt ekrana sığmıyor ve ortalanmış dar bileşenlerin solunda kocaman bir boşluk
- * kalıyordu; ızgara ikisini birden çözüyor.
- */
+/** Bir slayt: başlık + alt satır, altında örneklerin ızgarası. */
 function Slide({
   title,
   subtitle,
@@ -683,8 +637,8 @@ function Slide({
   children: ReactNode
 }) {
   return (
-    <Surface variant="transparent" className="flex w-full flex-col gap-5">
-      <Surface variant="transparent" className="flex flex-col gap-1">
+    <Surface variant="transparent" className="flex flex-col gap-5">
+      <Surface variant="transparent">
         <Typography type="h4" weight="semibold">
           {title}
         </Typography>
@@ -695,69 +649,41 @@ function Slide({
         )}
       </Surface>
 
-      <Surface
-        variant="transparent"
-        className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3"
-      >
+      <Surface variant="transparent" className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {children}
       </Surface>
     </Surface>
   )
 }
 
-/**
- * Tek bir örnek: kendi kartı.
- *
- * Kart `secondary` (hafif gri): alanların kendi zemini beyaz, beyaz kartta kayboluyorlardı.
- * Sayfa zemini de daha açık olduğu için kart hem sayfadan hem içindeki alanlardan ayrışıyor.
- */
+/** Tek bir örnek: beyaz kart; içindeki alanlar kartı doldurur (`*:w-full`). */
 function Demo({
   title,
   children,
   raw,
   full,
-  bare,
 }: {
   title: string
   children: ReactNode
   /** Format dizgelerinde büyük/küçük harf anlamlı (D ≠ d); başlığa uppercase uygulanmaz. */
   raw?: boolean
-  /** Izgaranın tamamını kaplasın (tablo gibi geniş örnekler için). */
+  /** Izgaranın tamamını kaplasın. */
   full?: boolean
-  /** İçerik kendi kartını kuruyorsa (DataGrid widget'ı) kart sarmalayıcısını atla. */
-  bare?: boolean
 }) {
-  const baslik = (
-    <Typography
-      type="body-xs"
-      weight="medium"
-      color="muted"
-      className={raw ? 'font-mono' : 'tracking-wide uppercase'}
-      truncate
-      title={title}
-    >
-      {title}
-    </Typography>
-  )
-
-  if (bare) {
-    return (
-      <Surface variant="transparent" className="col-span-full flex w-full min-w-0 flex-col gap-2">
-        {baslik}
-        {children}
-      </Surface>
-    )
-  }
-
   return (
-    <Card
-      variant="secondary"
-      className={cn('min-w-0 gap-3 border border-border', full && 'col-span-full')}
-    >
-      <Card.Header>{baslik}</Card.Header>
-      <Card.Content className="flex-1 flex-row flex-wrap items-center justify-center gap-3">
-        {children}
-      </Card.Content>
+    <Card className={cn('min-w-0 border border-border', full && 'col-span-full')}>
+      <Card.Header>
+        <Typography
+          type="body-xs"
+          weight="medium"
+          color="muted"
+          className={raw ? 'font-mono' : 'uppercase'}
+          truncate
+        >
+          {title}
+        </Typography>
+      </Card.Header>
+      <Card.Content className="gap-3 *:w-full">{children}</Card.Content>
     </Card>
   )
 }

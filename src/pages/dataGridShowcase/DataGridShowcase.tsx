@@ -46,7 +46,7 @@ export function DataGridShowcase({ onAnnounce }: { onAnnounce: (message: string)
         </Tabs.List>
       </Tabs.ListContainer>
       {DATA_GRID_VARIANTS.map((v) => (
-        <Tabs.Panel key={v.id} id={v.id} className="min-w-0">
+        <Tabs.Panel key={v.id} id={v.id} className="min-w-0 px-0">
           <Surface variant="transparent" className="flex min-w-0 flex-col gap-3">
             <Typography type="body-sm" color="muted">
               {v.description}

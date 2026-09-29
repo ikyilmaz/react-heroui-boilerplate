@@ -183,14 +183,7 @@ export function DateTimePicker({
         // Sabit genişlik: alanlar format'tan bağımsız olarak hizalı dursun. En uzun makul
         // format ("dddd, MMMM D, YYYY h:mm A" ≈ 330px) sığacak kadar geniş; daha uzun bir
         // format verilirse `className` ile büyütülür.
-        className={cn(
-          'w-96 max-w-full',
-          // Grubun h-9'u ve segmentlerin py-2'si inmeli; ölçüler alan grubunda, kökte değil
-          compact &&
-            '[&_[data-slot=date-input-group]]:h-8 [&_[data-slot=date-input-group-input]]:py-1',
-
-          className,
-        )}
+        className={cn('w-96 max-w-full', className)}
         aria-label={label ? undefined : ariaLabel}
         name={name}
         value={value}
@@ -211,13 +204,13 @@ export function DateTimePicker({
       >
         {label && <Label>{label}</Label>}
 
-        <DateField.Group fullWidth>
-          {/* HeroUI prefix'e `pointer-events: none` veriyor; içine tıklanabilir bir şey koyunca geri açmak gerekiyor */}
+        {/* Sıkı boy: grubun h-9'u ve segmentlerin py-2'si iner */}
+        <DateField.Group fullWidth className={cn(compact && 'h-8')}>
           {/* HeroUI prefix'e `pointer-events: none` ve `ms-3` veriyor; ikisini de geri alıyoruz */}
           {prefix && (
             <DateField.Prefix className="pointer-events-auto mx-0">{prefix}</DateField.Prefix>
           )}
-          <DateField.Input>
+          <DateField.Input className={cn(compact && 'py-1')}>
             {(segment) =>
               tokens ? (
                 <FormatSegments segment={segment} tokens={tokens} locale={locale} />

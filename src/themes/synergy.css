@@ -1,0 +1,111 @@
+/*
+ * Synergy — Temiz beyaz tema (HeroUI v3 tema değişkenleri)
+ *
+ * Tamamen opak; saydamlık ve bulanıklık yok. Zemin çok hafif soğuk gri, yüzeyler saf beyaz.
+ * Katmanlar ince kontur ve çok düşük, kısa gölgelerle ayrılır (kağıt hissi).
+ * Tek birincil renk (`--accent`) dolu, koyu mavi; durum renkleri yalnızca durum için.
+ */
+@layer base {
+  :root,
+  .light,
+  [data-theme='light'] {
+    color-scheme: light;
+
+    --font-sans:
+      'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    --radius: 0.5rem;
+    --field-radius: 1rem;
+    --field-border-width: 0.5px;
+
+    --background: oklch(0.96 0.003 250);
+    --foreground: oklch(0.21 0.01 260);
+    --muted: oklch(0.52 0.01 260);
+
+    --surface: oklch(1 0 0);
+    --surface-foreground: var(--foreground);
+    --surface-secondary: oklch(0.975 0.003 250);
+    --surface-tertiary: oklch(0.955 0.004 250);
+
+    --overlay: oklch(1 0 0);
+    --overlay-foreground: var(--foreground);
+
+    --default: oklch(0.955 0.004 250);
+    --default-foreground: var(--foreground);
+
+    --field-background: oklch(1 0 0);
+    --field-foreground: var(--foreground);
+    --field-placeholder: oklch(0.62 0.01 260);
+    --field-border: oklch(0.21 0.01 260 / 0.14);
+
+    --border: oklch(0.21 0.01 260 / 0.09);
+    --separator: oklch(0.21 0.01 260 / 0.07);
+
+    /* Tek birincil renk: dolu koyu mavi, üstünde beyaz metin */
+    --accent: oklch(0.5 0.16 262);
+    --accent-foreground: oklch(1 0 0);
+    --accent-soft-foreground: oklch(0.48 0.16 262);
+    --focus: oklch(0.58 0.16 262);
+
+    --success: oklch(0.6 0.15 152);
+    --success-foreground: oklch(1 0 0);
+    --warning: oklch(0.76 0.16 80);
+    --warning-foreground: oklch(0.21 0.01 260);
+    --danger: oklch(0.6 0.21 25);
+    --danger-foreground: oklch(1 0 0);
+
+    --segment: oklch(1 0 0);
+    --segment-foreground: var(--foreground);
+    --link: var(--accent-soft-foreground);
+    --backdrop: oklch(0.21 0.01 260 / 0.35);
+
+    /* Kağıt gibi: kontur + çok kısa, düşük gölge */
+    --surface-shadow: none;
+    --overlay-shadow:
+      0 0 0 1px var(--border), 0 4px 12px -2px oklch(0.21 0.01 260 / 0.08),
+      0 12px 32px -8px oklch(0.21 0.01 260 / 0.1);
+    --field-shadow: 0 1px 1px 0 oklch(0.21 0.01 260 / 0.03);
+  }
+
+  .dark,
+  [data-theme='dark'] {
+    color-scheme: dark;
+
+    --background: oklch(0.15 0.006 260);
+    --foreground: oklch(0.96 0.003 250);
+    --muted: oklch(0.68 0.01 260);
+
+    --surface: oklch(0.21 0.007 260);
+    --surface-foreground: var(--foreground);
+    --surface-secondary: oklch(0.235 0.008 260);
+    --surface-tertiary: oklch(0.26 0.008 260);
+
+    --overlay: oklch(0.23 0.008 260);
+    --overlay-foreground: var(--foreground);
+
+    --default: oklch(0.27 0.008 260);
+    --default-foreground: var(--foreground);
+
+    --field-background: oklch(0.21 0.007 260);
+    --field-foreground: var(--foreground);
+    --field-placeholder: oklch(0.58 0.01 260);
+    --field-border: oklch(1 0 0 / 0.12);
+
+    --border: oklch(1 0 0 / 0.08);
+    --separator: oklch(1 0 0 / 0.06);
+
+    /* 0.62'de beyaz metin ~3:1 kalıyordu; 0.52 ile bantlarda AA (~5:1) */
+    --accent: oklch(0.52 0.15 262);
+    --accent-foreground: oklch(1 0 0);
+    --accent-soft-foreground: oklch(0.78 0.11 262);
+    --focus: oklch(0.72 0.13 262);
+
+    --segment: var(--surface-tertiary);
+    --segment-foreground: var(--foreground);
+    --link: var(--accent-soft-foreground);
+    --backdrop: oklch(0 0 0 / 0.6);
+
+    --surface-shadow: 0 0 0 1px var(--border);
+    --overlay-shadow: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
+    --field-shadow: 0 0 0 0 transparent;
+  }
+}

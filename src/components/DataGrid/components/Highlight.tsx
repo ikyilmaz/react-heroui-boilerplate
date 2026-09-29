@@ -22,7 +22,7 @@ export interface HighlightProps {
 export const Highlight = memo(function Highlight({
   text,
   query,
-  className = 'rounded-sm bg-warning-soft text-warning-soft-foreground',
+  className = 'bg-warning-soft text-warning-soft-foreground',
 }: HighlightProps) {
   const highlight = useContext(SearchHighlightContext)
   const needle = (query ?? highlight.text).trim()

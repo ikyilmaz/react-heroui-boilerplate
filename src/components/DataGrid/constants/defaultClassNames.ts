@@ -4,12 +4,12 @@ import type { DataGridClassNames } from '../types/DataGridClassNames'
   Why these look the way they do:
 
   - Row highlights (hover / selected / editing) are painted on cells, not on `tr`: a `tr` cannot be
-    rounded, and HeroUI paints the row background on cells too (table.css: "applied to cells so
+    and HeroUI paints the row background on cells too (table.css: "applied to cells so
     Firefox clips bg to border-radius"). So the outer corners of the first/last cell are rounded;
     the size follows the theme radius, capped at 16px.
   - Column lines: a short centred vertical divider between columns, like HeroUI's header
-    (`.table__column::after`); painting a cell border cut through the rounded row highlight. The
-    pseudo-element rule is under `.data-grid` in `index.css`.
+    (`.table__column::after`); painting a cell border cut through the row highlight. The
+    divider is an `after:` pseudo-element written with Tailwind arbitrary variants.
   - Compact rows: 2.75rem high, shortened padding; the 2rem controls inside still fit in edit mode.
   - Row gap: the table is already `border-separate` + `border-spacing-0`; `tr` takes no margin.
   - Cells get `max-w-0`, which stops auto layout growing min-content with the text so `truncate`
@@ -31,15 +31,15 @@ export const DEFAULT_CLASS_NAMES: DataGridClassNames = {
   selectionCell: 'whitespace-nowrap px-3',
   commandCell: 'whitespace-nowrap',
   row: 'h-11 [&>td]:py-1',
-  rowCorners:
-    '[&>td:first-child]:rounded-s-[min(16px,var(--radius-2xl))] [&>td:last-child]:rounded-e-[min(16px,var(--radius-2xl))]',
+  rowCorners: '',
   editRow: '[&>td]:bg-accent-soft/30',
   selectedRow: '[&[data-selected=true]>td]:bg-accent-soft',
   noHover: '[&:hover>td]:bg-transparent [&[data-hovered=true]>td]:bg-transparent',
   alternateRow: '[&>td]:bg-default/40',
   rowLines: '[&_tbody_td]:border-b [&_tbody_td]:border-separator',
-  columnLines: 'data-grid',
-  borders: 'rounded-2xl border border-separator',
+  columnLines:
+    "[&_tbody_td]:relative [&_tbody_td:not(:last-child)]:after:pointer-events-none [&_tbody_td:not(:last-child)]:after:absolute [&_tbody_td:not(:last-child)]:after:end-0 [&_tbody_td:not(:last-child)]:after:top-1/2 [&_tbody_td:not(:last-child)]:after:h-4 [&_tbody_td:not(:last-child)]:after:w-px [&_tbody_td:not(:last-child)]:after:-translate-y-1/2 [&_tbody_td:not(:last-child)]:after:bg-separator [&_tbody_td:not(:last-child)]:after:content-['']",
+  borders: 'border border-separator',
   wordWrap: '[&_td]:whitespace-normal [&_td_*]:whitespace-normal',
   filterCell: 'flex items-center',
   /*
@@ -52,5 +52,5 @@ export const DEFAULT_CLASS_NAMES: DataGridClassNames = {
   noData: 'py-16',
   pager: 'px-1',
   loadPanel:
-    'absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-2xl bg-background/60 backdrop-blur-[1px]',
+    'absolute inset-0 z-20 flex items-center justify-center gap-2 bg-background/60 backdrop-blur-[1px]',
 }

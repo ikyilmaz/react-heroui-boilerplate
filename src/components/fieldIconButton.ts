@@ -31,7 +31,7 @@ export const ICON_MUTED = 'text-muted hover:text-muted'
  * `FIELD_ICON_BUTTON` kullanılır. Öğenin bileşeni sabit olan yerlerde (RAC tetikleyicileri,
  * `Select.Indicator`, düz ikon kutusu) varyant sınıflarını da içeren `fieldIconButton` verilir.
  */
-export const FIELD_ICON_BUTTON = cn('size-6 min-w-6 rounded-full', ICON_MUTED)
+export const FIELD_ICON_BUTTON = cn('size-6 min-w-6', ICON_MUTED)
 
 /** `FIELD_ICON_BUTTON`, `ghost` ikon-buton varyantının sınıflarıyla birlikte. */
 export const fieldIconButton = cn(
@@ -67,9 +67,9 @@ export const LIST_ITEM_SELECTED =
 
 /**
  * Önek/sonek kabı: kenardan 4px, düğmeler arasından 4px. Bütün alanlarda aynı olsun diye
- * buradan veriliyor.
+ * buradan veriliyor. `border-0`: HeroUI `.input-group__suffix`'e ayraç çizgisi çiziyor; kaldırıldı.
  */
-export const FIELD_AFFIX = 'flex items-center gap-1 px-1'
+export const FIELD_AFFIX = 'flex items-center gap-1 border-0 px-1'
 
 /**
  * Alan içi ikon boyutu. HeroUI `.button--sm svg`'yi zaten 16px'e sabitliyor; kaynakta da aynı

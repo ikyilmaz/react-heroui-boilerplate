@@ -1,23 +1,49 @@
-import { createBrowserRouter } from 'react-router'
+import { Navigate, createBrowserRouter } from 'react-router'
 import { RootLayout } from '@/components/layout/RootLayout'
 import { ShowcasePage } from '@/pages/ShowcasePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { WorkspaceShell } from '@/pages/workspace/WorkspaceShell'
-import { WorkspacePage } from '@/pages/workspace/WorkspacePage'
-import { WorkflowsPage } from '@/pages/workflows/WorkflowsPage'
-import { ProcessRequestsPage } from '@/pages/workflows/ProcessRequestsPage'
-import { RequestDetailPage } from '@/pages/workflows/RequestDetailPage'
+import { AppShell } from '@/synergy/v1'
+import { StartPage } from '@/synergy/v1/StartPage'
+import { WorkflowPage } from '@/synergy/v1/WorkflowPage'
+import { DetailPage } from '@/synergy/v1/DetailPage'
+import { KaroAppPage } from '@/synergy/v1/AppPage'
+import { BentoShell } from '@/synergy/v2'
+import { BentoStart } from '@/synergy/v2/StartPage'
+import { BentoWorkflow } from '@/synergy/v2/WorkflowPage'
+import { BentoDetail } from '@/synergy/v2/DetailPage'
+import { BentoAppPage } from '@/synergy/v2/AppPage'
 
 export const router = createBrowserRouter([
-  // Kendi kabuğu (üst menü + ikon rayı) olan maket sayfaları; RootLayout dışında
+  // v1 ("Karo", orijinal Synergy özellikleri): kendi kabuğu (üst çubuk + uygulama rafı) ile
   {
-    Component: WorkspaceShell,
+    Component: AppShell,
     children: [
-      { path: '/calisma-alani', Component: WorkspacePage },
-      { path: '/is-akislari', Component: WorkflowsPage },
-      { path: '/is-akislari/:box', Component: WorkflowsPage },
-      { path: '/is-akislari/:box/:processId', Component: ProcessRequestsPage },
-      { path: '/is-akislari/:box/:processId/:requestId', Component: RequestDetailPage },
+      // Başlangıç (orijinaldeki "Başlangıç" paneli)
+      { path: '/calisma-alani', Component: StartPage },
+      // Menü uygulamaları (Favoriler / Son Kullanılan Uygulamalar)
+      { path: '/uygulamalar/:appId', Component: KaroAppPage },
+      // İş Akış Yönetimi: kutu → süreç → talepler
+      { path: '/is-akislari', element: <Navigate to="/is-akislari/bekleyen" replace /> },
+      { path: '/is-akislari/gecmis', element: <Navigate to="/is-akislari/gecmis-onaylar" replace /> },
+      { path: '/is-akislari/:box', Component: WorkflowPage },
+      { path: '/is-akislari/:box/:processId', Component: WorkflowPage },
+      // Talep ayrıntısı (Flow Viewer)
+      { path: '/is-akislari/:box/:processId/:requestId', Component: DetailPage },
+    ],
+  },
+  // v2 ("Bento"): aynı sayfalar `/v2` önekiyle, kendi kabuğu ve teması ile
+  {
+    path: '/v2',
+    Component: BentoShell,
+    children: [
+      { index: true, element: <Navigate to="/v2/calisma-alani" replace /> },
+      { path: 'calisma-alani', Component: BentoStart },
+      { path: 'uygulamalar/:appId', Component: BentoAppPage },
+      { path: 'is-akislari', element: <Navigate to="/v2/is-akislari/bekleyen" replace /> },
+      { path: 'is-akislari/gecmis', element: <Navigate to="/v2/is-akislari/gecmis-onaylar" replace /> },
+      { path: 'is-akislari/:box', Component: BentoWorkflow },
+      { path: 'is-akislari/:box/:processId', Component: BentoWorkflow },
+      { path: 'is-akislari/:box/:processId/:requestId', Component: BentoDetail },
     ],
   },
   {

@@ -55,7 +55,7 @@ export const Pager = memo(function Pager({
             value={String(pageSize)}
             onChange={(v) => v && onPageSizeChange(Number(v))}
           >
-            <Select.Trigger className="h-8 min-h-0 items-center rounded-full py-1 pe-8">
+            <Select.Trigger className="h-8 min-h-0 items-center py-1 pe-8">
               <Select.Value />
               <FieldSelectIndicator />
             </Select.Trigger>

@@ -2,7 +2,6 @@ import { NavLink, useNavigate } from 'react-router'
 import { Button, Surface, Typography } from '@heroui/react'
 import { LayoutDashboard } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { ThemeTweaker } from '@/components/ThemeTweaker'
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -17,11 +16,10 @@ export function Navbar() {
           <Typography weight="semibold">HeroUI Boilerplate</Typography>
         </NavLink>
         <Surface variant="transparent" className="flex items-center gap-1">
-          <Button variant="secondary" size="sm" className="rounded-full" onPress={() => navigate('/calisma-alani')}>
+          <Button variant="secondary" size="sm" className="" onPress={() => navigate('/calisma-alani')}>
             <LayoutDashboard size={16} aria-hidden />
             Çalışma Alanı
           </Button>
-          <ThemeTweaker />
           <ThemeToggle />
         </Surface>
       </Surface>

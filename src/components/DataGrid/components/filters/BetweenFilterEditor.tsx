@@ -78,7 +78,7 @@ export function BetweenFilterEditor<TRow>({
           variant="ghost"
           size="sm"
           aria-label={label}
-          className="h-7 min-w-0 flex-1 justify-start rounded-none px-3 font-normal"
+          className="h-7 min-w-0 flex-1 justify-start px-3 font-normal"
         >
           <Typography type="body-sm" color={empty ? 'muted' : undefined} truncate>
             {empty ? `${texts.betweenStartText} – ${texts.betweenEndText}` : `${show(start)} – ${show(end)}`}

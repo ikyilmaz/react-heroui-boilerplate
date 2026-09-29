@@ -85,33 +85,7 @@ export function NumberBox({
   return (
     <I18nProvider locale={locale}>
       <NumberField
-        className={cn(
-          'w-80 max-w-full',
-          // Grubun kendi h-9'u da inmeli; yoksa alan komşularından bir tık yüksek kalıyor
-          compact &&
-            '[&_[data-slot=number-field-group]]:h-8 [&_[data-slot=number-field-input]]:h-8 [&_[data-slot=number-field-input]]:py-1',
-          /*
-            Grid şablonu HeroUI'de `:has([slot="decrement"])` ile açılıyor ve sütunları 40px
-            veriyor — düğmeler 24px'e indiği için her yanda 8px ölü alan kalıyor, input'un kendi
-            12px dolgusuyla birlikte metin 52px içeriden başlıyordu. Sütunları düğmeye göre
-            daraltıp input'un dolgusunu kısıyoruz (sınıflar statik olmalı: Tailwind kaynağı tarar).
-          */
-          showControls &&
-            '[&_[data-slot=number-field-group]]:grid-cols-[auto_1fr_auto] [&_[data-slot=number-field-input]]:px-1',
-          !showControls &&
-            prefix &&
-            !clearVisible &&
-            '[&_[data-slot=number-field-group]]:grid-cols-[auto_1fr]',
-          !showControls &&
-            !prefix &&
-            clearVisible &&
-            '[&_[data-slot=number-field-group]]:grid-cols-[1fr_auto]',
-          !showControls &&
-            prefix &&
-            clearVisible &&
-            '[&_[data-slot=number-field-group]]:grid-cols-[auto_1fr_auto]',
-          className,
-        )}
+        className={cn('w-80 max-w-full', className)}
         variant={variant}
         aria-label={label ? undefined : ariaLabel}
         name={name}
@@ -131,8 +105,12 @@ export function NumberBox({
       >
         {label && <Label>{label}</Label>}
 
-        {/* Düğmeler alanın iki yanında; HeroUI onları `slot="decrement"/"increment"` ile tanıyor */}
-        <NumberField.Group>
+        {/*
+          Düğmeler alanın iki yanında; HeroUI onları `slot="decrement"/"increment"` ile tanıyor.
+          Grup `flex`: HeroUI'nin ızgarası düğmelere 40px sütun ayırıyor (düğmeler 24px), önek /
+          temizle için de ayrı şablon gerekiyordu; flex'te her parça kendi genişliğinde.
+        */}
+        <NumberField.Group className={cn('flex items-center', compact && 'h-8')}>
           {prefix && (
             <Surface variant="transparent" className="flex items-center">
               {prefix}
@@ -154,7 +132,10 @@ export function NumberBox({
               <Minus size={FIELD_ICON_SIZE} aria-hidden />
             </Button>
           )}
-          <NumberField.Input placeholder={placeholder} />
+          <NumberField.Input
+            placeholder={placeholder}
+            className={cn('flex-1', showControls && 'px-1', compact && 'h-8 py-1')}
+          />
           {showControls && (
             <Button
               slot="increment"

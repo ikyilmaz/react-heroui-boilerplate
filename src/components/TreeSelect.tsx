@@ -1,5 +1,7 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
+// HeroUI'nin `InputGroup.Input`'u da budur: RAC Input + grubun `input` yuvası (bağlamı ComboBox verir)
+import { Input } from 'react-aria-components'
 
 import {
   Button,
@@ -7,7 +9,6 @@ import {
   Chip,
   ComboBox,
   EmptyState,
-  Input,
   ListBox,
   Surface,
   Tag,
@@ -509,8 +510,8 @@ export function TreeSelect(props: TreeSelectProps) {
         <TreeInput
           placeholder={hasValue && isMultiple ? undefined : placeholder}
           isReadOnly={!showSearch}
-          // Kutu artık grupta; Input yalnızca yazı alanı
-          className="h-auto min-h-0 min-w-16 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 focus:border-0 focus:bg-transparent focus:shadow-none focus:ring-0"
+          // Kutu grupta; yazı alanı HeroUI'nin grup içi girdisi (şeffaf, kenarsız, flex-1)
+          className={cn(fieldSlots.input(), 'min-w-16 p-0') ?? ''}
           onExpand={setExpand}
           onBackspace={() => {
             if (isMultiple && displayKeys.length) removeValue(displayKeys[displayKeys.length - 1])
