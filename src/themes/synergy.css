@@ -1,5 +1,5 @@
 /*
- * Synergy — Temiz beyaz tema (HeroUI v3 tema değişkenleri)
+ * Synergy — Temiz beyaz tema (tema değişkenleri; antd `synergy/ant/theme.tsx` ve Tailwind `index.css` bunları okur)
  *
  * Tamamen opak; saydamlık ve bulanıklık yok. Zemin çok hafif soğuk gri, yüzeyler saf beyaz.
  * Katmanlar ince kontur ve çok düşük, kısa gölgelerle ayrılır (kağıt hissi).
@@ -14,6 +14,9 @@
     --font-sans:
       'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
     --radius: 0.5rem;
+    /* Kenarlık kalınlığı ve boşluk birimi (tema paneli değiştirir) */
+    --border-width: 1px;
+    --spacing: 0.25rem;
     --field-radius: 1rem;
     --field-border-width: 0.5px;
 
@@ -44,6 +47,8 @@
     --accent: oklch(0.5 0.16 262);
     --accent-foreground: oklch(1 0 0);
     --accent-soft-foreground: oklch(0.48 0.16 262);
+    /* Birincil rengin yumuşak zemini (seçili öğeler, rozetler) */
+    --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
     --focus: oklch(0.58 0.16 262);
 
     --success: oklch(0.6 0.15 152);

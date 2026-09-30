@@ -1,1 +1,0 @@
-export const DEFAULT_UPDATE_VALUE_TIMEOUT = 300

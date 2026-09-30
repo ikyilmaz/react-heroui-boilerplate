@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react'
+import { useLocation, useNavigationType } from 'react-router'
 
 /** Medya sorgusu eşleşiyor mu; değişince yeniden çizer. */
 export function useMediaQuery(query: string) {
@@ -43,4 +44,42 @@ export function useFillHeight(bottom = '1.5rem') {
     return () => window.removeEventListener('resize', measure)
   }, [el])
   return [setEl, { '--fill-h': `calc(100dvh - ${top}px - ${bottom})` } as CSSProperties] as const
+}
+
+const HISTORY_MAX_KEY = 'synergy-history-max'
+
+/** Tarayıcı geçmişindeki sıra (react-router her kayda `idx` yazar). */
+const historyIndex = () => (window.history.state as { idx?: number } | null)?.idx ?? 0
+
+/**
+ * Uygulama içi geri / ileri gidilebilir mi (yalnızca rota geçmişi). Geri: sıra 0'dan büyükse.
+ * İleri: tarayıcı ileride kaç kayıt olduğunu söylemez; gidilen en ileri sıra tutulur. Yeni bir
+ * yere gidince (PUSH) ilerideki kayıtlar silindiği için en ileri sıra şimdiki olur. Sayfa
+ * yenilenince ilerideki kayıtlar durduğu için değer oturumda (`sessionStorage`) saklanır.
+ */
+export function useRouteHistory() {
+  const { key } = useLocation()
+  const type = useNavigationType()
+  const idx = historyIndex()
+  const [max, setMax] = useState(() => {
+    try {
+      return Math.max(idx, Number(sessionStorage.getItem(HISTORY_MAX_KEY) ?? 0))
+    } catch {
+      return idx
+    }
+  })
+  useEffect(() => {
+    setMax((m) => {
+      const next = type === 'PUSH' ? idx : Math.max(m, idx)
+      try {
+        sessionStorage.setItem(HISTORY_MAX_KEY, String(next))
+      } catch {
+        // Depolama kapalıysa yalnızca bu oturumda
+      }
+      return next
+    })
+    // Her gezinmede (konum anahtarı değişince) yeniden hesaplanır
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return { canBack: idx > 0, canForward: idx < max }
 }

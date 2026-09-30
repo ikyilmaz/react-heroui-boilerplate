@@ -14,7 +14,7 @@ export interface MenuNode {
   id: string
   caption: string
   icon?: LucideIcon
-  /** Yaprağın adresi (paylaşılan biçim; sürüm öneki çağıranda). Klasörde yok. */
+  /** Yaprağın adresi (uygulama içi yol). Klasörde yok. */
   href?: string
   /** Sıra numarası (orijinal orderIndex). */
   order: number

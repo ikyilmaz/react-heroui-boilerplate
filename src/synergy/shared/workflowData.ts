@@ -1482,7 +1482,7 @@ export function initials(name: string) {
 
 const avatarColors = ['success', 'accent', 'default'] as const
 
-/** Avatar rengi (HeroUI `Avatar color`) isme göre sabit seçilir; aynı kişi her yerde aynı renkte. */
+/** Avatar rengi isme göre sabit seçilir; aynı kişi her yerde aynı renkte. */
 export function avatarColor(name: string): (typeof avatarColors)[number] {
   return avatarColors[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % avatarColors.length]
 }
@@ -1515,11 +1515,6 @@ export function formatLongDate(d: Date) {
 /** Cumartesi */
 export function formatWeekday(d: Date) {
   return weekdayFmt.format(d)
-}
-
-/** Kısa tarih + saat (ör. "26 Eylül 14:05"). */
-export function dateTime(date: Date) {
-  return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(date)
 }
 
 /**

@@ -1,14 +1,13 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { useTheme } from '@heroui/react'
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react'
 
 /* -------------------------------------------------------------------------------------------------
- * Tema paneli ayarları (sürümlerden bağımsız)
+ * Tema paneli ayarları
  *
- * Temel tema sürümün tema dosyasında durur. Panelde değişen her ayar yalnızca kendi CSS
+ * Temel tema `src/themes/synergy.css`'te durur. Panelde değişen her ayar yalnızca kendi CSS
  * değişkenlerini <html>'e satır içi yazar (açık / koyu için ayrı hesaplanır); varsayılanda kalan
  * ayarlar hiçbir şey yazmaz, tema dosyası geçerli kalır. Düğme biçimi <html>'e sınıf olarak eklenir
  * (açılır pencereler de kapsansın). Vurgu gücü ve gezinme sayfalara `LookContext` ile gider.
- * Kabuktan çıkınca hepsi silinir. Her sürüm varsayılanını ve hazır temalarını verir (`ThemeKit`).
+ * Kabuktan çıkınca hepsi silinir. Varsayılan ve hazır temalar `synergy/theme.ts`'te (`ThemeKit`).
  * ------------------------------------------------------------------------------------------------- */
 
 export type Background = 'neutral' | 'cool' | 'warm' | 'tinted'
@@ -16,13 +15,15 @@ export type FontId = 'bricolage' | 'inter' | 'jakarta' | 'figtree' | 'geist'
 export type Shadow = 'none' | 'soft' | 'strong'
 export type CardStyle = 'filled' | 'outlined' | 'elevated'
 /**
- * `default`: sürümün kendi karışımı (ör. v1'de karşılama dolu, talep başlığı beyaz). `medium`:
+ * `default`: uygulamanın kendi karışımı (karşılama dolu, talep başlığı beyaz). `medium`:
  * belirgin açık ton, `outline`: beyaz zemin + birincil çerçeve, `ink`: nötr koyu zemin.
  */
 export type AccentStrength = 'default' | 'soft' | 'medium' | 'solid' | 'outline' | 'ink'
 export type ButtonShape = 'default' | 'pill' | 'square'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
+/** Sayfa geçişi efekti (ekran tümüyle değişince); `off` anında. */
+export type PageEffect = 'off' | 'fade' | 'rise' | 'slide' | 'zoom' | 'blur'
 
 export interface ThemeSettings {
   /** Birincil renk (OKLCH): ton 0–360, doygunluk 0–0.24, açıklık 0.3–0.65. */
@@ -36,7 +37,7 @@ export interface ThemeSettings {
   bodyFont: FontId
   /** Kök yazı boyutu (px); rem'e bağlı tüm ölçüler onunla büyür. */
   scale: number
-  /** Boşluk birimi (rem, HeroUI `--spacing`): iç boşluk, aralık, satır yüksekliği; yazıya dokunmaz. */
+  /** Boşluk birimi (rem, Tailwind `--spacing`): iç boşluk, aralık, satır yüksekliği; yazıya dokunmaz. */
   spacing: number
   /** Dolu (beyaz), çerçeveli (zemin rengi + çizgi), yükseltilmiş (belirgin gölge). */
   cardStyle: CardStyle
@@ -46,7 +47,7 @@ export interface ThemeSettings {
   border: number
   accent: AccentStrength
   buttonShape: ButtonShape
-  /** Gezinme konumu; seçenekler sürüme göre (`ThemeKit.navOptions`), `default` sürümün kendisi. */
+  /** Gezinme konumu; seçenekler `ThemeKit.navOptions`, `default` uygulamanın kendisi. */
   nav: string
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. Hazır temalar buna dokunmaz. */
   motion: MotionLevel
@@ -56,6 +57,8 @@ export interface ThemeSettings {
   showFps: boolean
   /** Kayan alanlarda kenar gölgesi. */
   scrollShadow: boolean
+  /** Sayfa geçişi efekti. */
+  pageTransition: PageEffect
 }
 
 export interface ThemePreset {
@@ -68,7 +71,7 @@ export interface ThemePreset {
   surface: string
 }
 
-/** Bir sürümün tema paneli yapılandırması. */
+/** Tema paneli yapılandırması. */
 export interface ThemeKit {
   /** Tarayıcı deposu anahtarı. */
   storageKey: string
@@ -78,11 +81,11 @@ export interface ThemeKit {
   presets: ThemePreset[]
   /** Gezinme konumu seçenekleri (ilki `default`). */
   navOptions: { id: string; label: string }[]
-  /** Panelde Animasyon bölümü (sürüm animasyonları `--motion-*` / `useLook().motion` ile okuyorsa). */
+  /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
 }
 
-/** Ortak varsayılanların yeni ayarları (sürümler kendi değerlerini üstüne yazar). */
+/** Ortak varsayılanların yeni ayarları (`theme.ts` kendi değerlerini üstüne yazar). */
 export const BASE_LOOK = {
   spacing: 0.25,
   cardStyle: 'filled',
@@ -93,6 +96,7 @@ export const BASE_LOOK = {
   motionSpeed: 1,
   showFps: false,
   scrollShadow: true,
+  pageTransition: 'rise',
 } as const
 
 export const FONTS: { id: FontId; label: string; stack: string }[] = [
@@ -111,10 +115,17 @@ export const FONTS: { id: FontId; label: string; stack: string }[] = [
   { id: 'geist', label: 'Geist', stack: "'Geist', ui-sans-serif, system-ui, sans-serif" },
 ]
 
-/** Düğme ve çip biçimi: <html>'e eklenen sınıflar (sabit metin; Tailwind görsün). */
+/**
+ * Düğme ve etiket biçimi: <html>'e eklenen sınıflar (sabit metin; Tailwind görsün). antd `Button`
+ * ve `Tag`'e uygulanır; liste seçeneği (`role=option`) ve aç / kapa (`aria-pressed`) düğmeleri
+ * düğme sayılmaz.
+ */
 const SHAPE_CLASSES: Record<Exclude<ButtonShape, 'default'>, string[]> = {
-  pill: ['[&_.button]:rounded-full', '[&_.chip]:rounded-full'],
-  square: ['[&_.button]:rounded-md', '[&_.chip]:rounded-sm'],
+  pill: [
+    '[&_.ant-btn:not([role=option],[aria-pressed])]:rounded-full',
+    '[&_.ant-tag]:rounded-full',
+  ],
+  square: ['[&_.ant-btn:not([role=option],[aria-pressed])]:rounded-md', '[&_.ant-tag]:rounded-sm'],
 }
 const ALL_SHAPE_CLASSES = Object.values(SHAPE_CLASSES).flat()
 
@@ -156,6 +167,7 @@ export const PREFERENCES = [
   'motionSpeed',
   'showFps',
   'scrollShadow',
+  'pageTransition',
 ] as const satisfies readonly (keyof ThemeSettings)[]
 
 /** Ayarlar bir hazır temaya eşitse onun kimliği (tercihler görünüşten sayılmaz). */
@@ -279,6 +291,8 @@ export interface Look {
   speed: number
   showFps: boolean
   scrollShadow: boolean
+  /** Sayfa geçişi efekti. */
+  pageTransition: PageEffect
 }
 
 export const LookContext = createContext<Look>({
@@ -288,6 +302,7 @@ export const LookContext = createContext<Look>({
   speed: 1,
   showFps: false,
   scrollShadow: true,
+  pageTransition: 'rise',
 })
 
 const REDUCE = '(prefers-reduced-motion: reduce)'
@@ -308,11 +323,83 @@ function useSystemReduced() {
 
 export const useLook = () => useContext(LookContext)
 
+/**
+ * Tema ayarlarının kendisi ve değiştirme (kabuk verir): başlangıçtaki "Denetimler" widget'ı
+ * gibi ayarları sayfadan hızla açıp kapatan yerler için. Kabuk dışında `null`.
+ */
+export interface SettingsControl {
+  settings: ThemeSettings
+  update: (next: ThemeSettings) => void
+  openPanel: () => void
+}
+export const SettingsContext = createContext<SettingsControl | null>(null)
+export const useSettingsControl = () => useContext(SettingsContext)
+
+/* --- Açık / koyu --------------------------------------------------------------------------------- */
+
+/** Açık / koyu tercihi (tarayıcıda; eski anahtar da okunur). Tercih yoksa sistemin rengi. */
+const MODE_KEY = 'synergy-color-mode'
+const LEGACY_MODE_KEY = 'heroui-theme'
+
+export type ColorMode = 'light' | 'dark'
+
+function storedMode(): ColorMode {
+  try {
+    const v = localStorage.getItem(MODE_KEY) ?? localStorage.getItem(LEGACY_MODE_KEY)
+    if (v === 'light' || v === 'dark') return v
+  } catch {
+    // Depolama kapalı: sistem tercihi
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+/** Rengi <html>'e yazar (`light` / `dark` sınıfı ve `data-theme`; tema dosyası bunlara bakar). */
+function applyMode(mode: ColorMode) {
+  const root = document.documentElement
+  root.classList.remove(mode === 'dark' ? 'light' : 'dark')
+  root.classList.add(mode)
+  root.dataset.theme = mode
+}
+
+/** Açılışta kayıtlı rengi uygular (`main.tsx`, ilk çizimden önce). */
+export function initColorMode() {
+  applyMode(storedMode())
+}
+
+/** Açık / koyu değiştirir ve saklar; `useIsDark` kullanan her yer güncellenir. */
+export function setColorMode(mode: ColorMode) {
+  applyMode(mode)
+  try {
+    localStorage.setItem(MODE_KEY, mode)
+  } catch {
+    // Depolama kapalıysa yalnızca bu oturumda
+  }
+}
+
+/* Koyu tema mı: <html>'in sınıfından okunur; sınıf değişimi izlenir, böylece tema nereden
+   değişirse değişsin herkes güncellenir. */
+function subscribeDark(onChange: () => void) {
+  const mo = new MutationObserver(onChange)
+  mo.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'data-theme'],
+  })
+  return () => mo.disconnect()
+}
+const readDark = () => {
+  const root = document.documentElement
+  return root.classList.contains('dark') || root.dataset.theme === 'dark'
+}
+
+/** Koyu tema açık mı (tüm bileşenlerde ortak; değiştirmek için `setColorMode`). */
+export function useIsDark() {
+  return useSyncExternalStore(subscribeDark, readDark, () => false)
+}
+
 /** Kabukta: ayarları uygular (koyu / açık değişince yeniden), çıkınca temizler. */
 export function useThemeSettings(kit: ThemeKit) {
   const [settings, setSettings] = useState<ThemeSettings>(() => load(kit))
-  const { resolvedTheme } = useTheme()
-  const dark = resolvedTheme === 'dark'
+  const dark = useIsDark()
   const systemReduced = useSystemReduced()
   const motion: MotionLevel =
     settings.motion === 'full' && systemReduced ? 'reduced' : settings.motion
@@ -346,6 +433,7 @@ export function useThemeSettings(kit: ThemeKit) {
     speed: settings.motionSpeed,
     showFps: settings.showFps,
     scrollShadow: settings.scrollShadow,
+    pageTransition: settings.pageTransition,
   }
   return [settings, update, look] as const
 }

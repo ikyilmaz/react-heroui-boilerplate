@@ -1,21 +1,19 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
 import {
   Button,
+  Divider,
   Drawer,
-  Label,
-  ListBox,
+  Flex,
+  Form,
+  Radio,
+  Segmented,
   Select,
-  Separator,
   Slider,
   Switch,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
-  cn,
-} from '@heroui/react'
-import { inline } from '@/synergy/shared/tokens'
-import { Box, Text } from '@/synergy/shared/ui'
+} from 'antd'
+import { cn } from '@/synergy/ant/ui'
 import {
   FONTS,
   presetOf,
@@ -26,6 +24,7 @@ import {
   type CardStyle,
   type FontId,
   type MotionLevel,
+  type PageEffect,
   type Shadow,
   type ThemeKit,
   type ThemeSettings,
@@ -35,8 +34,8 @@ const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
 
 /* -------------------------------------------------------------------------------------------------
  * Tema paneli (sağdan çekmece): hazır temalar, birincil renk, vurgu gücü, köşe yuvarlaklığı,
- * düğme biçimi, zemin, yazı tipleri, ölçek, boşluk, gezinme konumu, kart stili, gölge, kontur ve (sürüm destekliyorsa) animasyon. Değişiklikler anında uygulanır ve saklanır (`themeSettings.ts`).
- * Hazır temalar ve varsayılan sürümden gelir (`kit`).
+ * düğme biçimi, zemin, yazı tipleri, ölçek, boşluk, gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında uygulanır ve saklanır (`themeSettings.ts`).
+ * Hazır temalar ve varsayılan `theme.ts`'ten gelir (`kit`).
  * ------------------------------------------------------------------------------------------------- */
 
 /** Birincil renk örnekleri; sınıflar Tailwind'in görmesi için sabit metin. */
@@ -86,6 +85,16 @@ const SHAPES: { id: ButtonShape; label: string }[] = [
   { id: 'square', label: 'Köşeli' },
 ]
 
+/** Sayfa geçişi efektleri (ekran tümüyle değişince). */
+const PAGE_EFFECTS: { id: PageEffect; label: string }[] = [
+  { id: 'rise', label: 'Yükselme' },
+  { id: 'fade', label: 'Solma' },
+  { id: 'slide', label: 'Kayma' },
+  { id: 'zoom', label: 'Yakınlaşma' },
+  { id: 'blur', label: 'Bulanık' },
+  { id: 'off', label: 'Kapalı' },
+]
+
 const MOTIONS: { id: MotionLevel; label: string }[] = [
   { id: 'full', label: 'Tam' },
   { id: 'reduced', label: 'Az' },
@@ -99,7 +108,15 @@ const SPACINGS = [
   { id: 0.29, label: 'Ferah' },
 ]
 
-const SEGMENT = 'flex-1 data-selected:bg-accent data-selected:text-accent-foreground'
+const { Text } = Typography
+
+/** Seçili bölüm birincil renkte (kayan işaret de). */
+const SEGMENT =
+  'w-full [&_.ant-segmented-item-selected]:bg-accent! [&_.ant-segmented-item-selected]:text-accent-foreground! [&_.ant-segmented-thumb]:bg-accent!'
+
+/** Çok seçenekli grup: üçerli satırlarda ayrı, çerçeveli düğmeler; seçili olan birincil renkte. */
+const GRID_SEGMENT =
+  'grid! w-full grid-cols-3 gap-1 [&_.ant-radio-button-wrapper]:rounded-lg! [&_.ant-radio-button-wrapper]:border! [&_.ant-radio-button-wrapper]:border-border! [&_.ant-radio-button-wrapper]:text-center [&_.ant-radio-button-wrapper]:before:hidden! [&_.ant-radio-button-wrapper-checked]:border-accent! [&_.ant-radio-button-wrapper-checked]:bg-accent! [&_.ant-radio-button-wrapper-checked]:text-accent-foreground!'
 
 function Section({
   title,
@@ -111,19 +128,19 @@ function Section({
   children: ReactNode
 }) {
   return (
-    <Box role="group" aria-label={title} className="flex flex-col gap-2.5">
-      <Box className="flex items-baseline justify-between gap-2">
-        <Typography type="body-sm" weight="semibold">
+    <Flex vertical gap={10} role="group" aria-label={title}>
+      <Flex align="baseline" justify="space-between" gap={8}>
+        <Text strong className="text-sm">
           {title}
-        </Typography>
+        </Text>
         {value != null && (
-          <Text tone="muted" className="font-mono text-xs">
+          <Text type="secondary" className="font-mono text-xs">
             {value}
           </Text>
         )}
-      </Box>
+      </Flex>
       {children}
-    </Box>
+    </Flex>
   )
 }
 
@@ -142,35 +159,36 @@ function Segments<T extends string | number>({
   /** Çok seçenekte üçerli satırlar (tek satıra sığmayınca). */
   grid?: boolean
 }) {
+  const pick = (k: unknown) => {
+    const hit = options.find((o) => String(o.id) === String(k))
+    if (hit) onChange(hit.id)
+  }
+  if (grid)
+    return (
+      <Radio.Group
+        aria-label={label}
+        size="small"
+        optionType="button"
+        value={String(value)}
+        onChange={(e) => pick(e.target.value)}
+        options={options.map((o) => ({ value: String(o.id), label: o.label }))}
+        className={GRID_SEGMENT}
+      />
+    )
   return (
-    <ToggleButtonGroup
+    <Segmented
       aria-label={label}
-      size="sm"
-      selectionMode="single"
-      disallowEmptySelection
-      isDetached={grid}
-      selectedKeys={[String(value)]}
-      onSelectionChange={(keys) => {
-        const [k] = [...keys]
-        const hit = options.find((o) => String(o.id) === String(k))
-        if (hit) onChange(hit.id)
-      }}
-      className={grid ? 'grid w-full grid-cols-3 gap-1' : 'w-full'}
-    >
-      {options.map((o) => (
-        <ToggleButton
-          key={String(o.id)}
-          id={String(o.id)}
-          className={cn(SEGMENT, grid && 'w-full rounded-lg border border-border')}
-        >
-          {o.label}
-        </ToggleButton>
-      ))}
-    </ToggleButtonGroup>
+      size="small"
+      block
+      value={String(value)}
+      onChange={pick}
+      options={options.map((o) => ({ value: String(o.id), label: o.label }))}
+      className={SEGMENT}
+    />
   )
 }
 
-/** Açıklamalı anahtar (tema paneli). */
+/** Açıklamalı anahtar (tema paneli); etiket tıklanınca da değişir. */
 function PanelSwitch({
   label,
   isSelected,
@@ -181,14 +199,10 @@ function PanelSwitch({
   onChange: (v: boolean) => void
 }) {
   return (
-    <Switch isSelected={isSelected} onChange={onChange}>
-      <Switch.Content>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-        <Text className="text-sm text-current">{label}</Text>
-      </Switch.Content>
-    </Switch>
+    <Flex component="label" align="center" gap={10} className="cursor-pointer">
+      <Switch size="small" checked={isSelected} onChange={onChange} />
+      <Text className="text-sm">{label}</Text>
+    </Flex>
   )
 }
 
@@ -209,19 +223,15 @@ function Range({
 }) {
   return (
     <Slider
-      aria-label={label}
+      ariaLabelForHandle={label}
       value={value}
-      minValue={min}
-      maxValue={max}
+      min={min}
+      max={max}
       step={step}
-      onChange={(v) => onChange(Array.isArray(v) ? v[0]! : v)}
-      className="w-full"
-    >
-      <Slider.Track>
-        <Slider.Fill />
-        <Slider.Thumb />
-      </Slider.Track>
-    </Slider>
+      tooltip={{ open: false }}
+      onChange={onChange}
+      className="mx-1.5 my-1"
+    />
   )
 }
 
@@ -234,24 +244,34 @@ function FontSelect({
   value: FontId
   onChange: (v: FontId) => void
 }) {
+  const id = useId()
   return (
-    <Select value={value} onChange={(v) => v && onChange(v as FontId)} className="w-full">
-      <Label className="text-xs text-muted">{label}</Label>
-      <Select.Trigger>
-        <Select.Value />
-        <Select.Indicator />
-      </Select.Trigger>
-      <Select.Popover>
-        <ListBox aria-label={label}>
-          {FONTS.map((f) => (
-            <ListBox.Item key={f.id} id={f.id} textValue={f.label}>
-              {f.label}
-              <ListBox.ItemIndicator />
-            </ListBox.Item>
-          ))}
-        </ListBox>
-      </Select.Popover>
-    </Select>
+    <Form.Item label={<Text className="text-xs text-muted">{label}</Text>} htmlFor={id}>
+      <Select
+        id={id}
+        value={value}
+        onChange={onChange}
+        options={FONTS.map((f) => ({ value: f.id, label: f.label }))}
+        className="w-full"
+      />
+    </Form.Item>
+  )
+}
+
+/** Bölüm ayracı. */
+const Separator = () => <Divider className="my-0" />
+
+/** Kaydırıcı başlığı: ad ve değer. */
+function RangeHead({ label, value }: { label: string; value: string }) {
+  return (
+    <Flex justify="space-between" className="text-xs">
+      <Text type="secondary" className="text-xs">
+        {label}
+      </Text>
+      <Text type="secondary" className="font-mono text-xs">
+        {value}
+      </Text>
+    </Flex>
   )
 }
 
@@ -278,344 +298,323 @@ export function ThemePanel({
       s.hue === settings.hue && s.chroma === settings.chroma && s.lightness === settings.lightness,
   )?.label
   return (
-    <Drawer.Root isOpen={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <Drawer.Trigger className="hidden" aria-hidden />
-      <Drawer.Content placement="right">
-        <Drawer.Dialog className="w-96 max-w-full">
-          <Drawer.Header>
-            <Drawer.Heading className="font-display text-lg font-semibold">Tema</Drawer.Heading>
-            <Drawer.CloseTrigger />
-          </Drawer.Header>
-          <Drawer.Body className="flex flex-col gap-6 pb-6">
-            {/* Hazır temalar */}
-            <Section title="Hazır temalar">
-              <ToggleButtonGroup
-                aria-label="Hazır temalar"
-                isDetached
-                selectionMode="single"
-                selectedKeys={preset ? [preset] : []}
-                onSelectionChange={(keys) => {
-                  const p = kit.presets.find((x) => x.id === [...keys][0])
-                  if (p)
-                    onChange({
-                      ...p.settings,
-                      // Tercihler (animasyon, FPS, kaydırma gölgesi) hazır temayla değişmez
-                      motion: settings.motion,
-                      motionSpeed: settings.motionSpeed,
-                      showFps: settings.showFps,
-                      scrollShadow: settings.scrollShadow,
-                    })
-                }}
-                className="grid grid-cols-1 gap-2"
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      placement="right"
+      size={384}
+      closable={{ placement: 'end' }}
+      title={<Text className="font-display text-lg font-semibold">Tema</Text>}
+      classNames={{ wrapper: 'max-w-full', body: 'flex flex-col gap-6 pb-6' }}
+    >
+      <Form layout="vertical" component={false}>
+        {/* Hazır temalar */}
+        <Section title="Hazır temalar">
+          <Flex vertical gap={8} role="group" aria-label="Hazır temalar">
+            {kit.presets.map((p) => (
+              <Button
+                key={p.id}
+                type="text"
+                aria-pressed={preset === p.id}
+                onClick={() =>
+                  onChange({
+                    ...p.settings,
+                    // Tercihler (animasyon, FPS, kaydırma gölgesi) hazır temayla değişmez
+                    motion: settings.motion,
+                    motionSpeed: settings.motionSpeed,
+                    showFps: settings.showFps,
+                    scrollShadow: settings.scrollShadow,
+                  })
+                }
+                className={cn(
+                  'h-auto w-full justify-start gap-3 rounded-xl border border-border px-3 py-2.5 text-start',
+                  preset === p.id && 'border-accent bg-accent-soft! ring-1 ring-accent',
+                )}
               >
-                {kit.presets.map((p) => (
-                  <ToggleButton
-                    key={p.id}
-                    id={p.id}
-                    variant="ghost"
-                    className="h-auto w-full justify-start gap-3 rounded-xl border border-border px-3 py-2.5 text-start data-selected:border-accent data-selected:bg-accent-soft data-selected:ring-1 data-selected:ring-accent"
-                  >
-                    {/* Önizleme: zemin karesinde birincil renk */}
-                    <Box
-                      aria-hidden
-                      className={cn(
-                        'grid size-10 shrink-0 place-items-center rounded-lg ring-1 ring-border',
-                        p.surface,
-                      )}
-                    >
-                      <Box className={cn('size-5 rounded-full', p.swatch)} />
-                    </Box>
-                    <Box className="min-w-0 flex-1">
-                      <Typography
-                        {...inline}
-                        className="block text-sm font-semibold text-foreground"
-                      >
-                        {p.label}
-                      </Typography>
-                      <Typography {...inline} className="block truncate text-xs text-muted!">
-                        {p.description}
-                      </Typography>
-                    </Box>
-                    {preset === p.id && <Check {...IC} className="text-accent-soft-foreground" />}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              {!preset && (
-                <Text tone="muted" className="text-xs">
-                  Özel ayarlar
+                {/* Önizleme: zemin karesinde birincil renk */}
+                <Flex
+                  aria-hidden
+                  align="center"
+                  justify="center"
+                  className={cn('size-10 shrink-0 rounded-lg ring-1 ring-border', p.surface)}
+                >
+                  <Flex className={cn('block size-5 rounded-full', p.swatch)} />
+                </Flex>
+                <Flex vertical className="min-w-0 flex-1">
+                  <Text className="text-sm font-semibold">{p.label}</Text>
+                  <Text type="secondary" ellipsis className="text-xs">
+                    {p.description}
+                  </Text>
+                </Flex>
+                {preset === p.id && <Check {...IC} className="text-accent-soft-foreground" />}
+              </Button>
+            ))}
+          </Flex>
+          {!preset && (
+            <Text type="secondary" className="text-xs">
+              Özel ayarlar
+            </Text>
+          )}
+        </Section>
+
+        <Separator />
+
+        {/* Birincil renk */}
+        <Section title="Birincil renk" value={swatch ?? `${Math.round(settings.hue)}°`}>
+          <Flex wrap gap={8} role="group" aria-label="Renk örnekleri">
+            {SWATCHES.map((s) => (
+              <Button
+                key={s.label}
+                shape="circle"
+                type="text"
+                aria-label={s.label}
+                aria-pressed={swatch === s.label}
+                onClick={() => set({ hue: s.hue, chroma: s.chroma, lightness: s.lightness })}
+                icon={swatch === s.label ? <Check {...IC} size={14} /> : undefined}
+                className={cn(
+                  'size-8 min-w-8 rounded-full text-white! ring-offset-2 ring-offset-surface hover:opacity-90',
+                  swatch === s.label && 'ring-2 ring-foreground',
+                  // Tailwind katmanı antd'nin üstünde: üzerine gelince de örnek rengi kalır
+                  s.cls,
+                )}
+              />
+            ))}
+          </Flex>
+          <Flex vertical gap={12} className="pt-1">
+            <Flex vertical gap={4}>
+              <RangeHead label="Ton" value={`${Math.round(settings.hue)}°`} />
+              <Range
+                label="Ton"
+                value={settings.hue}
+                min={0}
+                max={360}
+                step={1}
+                onChange={(hue) => set({ hue })}
+              />
+            </Flex>
+            <Flex vertical gap={4}>
+              <RangeHead
+                label="Doygunluk"
+                value={`${Math.round((settings.chroma / 0.24) * 100)}%`}
+              />
+              <Range
+                label="Doygunluk"
+                value={settings.chroma}
+                min={0}
+                max={0.24}
+                step={0.005}
+                onChange={(chroma) => set({ chroma })}
+              />
+            </Flex>
+            <Flex vertical gap={4}>
+              <RangeHead label="Koyuluk" value={`${Math.round((1 - settings.lightness) * 100)}%`} />
+              <Range
+                label="Koyuluk"
+                value={settings.lightness}
+                min={0.3}
+                max={0.65}
+                step={0.01}
+                onChange={(lightness) => set({ lightness })}
+              />
+            </Flex>
+          </Flex>
+        </Section>
+
+        <Section title="Vurgu gücü">
+          <Segments
+            label="Vurgu gücü"
+            value={settings.accent}
+            options={ACCENTS}
+            onChange={(accent) => set({ accent })}
+            grid
+          />
+          <Text type="secondary" className="text-xs">
+            Karşılama kartı, başlık bantları ve öne çıkan karolar: birincil rengin açık ya da
+            belirgin tonu, dolu rengi, beyaz zeminde çerçeve ya da koyu zemin.
+          </Text>
+        </Section>
+
+        <Separator />
+
+        <Section title="Köşe yuvarlaklığı" value={`${Math.round(settings.radius * 16)}px`}>
+          <Range
+            label="Köşe yuvarlaklığı"
+            value={settings.radius}
+            min={0}
+            max={1.25}
+            step={0.125}
+            onChange={(radius) => set({ radius })}
+          />
+        </Section>
+
+        <Section title="Düğme ve etiket biçimi">
+          <Segments
+            label="Düğme ve etiket biçimi"
+            value={settings.buttonShape}
+            options={SHAPES}
+            onChange={(buttonShape) => set({ buttonShape })}
+          />
+        </Section>
+
+        <Section title="Zemin">
+          <Segments
+            label="Zemin"
+            value={settings.background}
+            options={BACKGROUNDS}
+            onChange={(background) => set({ background })}
+          />
+        </Section>
+
+        <Separator />
+
+        <Section title="Yazı tipleri">
+          <FontSelect
+            label="Başlıklar"
+            value={settings.headingFont}
+            onChange={(headingFont) => set({ headingFont })}
+          />
+          <FontSelect
+            label="Metin"
+            value={settings.bodyFont}
+            onChange={(bodyFont) => set({ bodyFont })}
+          />
+        </Section>
+
+        <Section title="Ölçek" value={`${Math.round((settings.scale / 16) * 100)}%`}>
+          <Segments
+            label="Ölçek"
+            value={settings.scale}
+            options={[
+              { id: 14, label: 'Sıkı' },
+              { id: 15, label: 'Kompakt' },
+              { id: 16, label: 'Normal' },
+              { id: 17, label: 'Geniş' },
+            ]}
+            onChange={(scale) => set({ scale })}
+          />
+        </Section>
+
+        <Section title="Boşluk" value={`${Math.round((settings.spacing / 0.25) * 100)}%`}>
+          <Segments
+            label="Boşluk"
+            value={settings.spacing}
+            options={SPACINGS}
+            onChange={(spacing) => set({ spacing })}
+          />
+        </Section>
+
+        <Section title="Gezinme">
+          <Segments
+            label="Gezinme"
+            value={settings.nav}
+            options={kit.navOptions}
+            onChange={(nav) => set({ nav })}
+          />
+        </Section>
+
+        <Separator />
+
+        <Section title="Kart stili">
+          <Segments
+            label="Kart stili"
+            value={settings.cardStyle}
+            options={CARD_STYLES}
+            onChange={(cardStyle) => set({ cardStyle })}
+          />
+        </Section>
+
+        {settings.cardStyle === 'filled' && (
+          <Section title="Kart gölgesi">
+            <Segments
+              label="Kart gölgesi"
+              value={settings.shadow}
+              options={SHADOWS}
+              onChange={(shadow) => set({ shadow })}
+            />
+          </Section>
+        )}
+
+        <Section title="Kontur" value={`${settings.border}px`}>
+          <Segments
+            label="Kontur"
+            value={settings.border}
+            options={[
+              { id: 0, label: 'Yok' },
+              { id: 1, label: 'İnce' },
+              { id: 2, label: 'Kalın' },
+            ]}
+            onChange={(border) => set({ border })}
+          />
+        </Section>
+
+        {kit.motion && (
+          <>
+            <Separator />
+            <Section title="Animasyon">
+              <Segments
+                label="Animasyon"
+                value={settings.motion}
+                options={MOTIONS}
+                onChange={(motion) => set({ motion })}
+              />
+              {settings.motion === 'full' && reducedBySystem && (
+                <Text type="secondary" className="text-xs">
+                  Sistem hareketi azaltıyor; animasyonlar az düzeyde.
                 </Text>
               )}
             </Section>
-
-            <Separator />
-
-            {/* Birincil renk */}
-            <Section title="Birincil renk" value={swatch ?? `${Math.round(settings.hue)}°`}>
-              <ToggleButtonGroup
-                aria-label="Renk örnekleri"
-                isDetached
-                selectionMode="single"
-                selectedKeys={swatch ? [swatch] : []}
-                onSelectionChange={(keys) => {
-                  const s = SWATCHES.find((x) => x.label === [...keys][0])
-                  if (s) set({ hue: s.hue, chroma: s.chroma, lightness: s.lightness })
-                }}
-                className="flex flex-wrap justify-start gap-2"
-              >
-                {SWATCHES.map((s) => (
-                  <ToggleButton
-                    key={s.label}
-                    id={s.label}
-                    isIconOnly
-                    aria-label={s.label}
-                    className={cn(
-                      'size-8 min-w-8 rounded-full text-white ring-offset-2 ring-offset-surface data-selected:ring-2 data-selected:ring-foreground',
-                      s.cls,
-                    )}
-                  >
-                    {swatch === s.label && <Check {...IC} size={14} />}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              <Box className="flex flex-col gap-3 pt-1">
-                <Box className="flex flex-col gap-1">
-                  <Box className="flex justify-between text-xs text-muted">
-                    <Text className="text-current">Ton</Text>
-                    <Text className="font-mono text-current">{Math.round(settings.hue)}°</Text>
-                  </Box>
-                  <Range
-                    label="Ton"
-                    value={settings.hue}
-                    min={0}
-                    max={360}
-                    step={1}
-                    onChange={(hue) => set({ hue })}
-                  />
-                </Box>
-                <Box className="flex flex-col gap-1">
-                  <Box className="flex justify-between text-xs text-muted">
-                    <Text className="text-current">Doygunluk</Text>
-                    <Text className="font-mono text-current">
-                      {Math.round((settings.chroma / 0.24) * 100)}%
-                    </Text>
-                  </Box>
-                  <Range
-                    label="Doygunluk"
-                    value={settings.chroma}
-                    min={0}
-                    max={0.24}
-                    step={0.005}
-                    onChange={(chroma) => set({ chroma })}
-                  />
-                </Box>
-                <Box className="flex flex-col gap-1">
-                  <Box className="flex justify-between text-xs text-muted">
-                    <Text className="text-current">Koyuluk</Text>
-                    <Text className="font-mono text-current">
-                      {Math.round((1 - settings.lightness) * 100)}%
-                    </Text>
-                  </Box>
-                  <Range
-                    label="Koyuluk"
-                    value={settings.lightness}
-                    min={0.3}
-                    max={0.65}
-                    step={0.01}
-                    onChange={(lightness) => set({ lightness })}
-                  />
-                </Box>
-              </Box>
-            </Section>
-
-            <Section title="Vurgu gücü">
+            <Section title="Sayfa geçişi">
               <Segments
-                label="Vurgu gücü"
-                value={settings.accent}
-                options={ACCENTS}
-                onChange={(accent) => set({ accent })}
+                label="Sayfa geçişi"
+                value={settings.pageTransition}
+                options={PAGE_EFFECTS}
+                onChange={(pageTransition) => set({ pageTransition })}
                 grid
               />
-              <Text tone="muted" className="text-xs">
-                Karşılama kartı, başlık bantları ve öne çıkan karolar: birincil rengin açık ya da
-                belirgin tonu, dolu rengi, beyaz zeminde çerçeve ya da koyu zemin.
-              </Text>
             </Section>
-
-            <Separator />
-
-            <Section title="Köşe yuvarlaklığı" value={`${Math.round(settings.radius * 16)}px`}>
+            <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
               <Range
-                label="Köşe yuvarlaklığı"
-                value={settings.radius}
-                min={0}
-                max={1.25}
-                step={0.125}
-                onChange={(radius) => set({ radius })}
+                label="Animasyon hızı"
+                value={settings.motionSpeed}
+                min={0.1}
+                max={3}
+                step={0.1}
+                onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
+              />
+              <Flex justify="space-between">
+                {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
+                  <Text key={t} type="secondary" className="font-mono text-[0.6875rem]">
+                    {t}
+                  </Text>
+                ))}
+              </Flex>
+            </Section>
+            <Section title="Kaydırma gölgesi">
+              <PanelSwitch
+                label="Kayan alanların kenarında gölge"
+                isSelected={settings.scrollShadow}
+                onChange={(scrollShadow) => set({ scrollShadow })}
               />
             </Section>
-
-            <Section title="Düğme ve etiket biçimi">
-              <Segments
-                label="Düğme ve etiket biçimi"
-                value={settings.buttonShape}
-                options={SHAPES}
-                onChange={(buttonShape) => set({ buttonShape })}
+            <Section title="Performans">
+              <PanelSwitch
+                label="FPS'i göster"
+                isSelected={settings.showFps}
+                onChange={(showFps) => set({ showFps })}
               />
             </Section>
+          </>
+        )}
 
-            <Section title="Zemin">
-              <Segments
-                label="Zemin"
-                value={settings.background}
-                options={BACKGROUNDS}
-                onChange={(background) => set({ background })}
-              />
-            </Section>
-
-            <Separator />
-
-            <Section title="Yazı tipleri">
-              <FontSelect
-                label="Başlıklar"
-                value={settings.headingFont}
-                onChange={(headingFont) => set({ headingFont })}
-              />
-              <FontSelect
-                label="Metin"
-                value={settings.bodyFont}
-                onChange={(bodyFont) => set({ bodyFont })}
-              />
-            </Section>
-
-            <Section title="Ölçek" value={`${Math.round((settings.scale / 16) * 100)}%`}>
-              <Segments
-                label="Ölçek"
-                value={settings.scale}
-                options={[
-                  { id: 14, label: 'Sıkı' },
-                  { id: 15, label: 'Kompakt' },
-                  { id: 16, label: 'Normal' },
-                  { id: 17, label: 'Geniş' },
-                ]}
-                onChange={(scale) => set({ scale })}
-              />
-            </Section>
-
-            <Section title="Boşluk" value={`${Math.round((settings.spacing / 0.25) * 100)}%`}>
-              <Segments
-                label="Boşluk"
-                value={settings.spacing}
-                options={SPACINGS}
-                onChange={(spacing) => set({ spacing })}
-              />
-            </Section>
-
-            <Section title="Gezinme">
-              <Segments
-                label="Gezinme"
-                value={settings.nav}
-                options={kit.navOptions}
-                onChange={(nav) => set({ nav })}
-              />
-            </Section>
-
-            <Separator />
-
-            <Section title="Kart stili">
-              <Segments
-                label="Kart stili"
-                value={settings.cardStyle}
-                options={CARD_STYLES}
-                onChange={(cardStyle) => set({ cardStyle })}
-              />
-            </Section>
-
-            {settings.cardStyle === 'filled' && (
-              <Section title="Kart gölgesi">
-                <Segments
-                  label="Kart gölgesi"
-                  value={settings.shadow}
-                  options={SHADOWS}
-                  onChange={(shadow) => set({ shadow })}
-                />
-              </Section>
-            )}
-
-            <Section title="Kontur" value={`${settings.border}px`}>
-              <Segments
-                label="Kontur"
-                value={settings.border}
-                options={[
-                  { id: 0, label: 'Yok' },
-                  { id: 1, label: 'İnce' },
-                  { id: 2, label: 'Kalın' },
-                ]}
-                onChange={(border) => set({ border })}
-              />
-            </Section>
-
-            {kit.motion && (
-              <>
-                <Separator />
-                <Section title="Animasyon">
-                  <Segments
-                    label="Animasyon"
-                    value={settings.motion}
-                    options={MOTIONS}
-                    onChange={(motion) => set({ motion })}
-                  />
-                  {settings.motion === 'full' && reducedBySystem && (
-                    <Text tone="muted" className="text-xs">
-                      Sistem hareketi azaltıyor; animasyonlar az düzeyde.
-                    </Text>
-                  )}
-                </Section>
-                <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
-                  <Range
-                    label="Animasyon hızı"
-                    value={settings.motionSpeed}
-                    min={0.1}
-                    max={3}
-                    step={0.1}
-                    onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
-                  />
-                  <Box className="flex justify-between">
-                    {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
-                      <Text key={t} tone="muted" className="font-mono text-[0.6875rem]">
-                        {t}
-                      </Text>
-                    ))}
-                  </Box>
-                </Section>
-                <Section title="Kaydırma gölgesi">
-                  <PanelSwitch
-                    label="Kayan alanların kenarında gölge"
-                    isSelected={settings.scrollShadow}
-                    onChange={(scrollShadow) => set({ scrollShadow })}
-                  />
-                </Section>
-                <Section title="Performans">
-                  <PanelSwitch
-                    label="FPS'i göster"
-                    isSelected={settings.showFps}
-                    onChange={(showFps) => set({ showFps })}
-                  />
-                </Section>
-              </>
-            )}
-
-            <Button
-              variant="outline"
-              onPress={() => onChange(kit.defaults)}
-              isDisabled={same(settings, kit.defaults)}
-              className="mt-2"
-            >
-              <RotateCcw {...IC} />
-              Varsayılana dön
-            </Button>
-          </Drawer.Body>
-        </Drawer.Dialog>
-      </Drawer.Content>
-    </Drawer.Root>
+        <Button
+          onClick={() => onChange(kit.defaults)}
+          disabled={same(settings, kit.defaults)}
+          icon={<RotateCcw {...IC} />}
+          className="mt-2 border border-border bg-transparent"
+        >
+          Varsayılana dön
+        </Button>
+      </Form>
+    </Drawer>
   )
 }

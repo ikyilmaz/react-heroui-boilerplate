@@ -1,4 +1,9 @@
-import { cellValue, formatDateTime, type Column, type WorkRequest } from '@/synergy/shared/workflowData'
+import {
+  cellValue,
+  formatDateTime,
+  type Column,
+  type WorkRequest,
+} from '@/synergy/shared/workflowData'
 
 /* Talep listelerinin tasarımdan bağımsız yardımcıları: sıralama, arama metni, sayfa numaraları. */
 
@@ -22,16 +27,6 @@ export function searchText(r: WorkRequest, columns: Column[]) {
     })
     .join(' ')
     .toLocaleLowerCase('tr')
-}
-
-/** Sayfa düğmeleri: ilk, son ve seçilinin komşuları; aradakiler boşluk. */
-export function pageItems(page: number, count: number): (number | 'gap')[] {
-  const out: (number | 'gap')[] = []
-  for (let i = 1; i <= count; i++) {
-    if (i === 1 || i === count || Math.abs(i - page) <= 1) out.push(i)
-    else if (out[out.length - 1] !== 'gap') out.push('gap')
-  }
-  return out
 }
 
 /** Tarayıcı deposundan JSON; kapalıysa ya da bozuksa varsayılan. */
