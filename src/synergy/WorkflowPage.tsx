@@ -23,7 +23,7 @@ import { CARD, IC, Scroll, cn } from '@/synergy/ant/ui'
 import { EmptyNote, SearchField, RangeFields, SortMenu, type SortValue } from '@/synergy/ant/parts'
 import { RequestGrid } from '@/synergy/RequestGrid'
 import { AgendaTabs, type AgendaTab } from '@/synergy/AgendaTabs'
-import { Count, Indicator, TabEnter } from '@/synergy/ant/motion'
+import { Count, Indicator } from '@/synergy/ant/motion'
 
 /*
  * İş Akış Yönetimi (/is-akislari/:box/:processId), antd. Kutular üstte ajanda sekmeleri (geçmiş kutuları
@@ -56,9 +56,7 @@ export function WorkflowPage() {
   if (!box) return <Navigate to={boxLink('bekleyen')} replace />
   return (
     <AgendaTabs label="İş Akış Yönetimi" tabs={TABS} active={box.id}>
-      <TabEnter active={box.id} className="flex flex-col lg:min-h-0 lg:flex-1">
-        <BoxView key={box.id} box={box} processId={params.processId} />
-      </TabEnter>
+      <BoxView key={box.id} box={box} processId={params.processId} />
     </AgendaTabs>
   )
 }

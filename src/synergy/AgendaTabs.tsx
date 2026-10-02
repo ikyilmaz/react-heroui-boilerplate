@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { Flex, Typography } from 'antd'
 import { IC, Scroll, cn } from '@/synergy/ant/ui'
+import { SwitchPanel } from '@/synergy/ant/motion'
 import { useFillHeight } from '@/synergy/shared/hooks'
 
 /*
@@ -10,6 +11,7 @@ import { useFillHeight } from '@/synergy/shared/hooks'
  * yatay sekmeler; seçili sekme kabın renginde, içbükey kavislerle kaba kaynaşır ve sekmeden sekmeye
  * kayar (konum şeride göre ölçülür); diğerleri kısa ve gri. Sekmeler bağlantıdır (`href`). Bir
  * gruba ait ilk sekmenin önünde grubun adı yazar (ör. "Geçmiş"). Bağlantılar react-router `Link`.
+ * Sekme değişince içerik seçilen sekmenin yönünden kayarak gelir, eskisi solarak çıkar.
  */
 
 /** Kap ve seçili sekmenin rengi: birincil rengin zemine karışmış çok açık tonu. */
@@ -41,6 +43,14 @@ export function AgendaTabs({
   children: ReactNode
 }) {
   const [setFill, fillStyle] = useFillHeight()
+  // Geçişin yönü: yeni sekme eskisinin sağındaysa içerik sağdan, solundaysa soldan gelir
+  const index = tabs.findIndex((t) => t.id === active)
+  const [seen, setSeen] = useState(index)
+  const [dir, setDir] = useState(1)
+  if (seen !== index) {
+    setSeen(index)
+    setDir(index > seen ? 1 : -1)
+  }
   // Seçim zemininin yeri: seçili sekmenin şerit içindeki konumu; ilk ölçümde kaymadan yerleşir
   const [row, setRow] = useState<HTMLElement | null>(null)
   const [bar, setBar] = useState<{ left: number; width: number; slide: boolean } | null>(null)
@@ -139,8 +149,10 @@ export function AgendaTabs({
           })}
         </Flex>
       </Scroll>
-      <Flex className="flex min-w-0 flex-col rounded-3xl bg-(--tab-bg) p-3 lg:min-h-0 lg:flex-1">
-        {children}
+      <Flex className="relative flex min-w-0 flex-col rounded-3xl bg-(--tab-bg) p-3 lg:min-h-0 lg:flex-1">
+        <SwitchPanel id={active} dir={dir} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
+          {children}
+        </SwitchPanel>
       </Flex>
     </Flex>
   )

@@ -1,19 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
-import { Avatar, Button, Card, Flex, Pagination, Popover, Tag, Typography } from 'antd'
+import {
+  Avatar,
+  Button,
+  Card,
+  Flex,
+  Popover,
+  Table,
+  Tag,
+  Typography,
+  type TableColumnsType,
+} from 'antd'
 import {
   deleteDraft,
+  isRead,
   markDocumentViewed,
   markRead,
   useBoxRequests,
+  useReadIds,
   useRequest,
+  useRequests,
   useViewedDocuments,
 } from '@/synergy/shared/decisions'
 import {
   DELETE_CONFIRM,
   VIEWER_LABELS,
+  boxProcessCaption,
+  columnsFor,
+  dateBucket,
+  dateBuckets,
+  dateOf,
   documentsOf,
   eventsFor,
   findBox,
@@ -21,6 +39,7 @@ import {
   findRequest,
   processCaption,
   propertiesOf,
+  type Box,
   type BoxId,
   type DetailNavState,
   type FlowDocument,
@@ -31,9 +50,20 @@ import {
 import { useHistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT, statusColor } from '@/synergy/shared/flowLabels'
 import { START_CRUMB, WF_CRUMB, boxLink, processLink, requestLink, useFrame } from '@/synergy/paths'
-import { useBand } from '@/synergy/ant/parts'
+import { CellValue, EmptyNote, GroupLabel, SearchField, useBand } from '@/synergy/ant/parts'
+import {
+  GRID_CELL,
+  GRID_GROUP_ROW,
+  GRID_LEAD,
+  GRID_ROW,
+  GRID_ROW_SELECTED,
+  GRID_TABLE,
+  GridFooter,
+} from '@/synergy/ant/grid'
+import { searchText } from '@/synergy/shared/grid'
 import { CARD, cn, IC, MotionFlex, Scroll, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
+import { SwitchPanel } from '@/synergy/ant/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useMediaQuery, useScrolled } from '@/synergy/shared/hooks'
 import { FormTabs, useTabScroller } from '@/synergy/FormTabs'
@@ -42,6 +72,7 @@ import {
   DocumentsList,
   FileBody,
   FormBody,
+  FormSkeleton,
   HistoryTimeline,
   HistoryViewMenu,
   PropertiesList,
@@ -54,7 +85,8 @@ import {
  * şeridi. Kaydırınca 64px yapışkan şeride daralır. Bento: solda form (ya da tam tarihçe), sağda yan
  * bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı (DetailSide.tsx; bölme genişliğine göre
  * sütun ya da raf + çekmece, telefonda altta). 640px altında olaylar altta sabit. Karardan sonra
- * tarihçe açılır; taslakta şerit yerine "Sil" var.
+ * tarihçe açılır; taslakta şerit yerine "Sil" var. Form sunucudan gelene kadar iskelet (FormTabs);
+ * Geri / İleri ile talep değişince içerik gidilen yönden kayarak gelir.
  * ------------------------------------------------------------------------------------------------- */
 
 export function DetailPage() {
@@ -74,6 +106,15 @@ export function DetailPage() {
     siblings.filter((x) => x.processId === params.processId).map((x) => x.id),
   )
   const ids = (location.state as DetailNavState | null)?.ids ?? fallbackIds
+
+  // Talep değişince geçişin yönü: listede ilerideyse içerik sağdan, gerideyse soldan gelir
+  const at = params.requestId ? ids.indexOf(params.requestId) : -1
+  const [seen, setSeen] = useState({ id: params.requestId, at })
+  const [dir, setDir] = useState(1)
+  if (seen.id !== params.requestId) {
+    setSeen({ id: params.requestId, at })
+    setDir(at >= seen.at ? 1 : -1)
+  }
 
   // Konum ve geri dönüş için kutu: rotadaki kutu, yoksa talebin kutusu
   const box = routeBox ?? (r && findBox(r.box))
@@ -103,25 +144,34 @@ export function DetailPage() {
     if (target) navigate(requestLink(target), { state: { ids } satisfies DetailNavState })
   }
 
-  // Form sekmeleri talebe bağlı: Geri / İleri ile talep değişince yeniden kurulur
+  // Form sekmeleri talebe bağlı: Geri / İleri ile talep değişince yeniden kurulur (eskisi solarak
+  // çıkarken yenisi iskeletiyle gidilen yönden gelir)
   return (
-    <FormTabs
-      key={r.id}
-      rootId={r.id}
-      root={
-        <Viewer
-          r={r}
-          process={process}
-          caption={processCaption(process)}
-          nav={index >= 0 ? { ids, index, go } : undefined}
-          onClose={() => navigate(processLink(box.id, process.id))}
-          onDeleted={() => navigate(boxLink('taslaklar'))}
+    <Flex className="relative flex flex-col">
+      <SwitchPanel id={r.id} dir={dir} className="flex flex-col">
+        <FormTabs
+          key={r.id}
+          rootId={r.id}
+          root={
+            <Viewer
+              r={r}
+              process={process}
+              caption={processCaption(process)}
+              nav={index >= 0 ? { ids, index, go, box } : undefined}
+              onClose={() => navigate(processLink(box.id, process.id))}
+              onDeleted={() => navigate(boxLink('taslaklar'))}
+            />
+          }
+          renderTab={renderChild}
+          placeholder={<FormSkeleton />}
         />
-      }
-      renderTab={(id, close) => <ChildViewer id={id} onClose={close} />}
-    />
+      </SwitchPanel>
+    </Flex>
   )
 }
+
+/** Child sekmesinin görünümü (FormTabs her kimlik için bir kez çağırır; sabit işlev). */
+const renderChild = (id: string, close: () => void) => <ChildViewer id={id} onClose={close} />
 
 /** Child sekmesi: child talebin detayı (güncel hâliyle); Geri / İleri yok, kapat sekmede. */
 function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
@@ -141,11 +191,13 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
   )
 }
 
-/** Listeden açılan talebin gezinmesi: listedeki talepler, açık olanın sırası ve geçiş. */
+/** Listeden açılan talebin gezinmesi: listedeki talepler, açık olanın sırası, geçiş ve kutu. */
 interface DetailNav {
   ids: string[]
   index: number
   go: (id: string) => void
+  /** Listenin kutusu (ızgaranın sütunları ve tarih alanı). */
+  box: Box
 }
 
 /** Tailwind sınıfları antd'nin kendi zemin / yazı rengini ezdiği için devre dışı hâli elle. */
@@ -375,7 +427,9 @@ function Viewer({
                 onPress={prev}
                 onStrip={solid}
               />
-              {nav && nav.ids.length > 1 && <NavTrail nav={nav} onStrip={solid} />}
+              {nav && nav.ids.length > 1 && (
+                <NavTrail nav={nav} process={process} onStrip={solid} />
+              )}
               <NavButton
                 label={VIEWER_LABELS.next}
                 icon={ChevronRight}
@@ -616,192 +670,309 @@ function NavButton({
   )
 }
 
-/** Süreç şeridinin sayfa boyu: çizgiler ve açılır liste aynı sayfayı gösterir. */
+/** Süreç şeridindeki çizgi sayısı: açık talebin bulunduğu 8'li sayfa. */
 const TRAIL_PAGE = 8
+
+/** Süreç ızgarasının sayfa boyları (iş akışı ızgarasıyla aynı). */
+const NAV_SIZES = [10, 20, 30, 50] as const
 
 /**
  * Geri / İleri arasındaki süreç şeridi (yüzen içindekiler, yatay): listedeki her süreç kısa bir
- * çizgi, açık olan uzun ve birincil renkte. Üstüne gelince (ya da basınca) süreçler açılır listede;
- * satıra basınca o talebe gidilir. Uzun listede sayfalı: çizgiler listenin gösterdiği sayfayı izler,
- * liste kapanınca açık talebin sayfasına döner. Liste şeridin hemen ardında takılı (Sekme ile içine
- * geçilir); Esc ya da dışarı odaklanma kapatır.
+ * çizgi, açık olan uzun ve birincil renkte (açık talebin 8'li sayfası). Basınca açılır pencerede
+ * listenin veri ızgarası (`NavGrid`); ızgarada üstüne gelinen satırın çizgisi belirginleşir.
+ * Pencere büyük olduğundan üstüne gelince değil basınca açılır (Geri ile İleri arasında gezen
+ * imleç onu açmasın). Esc ya da dışarı basmak kapatır.
  */
-function NavTrail({ nav, onStrip }: { nav: DetailNav; onStrip: boolean }) {
-  const { ids, index, go } = nav
-  const home = Math.floor(index / TRAIL_PAGE) + 1
+function NavTrail({
+  nav,
+  process,
+  onStrip,
+}: {
+  nav: DetailNav
+  process: Process
+  onStrip: boolean
+}) {
+  const { ids, index, go, box } = nav
   const [open, setOpen] = useState(false)
-  const [page, setPage] = useState(home)
-  // Listede üstüne gelinen (ya da odaklanan) satırın çizgisi belirginleşir
   const [hovered, setHovered] = useState<string | null>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  const grid = useRef<HTMLElement>(null)
   const transition = useTransition()
-
-  const from = (page - 1) * TRAIL_PAGE
-  const shown = ids.slice(from, from + TRAIL_PAGE)
-  // Son sayfa kısa kalsa da şerit ve liste boyu sabit: boş yuvalar görünmez (çizgilerde iki yanda)
-  const size = Math.min(ids.length, TRAIL_PAGE)
-  const slots = Array.from({ length: size }, (_, i) => shown[i])
-  const lead = Math.floor((size - shown.length) / 2)
-  const ticks = Array.from({ length: size }, (_, i) => shown[i - lead])
   const current = ids[index]
+
+  // Çizgiler: açık talebin 8'li sayfası; son sayfa kısa kalırsa boş yuvalar iki yanda (şerit sabit)
+  const tickFrom = Math.floor(index / TRAIL_PAGE) * TRAIL_PAGE
+  const tickIds = ids.slice(tickFrom, tickFrom + TRAIL_PAGE)
+  const size = Math.min(ids.length, TRAIL_PAGE)
+  const lead = Math.floor((size - tickIds.length) / 2)
+  const ticks = Array.from({ length: size }, (_, i) => tickIds[i - lead])
 
   const toggle = (v: boolean) => {
     setOpen(v)
-    if (v) return
-    setPage(home)
-    setHovered(null)
+    if (!v) setHovered(null)
   }
   const close = () => {
     toggle(false)
     trigger.current?.focus()
   }
+  const label = `${VIEWER_LABELS.processes} (${index + 1} / ${ids.length})`
 
-  const list = (
-    <Flex
-      vertical
-      gap={2}
-      role="dialog"
-      aria-label={VIEWER_LABELS.processes}
-      className="w-80 max-w-[calc(100vw-2rem)]"
-    >
-      {slots.map((id, i) => {
-        const x = id ? findRequest(id) : undefined
-        const active = !!x && id === current
-        return (
-          // Boş yuva görünmez satır: sayfa düğmeleri imlecin altından kaçmaz
+  return (
+    // Tooltip ile açılır pencere aynı tetikleyiciyi paylaşamaz: ipucu sarmalayıcıda
+    <Tip label={label} placement="bottom" disabled={open}>
+      <Flex
+        className="inline-flex"
+        // Pencere içinden gelen tuşlar da buraya çıkar (React ağacı)
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape' || !open) return
+          e.stopPropagation()
+          close()
+        }}
+      >
+        <Popover
+          open={open}
+          onOpenChange={toggle}
+          trigger="click"
+          placement="bottomRight"
+          arrow={false}
+          // Kapanınca ızgara kalkar: yeniden açılınca açık talebin sayfasından, aramasız başlar
+          destroyOnHidden
+          // Açılınca odak aramada (pencere yerleşince; ilk çizimde odak alınamıyor)
+          afterOpenChange={(v) => {
+            if (v) grid.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus()
+          }}
+          classNames={{ container: 'p-0 overflow-hidden' }}
+          content={
+            <NavGrid
+              rootRef={grid}
+              ids={ids}
+              current={current}
+              position={index + 1}
+              box={box}
+              process={process}
+              onHover={setHovered}
+              onOpen={(id) => (id === current ? close() : go(id))}
+            />
+          }
+        >
           <Button
-            key={id ?? `slot-${i}`}
+            ref={trigger}
             type="text"
-            aria-current={active ? 'page' : undefined}
-            onClick={() => (active ? close() : id && go(id))}
-            onMouseEnter={() => setHovered(id ?? null)}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(id ?? null)}
-            onBlur={() => setHovered(null)}
+            aria-label={label}
+            aria-haspopup="dialog"
+            aria-expanded={open}
             className={cn(
-              'h-auto w-full justify-start gap-3 rounded-xl! px-2 py-1.5 text-start font-normal hover:bg-surface-secondary!',
-              active
-                ? 'text-accent-soft-foreground hover:text-accent-soft-foreground!'
-                : 'text-foreground hover:text-foreground!',
-              !x && 'invisible',
+              'group h-8 gap-1.5 px-2.5 text-current hover:bg-current/8! hover:text-current!',
+              open && 'bg-current/10!',
             )}
           >
-            <Typography.Text className="w-5 shrink-0 text-end font-mono text-xs text-current tabular-nums opacity-60">
-              {from + i + 1}
-            </Typography.Text>
-            <Flex vertical className="min-w-0 flex-1">
-              <Typography.Text
-                className={cn('truncate text-sm text-current', active && 'font-medium')}
-              >
-                {x?.template.title ?? '\u00a0'}
-              </Typography.Text>
-              <Typography.Text className="truncate text-xs text-current opacity-60">
-                {x ? (
-                  <>
-                    <Typography.Text className="font-mono text-xs text-current">
-                      {x.no}
-                    </Typography.Text>
-                    {' · '}
-                    {x.requester.name}
-                  </>
+            {ticks.map((id, i) => (
+              <Flex key={i} aria-hidden align="center" className="h-5 w-0.5">
+                {id && id === current ? (
+                  // Açık talebin çizgisi talepten talebe kayar (yalnızca talep değişince; form
+                  // sekmelerinde bölme daralıp genişlerken yerinde kalır)
+                  <MotionFlex
+                    layoutId="detail-trail"
+                    layoutDependency={current}
+                    transition={transition}
+                    className={cn(
+                      'block h-full w-full rounded-full',
+                      onStrip ? 'bg-current' : 'bg-accent',
+                    )}
+                  />
                 ) : (
-                  '\u00a0'
+                  <Flex
+                    className={cn(
+                      'block w-full rounded-full transition-[height,background-color] duration-[calc(200ms*var(--motion-time,1))]',
+                      !id
+                        ? 'invisible h-2.5'
+                        : id === hovered
+                          ? 'h-3.5 bg-current/70'
+                          : 'h-2.5 bg-current/25 group-hover:bg-current/45',
+                    )}
+                  />
                 )}
-              </Typography.Text>
-            </Flex>
+              </Flex>
+            ))}
           </Button>
-        )
-      })}
-      {ids.length > TRAIL_PAGE && (
-        <Flex
-          align="center"
-          justify="space-between"
-          gap={8}
-          className="mt-1 border-t border-border px-1 pt-2"
-        >
-          <Typography.Text type="secondary" className="font-mono text-xs tabular-nums">
-            {from + 1}–{from + shown.length} / {ids.length}
+        </Popover>
+      </Flex>
+    </Tip>
+  )
+}
+
+/** Süreç ızgarasının satırı: tarih grubu başlığı ya da talep. */
+interface NavRow {
+  key: string
+  group?: { label: string; count: number }
+  r?: WorkRequest
+}
+
+/**
+ * Süreç ızgarası (açılır pencerede): iş akışı ızgarasının tablosu (aynı sütunlar, görünüş, tarih
+ * grupları; okunmamışlar kalın). Sıra Geri / İleri'nin sırası (listenin açıldığı ızgaradaki gibi);
+ * açık talep vurgulu, satıra basınca (ya da Enter) o talebe gidilir. Üstte ara, altta sayfa boyu ve
+ * sayfalar; ilk açılışta açık talebin sayfası. Durumlar güncel (karar verilen talep de listede).
+ */
+function NavGrid({
+  rootRef,
+  ids,
+  current,
+  position,
+  box,
+  process,
+  onHover,
+  onOpen,
+}: {
+  rootRef: Ref<HTMLElement>
+  ids: string[]
+  current: string | undefined
+  /** Açık talebin sırası (1'den). */
+  position: number
+  box: Box
+  process: Process
+  onHover: (id: string | null) => void
+  onOpen: (id: string) => void
+}) {
+  const requests = useRequests(ids)
+  const readIds = useReadIds()
+  const columns = useMemo(() => columnsFor(box, process), [box, process])
+  const caption = boxProcessCaption(box, process)
+  const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = useState<number>(NAV_SIZES[0])
+  // Açık talebin sayfası (sayfa boyu değişince de onu gösterir)
+  const at = Math.max(
+    0,
+    requests.findIndex((r) => r.id === current),
+  )
+  const [page, setPage] = useState(() => Math.floor(at / NAV_SIZES[0]) + 1)
+
+  const q = search.trim().toLocaleLowerCase('tr')
+  const found = useMemo(
+    () => (q ? requests.filter((r) => searchText(r, columns).includes(q)) : requests),
+    [requests, columns, q],
+  )
+  const pageCount = Math.max(1, Math.ceil(found.length / pageSize))
+  const shownPage = Math.min(page, pageCount)
+  const from = (shownPage - 1) * pageSize
+  const pageRows = found.slice(from, from + pageSize)
+
+  // Tarih grupları: sıra korunur, art arda aynı gruptakiler bir başlığın altında
+  const data: NavRow[] = []
+  let group: NavRow | null = null
+  let last: string | null = null
+  for (const r of pageRows) {
+    const bucket = dateBucket(dateOf(r, box))
+    if (bucket !== last || !group?.group) {
+      const label = dateBuckets.find((b) => b.id === bucket)?.label ?? ''
+      group = { key: `g-${r.id}`, group: { label, count: 0 } }
+      data.push(group)
+      last = bucket
+    }
+    group.group!.count++
+    data.push({ key: r.id, r })
+  }
+
+  const rowHeader = box.draftDelete ? 'flowCaption' : 'Subject'
+  const span = columns.length
+  const tableColumns: TableColumnsType<NavRow> = columns.map((c, i) => ({
+    key: c.key,
+    dataIndex: c.key,
+    title: c.caption,
+    className: c.key === rowHeader ? GRID_LEAD : GRID_CELL,
+    // Grup satırında ilk hücre tüm satırı kaplar, diğerleri çizilmez
+    onCell: (row: NavRow) => (row.group ? { colSpan: i === 0 ? span : 0 } : {}),
+    render: (_: unknown, row: NavRow) =>
+      row.group ? (
+        <GroupLabel label={row.group.label} count={row.group.count} />
+      ) : (
+        <CellValue r={row.r!} col={c} />
+      ),
+  }))
+
+  return (
+    <Flex
+      ref={rootRef}
+      vertical
+      role="dialog"
+      aria-label={VIEWER_LABELS.processes}
+      className="max-h-[min(42rem,calc(100dvh-10rem))] w-[min(68rem,calc(100vw-2rem))]"
+    >
+      <Flex wrap align="center" gap={12} className="shrink-0 px-5 pt-4 pb-3">
+        <Flex vertical className="min-w-48 flex-1">
+          <Typography.Text type="secondary" className="text-xs">
+            {box.title}
           </Typography.Text>
-          <Pagination
-            size="small"
-            aria-label="Sayfalar"
-            current={page}
-            total={ids.length}
-            pageSize={TRAIL_PAGE}
-            showSizeChanger={false}
-            onChange={(p) => {
-              setPage(p)
-              setHovered(null)
+          <Typography.Title level={2} ellipsis className="m-0 font-display text-lg">
+            {caption}
+          </Typography.Title>
+        </Flex>
+        <Typography.Text type="secondary" className="font-mono text-xs tabular-nums">
+          {position} / {ids.length}
+        </Typography.Text>
+        <SearchField
+          value={search}
+          onChange={(v) => {
+            setSearch(v)
+            setPage(1)
+          }}
+          className="w-60"
+        />
+      </Flex>
+      {/* Tablo kalan yüksekliği doldurur ve kendi içinde kayar; başlık satırı üstte kalır */}
+      <Flex vertical className="min-h-0 flex-1 overflow-auto px-3">
+        <Table<NavRow>
+          aria-label={caption}
+          size="middle"
+          pagination={false}
+          columns={tableColumns}
+          dataSource={data}
+          className={GRID_TABLE}
+          locale={{ emptyText: <EmptyNote text="Gösterilecek veri yok." /> }}
+          rowClassName={(row) =>
+            row.group
+              ? GRID_GROUP_ROW
+              : cn(
+                  GRID_ROW,
+                  row.r!.id === current && GRID_ROW_SELECTED,
+                  !isRead(row.r!, readIds) && 'font-semibold',
+                )
+          }
+          onRow={(row) => {
+            const r = row.r
+            if (!r) return {}
+            return {
+              onClick: () => onOpen(r.id),
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' && e.target === e.currentTarget) onOpen(r.id)
+              },
+              onMouseEnter: () => onHover(r.id),
+              onMouseLeave: () => onHover(null),
+              onFocus: () => onHover(r.id),
+              onBlur: () => onHover(null),
+              tabIndex: 0,
+              'aria-current': r.id === current ? 'true' : undefined,
+            }
+          }}
+        />
+      </Flex>
+      {found.length > 0 && (
+        <Flex className="block shrink-0 border-t border-border px-5 py-3">
+          <GridFooter
+            page={shownPage}
+            from={from}
+            shown={pageRows.length}
+            total={found.length}
+            pageSize={pageSize}
+            sizes={NAV_SIZES}
+            onPage={setPage}
+            onPageSize={(n) => {
+              setPageSize(n)
+              setPage(q ? 1 : Math.floor(at / n) + 1)
             }}
-            className="font-mono"
           />
         </Flex>
       )}
-    </Flex>
-  )
-
-  return (
-    // Liste bu kabın içine takılır: odak şeritten listeye geçince kapanmaz
-    <Flex
-      className="inline-flex"
-      onKeyDown={(e) => {
-        if (e.key !== 'Escape' || !open) return
-        e.stopPropagation()
-        close()
-      }}
-      onBlur={(e) => {
-        const to = e.relatedTarget
-        if (open && to && !e.currentTarget.contains(to)) toggle(false)
-      }}
-    >
-      <Popover
-        open={open}
-        onOpenChange={toggle}
-        trigger="hover"
-        placement="bottomRight"
-        arrow={false}
-        getPopupContainer={(n) => n.parentElement ?? document.body}
-        classNames={{ container: 'p-2' }}
-        content={list}
-      >
-        <Button
-          ref={trigger}
-          type="text"
-          aria-label={`${VIEWER_LABELS.processes} (${index + 1} / ${ids.length})`}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          // Dokunmatik ve klavye: basınca açılır (açıkken kapatmaz)
-          onClick={() => toggle(true)}
-          className="group h-8 gap-1.5 px-2.5 text-current hover:bg-current/8! hover:text-current!"
-        >
-          {ticks.map((id, i) => (
-            <Flex key={i} aria-hidden align="center" className="h-5 w-0.5">
-              {id && id === current ? (
-                // Açık talebin çizgisi talepten talebe kayar
-                <MotionFlex
-                  layoutId="detail-trail"
-                  transition={transition}
-                  className={cn(
-                    'block h-full w-full rounded-full',
-                    onStrip ? 'bg-current' : 'bg-accent',
-                  )}
-                />
-              ) : (
-                <Flex
-                  className={cn(
-                    'block w-full rounded-full transition-[height,background-color] duration-[calc(200ms*var(--motion-time,1))]',
-                    !id
-                      ? 'invisible h-2.5'
-                      : id === hovered
-                        ? 'h-3.5 bg-current/70'
-                        : 'h-2.5 bg-current/25 group-hover:bg-current/45',
-                  )}
-                />
-              )}
-            </Flex>
-          ))}
-        </Button>
-      </Popover>
     </Flex>
   )
 }

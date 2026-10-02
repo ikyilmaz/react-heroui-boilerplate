@@ -266,6 +266,23 @@ export function useRequest(requestId: string | undefined): { request?: WorkReque
   }, [requestId, decisions, deletedDrafts])
 }
 
+/**
+ * Kimliklere göre güncel talepler (kararı işlenmiş hâli), verilen sırayla; bulunamayan ve silinen
+ * taslaklar atlanır. Ayrıntı sayfasındaki süreç ızgarası bunu kullanır.
+ */
+export function useRequests(ids: readonly string[]): WorkRequest[] {
+  const decisions = useSlice('decisions')
+  const deletedDrafts = useSlice('deletedDrafts')
+  return useMemo(
+    () =>
+      ids.flatMap((id) => {
+        const raw = deletedDrafts.has(id) ? undefined : findRequest(id)
+        return raw ? [withDecision(raw, decisions.get(id))] : []
+      }),
+    [ids, decisions, deletedDrafts],
+  )
+}
+
 /* --- Menü uygulamaları ------------------------------------------------------------------------- */
 
 /** Favori durumunu çevirir (Favorilere Ekle / Favorilerden Kaldır). */

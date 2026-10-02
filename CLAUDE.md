@@ -91,13 +91,31 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   folds to an icon rail (remembered), narrower (e.g. `panelSize` 1) the rail with the cards in a
   drawer over the dimmed form (closes on outside click / Esc / showing a document), phones below
   the form; between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
-  original: one tick per request of the list it was opened from, hover / press opens a paged
-  popover list, 8 per page); child forms open from form buttons into `FormTabs.tsx` by the child
+  original: one tick per request of the list it was opened from (the current request's page of 8);
+  pressing it opens a popover with that list as the workflow DataGrid — same columns, date groups,
+  unread bold, current row selected, search and paging, row click opens the request); child forms open from form buttons into `FormTabs.tsx` by the child
   process's `panelSize` (original `viewOptions.panelSize`, a 3-unit strip): 1 / 2 split the tab
   (child right ⅓ / ⅔; in a split the opener stays beside the new child and the other form moves to
   its own tab, returning when the child closes), 3 opens a new tab, so a split pair becomes one
   grouped tab; a form has one open child at a time (opening another closes the previous one with
-  its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3;
+  its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3. The
+  rules live in `shared/formTabs.ts` (pure reducer); `FormTabs.tsx` draws agenda tabs with process
+  icons (sliding selection bar, `popLayout` tab moves, one easing); dragging the divider writes
+  `--split` straight onto the container (no React render, no Motion); child forms are built once
+  per id (`renderTab` must be a stable function). Layout changes use Motion's own layout animation
+  (FLIP, transform only, the form is laid out once at its final size): in tabs mode each form is a
+  sheet (`bg-background`, radius passed as px through `style` so Motion corrects the corners) with
+  `layout` + `layoutScroll`, its content `layout="position"` (scale undone, no stretched text). Both
+  re-measure only through `layoutDependency` when the pane was visible before and after the change,
+  so a `display: none` pane never animates from an empty box. A side pane opened in the same tab (1 /
+  2, "Yan yana aç") pushes in from the container edge while the opener shrinks; closing pushes it out
+  to its side (`usePresence`, `popLayout`) while the other grows; both start on Motion's frame loop
+  (`frame.update`) so their edges move together. A form shown alone fades in place when closed; tab
+  switches slide in from the tab's direction; swap / shift / ungroup / ratio (Home / End / Enter /
+  double click, arrows) are plain layout animations. The container clips with `overflow-clip` (not a
+  scroll container, so the page-mode sticky header still works). Every form that enters (root, child,
+  Geri / İleri) shows `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay),
+  then crossfades in;
   `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
@@ -111,12 +129,14 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
-  `motion.tsx` (`Indicator`, `Count`, `TabEnter`), `hr.tsx` (`useNotify`, `DirectionalPanels`).
+  `motion.tsx` (`Indicator`, `Count`, `SwitchPanel` — direction-aware content switch used by the
+  agenda tabs and Geri / İleri), `hr.tsx` (`useNotify`, `DirectionalPanels`).
 - `shared/`: data and logic — `workflowData.ts` (people, boxes, processes, events, columns, date
   buckets, menu apps, formatting), `decisions.ts` (in-memory store: `decide`, `markRead`,
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
-  forward → `decide()`; `flow.tsx` draws the dialogs), `grid.ts`, `ThemePanel.tsx` /
+  forward → `decide()`; `flow.tsx` draws the dialogs), `formTabs.ts` (form tab / split state),
+  `grid.ts`, `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
 
