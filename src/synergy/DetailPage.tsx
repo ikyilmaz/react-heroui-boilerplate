@@ -1,19 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Files,
-  History,
-  Info,
-  PanelRightClose,
-  PanelRightOpen,
-  Trash2,
-  X,
-} from 'lucide-react'
-import { Avatar, Button, Card, Divider, Flex, Tabs, Tag, Typography } from 'antd'
+import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
+import { Avatar, Button, Card, Flex, Pagination, Popover, Tag, Typography } from 'antd'
 import {
   deleteDraft,
   markDocumentViewed,
@@ -24,7 +13,6 @@ import {
 } from '@/synergy/shared/decisions'
 import {
   DELETE_CONFIRM,
-  DOCUMENT_LABELS,
   VIEWER_LABELS,
   documentsOf,
   eventsFor,
@@ -44,10 +32,12 @@ import { useHistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT, statusColor } from '@/synergy/shared/flowLabels'
 import { START_CRUMB, WF_CRUMB, boxLink, processLink, requestLink, useFrame } from '@/synergy/paths'
 import { useBand } from '@/synergy/ant/parts'
-import { CARD, cn, IC, Scroll, TintIcon, Tip } from '@/synergy/ant/ui'
+import { CARD, cn, IC, MotionFlex, Scroll, TintIcon, Tip } from '@/synergy/ant/ui'
+import { useTransition } from '@/synergy/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useMediaQuery, useScrolled } from '@/synergy/shared/hooks'
-import { FormTabs, usePaneNarrow, useTabScroller } from '@/synergy/FormTabs'
+import { FormTabs, useTabScroller } from '@/synergy/FormTabs'
+import { SidePanel, useSidePanel, type SideTab, type SideTarget } from '@/synergy/DetailSide'
 import {
   DocumentsList,
   FileBody,
@@ -60,10 +50,11 @@ import {
 /* -------------------------------------------------------------------------------------------------
  * Talep ayrıntısı (Flow Viewer), antd: vurgu bandı + bento
  *
- * Band: süreç ve talep sahibi, Geri / İleri, başlık, numaralar, durum, olay şeridi. Kaydırınca 64px
- * yapışkan şeride daralır. Bento: solda form (ya da tam tarihçe), sağda özellikler, dokümanlar,
- * tarihçe sekmeleri (geniş ekranda yapışık; 640px altında olaylar altta sabit). Karardan sonra tarihçe
- * açılır; taslakta şerit yerine "Sil" var.
+ * Band: süreç ve talep sahibi, Geri / İleri (aralarında süreç şeridi), başlık, numaralar, durum, olay
+ * şeridi. Kaydırınca 64px yapışkan şeride daralır. Bento: solda form (ya da tam tarihçe), sağda yan
+ * bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı (DetailSide.tsx; bölme genişliğine göre
+ * sütun ya da raf + çekmece, telefonda altta). 640px altında olaylar altta sabit. Karardan sonra
+ * tarihçe açılır; taslakta şerit yerine "Sil" var.
  * ------------------------------------------------------------------------------------------------- */
 
 export function DetailPage() {
@@ -107,7 +98,7 @@ export function DetailPage() {
   if (!r || !process || !box) return <Navigate to={boxLink(routeBox?.id ?? 'bekleyen')} replace />
 
   const index = ids.indexOf(r.id)
-  const go = (id: string | undefined) => {
+  const go = (id: string) => {
     const target = findRequest(id)
     if (target) navigate(requestLink(target), { state: { ids } satisfies DetailNavState })
   }
@@ -122,9 +113,7 @@ export function DetailPage() {
           r={r}
           process={process}
           caption={processCaption(process)}
-          position={index >= 0 ? `${index + 1} / ${ids.length}` : null}
-          prev={index > 0 ? () => go(ids[index - 1]) : undefined}
-          next={index >= 0 && index < ids.length - 1 ? () => go(ids[index + 1]) : undefined}
+          nav={index >= 0 ? { ids, index, go } : undefined}
           onClose={() => navigate(processLink(box.id, process.id))}
           onDeleted={() => navigate(boxLink('taslaklar'))}
         />
@@ -145,7 +134,6 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
       r={r}
       process={process}
       caption={processCaption(process)}
-      position={null}
       onClose={onClose}
       onDeleted={onClose}
       isChild
@@ -153,23 +141,11 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
   )
 }
 
-type SideTab = 'props' | 'history' | 'docs'
-
-const SIDE_TABS: { id: SideTab; label: string; icon: LucideIcon }[] = [
-  { id: 'props', label: 'Özellikler', icon: Info },
-  { id: 'history', label: 'Tarihçe', icon: History },
-  { id: 'docs', label: DOCUMENT_LABELS.title, icon: Files },
-]
-
-/** Yan panelin sağa katlanma tercihi (geniş ekranda; saklanır). */
-const SIDE_KEY = 'synergy-detail-side-v1'
-
-function loadSideCollapsed() {
-  try {
-    return localStorage.getItem(SIDE_KEY) === '0'
-  } catch {
-    return false
-  }
+/** Listeden açılan talebin gezinmesi: listedeki talepler, açık olanın sırası ve geçiş. */
+interface DetailNav {
+  ids: string[]
+  index: number
+  go: (id: string) => void
 }
 
 /** Tailwind sınıfları antd'nin kendi zemin / yazı rengini ezdiği için devre dışı hâli elle. */
@@ -202,9 +178,7 @@ function Viewer({
   r,
   process,
   caption,
-  position,
-  prev,
-  next,
+  nav,
   onClose,
   onDeleted,
   isChild = false,
@@ -212,9 +186,8 @@ function Viewer({
   r: WorkRequest
   process: Process
   caption: string
-  position: string | null
-  prev?: () => void
-  next?: () => void
+  /** Listeden açıldıysa; yoksa Geri / İleri kapalı. */
+  nav?: DetailNav
   onClose: () => void
   onDeleted: () => void
   /** Child sekmesi: başlıkta Geri / İleri gösterilmez. */
@@ -226,6 +199,10 @@ function Viewer({
   const events = eventsFor(r)
   const isDraft = r.status === 'Taslak'
   const status = statusColor(r.status)
+  // Geri / İleri listedeki komşu taleplere
+  const prev = nav && nav.index > 0 ? () => nav.go(nav.ids[nav.index - 1]) : undefined
+  const next =
+    nav && nav.index < nav.ids.length - 1 ? () => nav.go(nav.ids[nav.index + 1]) : undefined
 
   const [view, setView] = useState<'form' | 'history'>('form')
   const [activeId, setActiveId] = useState(form.id)
@@ -235,34 +212,18 @@ function Viewer({
   const [sideTab, setSideTab] = useState<SideTab>('props')
   const [historyOptions, setHistoryOptions] = useHistoryViewOptions()
   const phone = useMediaQuery('(max-width: 639px)')
-  // Yan panel geniş ekranda sağa katlanır; form tam genişliğe yayılır
-  const wide = useMediaQuery('(min-width: 1024px)')
-  const [sideCollapsed, setSideCollapsed] = useState(loadSideCollapsed)
-  // Yan yana bölmede panel katlı başlar (bölme dar); açılırsa yalnızca bu bölmede açık kalır
-  const narrow = usePaneNarrow()
-  const [openInPane, setOpenInPane] = useState(false)
-  const collapsed = narrow ? !openInPane : wide && sideCollapsed
-  const setCollapsed = (v: boolean) => {
-    if (narrow) {
-      setOpenInPane(!v)
-      return
-    }
-    setSideCollapsed(v)
-    try {
-      localStorage.setItem(SIDE_KEY, v ? '0' : '1')
-    } catch {
-      // Depolama kapalıysa tercih yalnızca bu oturumda
-    }
-  }
-  const openSide = (tab: SideTab) => {
-    setSideTab(tab)
-    setCollapsed(false)
+  const scroller = useTabScroller()
+  // Yan bilgiler (DetailSide.tsx): bölme genişliğine göre sütun, raf + çekmece ya da formun altında
+  const [side, attachSide] = useSidePanel(scroller)
+  const openSide = (target: SideTarget) => {
+    if (target !== 'docs') setSideTab(target)
+    side.setOpen(true)
   }
   // Vurgu gücü (tema paneli): varsayılanda beyaz bant; koyu zeminli bantlarda öğeler şerit gibi ters renkte
   const bandStyle = useBand('record')
   const solid = !bandStyle.light
   const band = cn(CARD, bandStyle.band)
-  const scrolled = useScrolled(220, useTabScroller())
+  const scrolled = useScrolled(220, scroller)
 
   const flow = useFlow(r, {
     onDocsRequired: () => {
@@ -281,6 +242,8 @@ function Viewer({
     setActiveId(doc.id)
     setView('form')
     setDocsWarning(false)
+    // Çekmece formu örtüyor: gösterilen doküman görünsün
+    side.dismiss()
   }
   const active = documents.find((d) => d.id === activeId) ?? form
   const historyMenu = <HistoryViewMenu options={historyOptions} onChange={setHistoryOptions} />
@@ -299,7 +262,7 @@ function Viewer({
     />
   )
 
-  const side = {
+  const sideContent = {
     props: <PropertiesList items={propertiesOf(r)} />,
     docs: (
       <DocumentsList
@@ -323,7 +286,10 @@ function Viewer({
             <Button
               variant="filled"
               color="default"
-              onClick={() => setView('history')}
+              onClick={() => {
+                setView('history')
+                side.dismiss()
+              }}
               className="flex-1"
             >
               {VIEWER_LABELS.showFullHistory}
@@ -367,8 +333,8 @@ function Viewer({
 
       {/* --- Band ---------------------------------------------------------------------------- */}
       {/*
-       * Başlık bandı: solda süreç ikonu, proje ve süreç adı (sayfa başlığı) ile durum; sağda sıra ve
-       * Geri / İleri. Altında olaylar.
+       * Başlık bandı: solda süreç ikonu, proje ve süreç adı (sayfa başlığı) ile durum; sağda Geri /
+       * İleri, aralarında listedeki süreçlerin şeridi. Altında olaylar.
        */}
       <Card className={band} classNames={{ body: 'flex flex-col gap-5 p-6' }}>
         <Flex wrap align="start" justify="space-between" gap={16}>
@@ -403,17 +369,13 @@ function Viewer({
           </Flex>
           {isChild ? null : (
             <Flex className={ROW}>
-              {position && (
-                <Typography.Text className={`font-mono text-sm ${FAINT}`}>
-                  {position}
-                </Typography.Text>
-              )}
               <NavButton
                 label={VIEWER_LABELS.prev}
                 icon={ChevronLeft}
                 onPress={prev}
                 onStrip={solid}
               />
+              {nav && nav.ids.length > 1 && <NavTrail nav={nav} onStrip={solid} />}
               <NavButton
                 label={VIEWER_LABELS.next}
                 icon={ChevronRight}
@@ -437,8 +399,16 @@ function Viewer({
       </Card>
 
       {/* --- Bento ---------------------------------------------------------------------------- */}
-      <Flex vertical className="gap-3 lg:flex-row lg:items-start">
-        <Card className={cn(CARD, 'min-w-0 lg:flex-1')} classNames={{ body: 'p-6 sm:p-8' }}>
+      {/* Solda form (ya da tam tarihçe), sağda yan bilgiler; telefonda alt alta */}
+      <Flex
+        ref={attachSide}
+        vertical={side.mode === 'stack'}
+        className={cn('relative gap-3', side.mode !== 'stack' && 'items-start')}
+      >
+        <Card
+          className={cn(CARD, 'min-w-0', side.mode !== 'stack' && 'flex-1')}
+          classNames={{ body: 'p-6 sm:p-8' }}
+        >
           {view === 'history' ? (
             // Form ↔ tarihçe geçişinde içerik yeniden belirir
             <Flex key="history" vertical gap={24} className="animate-rise">
@@ -476,83 +446,17 @@ function Viewer({
           )}
         </Card>
 
-        {/*
-         * Yan bilgiler her genişlikte sekmelerde; geniş ekranda kaydırırken yapışık kalır (yapışkan
-         * şeridin altında) ve sağa katlanır: katlıyken dar bir rafta sekme ikonları, basınca açılır.
-         * Zorunlu doküman uyarısında kart açılır ve sallanır.
-         */}
-        <Card
-          className={cn(
-            CARD,
-            'shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-22',
-            collapsed ? 'lg:w-14' : 'lg:w-[calc((100%-0.5rem)/3)]',
-            docsWarning && 'animate-shake ring-2 ring-warning',
-          )}
-          classNames={{
-            body: collapsed
-              ? 'flex flex-col items-center gap-1 p-2'
-              : 'p-5 pt-2 animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out_both]',
-          }}
-        >
-          {collapsed ? (
-            <>
-              <Tip label="Paneli aç" placement="left">
-                <Button
-                  type="text"
-                  aria-label="Paneli aç"
-                  aria-expanded={false}
-                  icon={<PanelRightOpen {...IC} size={18} />}
-                  onClick={() => setCollapsed(false)}
-                  className="text-muted"
-                />
-              </Tip>
-              <Divider className="my-1 w-6 min-w-0" />
-              {SIDE_TABS.map(({ id, label, icon: Icon }) => (
-                <Tip key={id} label={label} placement="left">
-                  <Button
-                    type="text"
-                    aria-label={label}
-                    icon={<Icon {...IC} size={18} />}
-                    onClick={() => openSide(id)}
-                    className={cn(
-                      id === sideTab &&
-                        'bg-accent/12! text-accent-soft-foreground! hover:bg-accent/18!',
-                    )}
-                  />
-                </Tip>
-              ))}
-            </>
-          ) : (
-            <Tabs
-              activeKey={sideTab}
-              onChange={(key) => setSideTab(key as SideTab)}
-              animated={{ inkBar: true, tabPane: true }}
-              tabBarExtraContent={
-                wide && (
-                  <Tip label="Paneli katla" placement="left">
-                    <Button
-                      type="text"
-                      size="small"
-                      aria-label="Paneli katla"
-                      aria-expanded
-                      icon={<PanelRightClose {...IC} size={18} />}
-                      onClick={() => setCollapsed(true)}
-                      className="ms-2 text-muted"
-                    />
-                  </Tip>
-                )
-              }
-              // Sekmeler şeridi eşit paylaşır; içerik kabı yanlara halka kadar (0.75rem) taşar:
-              // tarihçedeki nabız halkası kesilmesin
-              classNames={{
-                header: 'mb-3 [&_.ant-tabs-nav-list]:w-full',
-                item: 'm-0 flex-1 justify-center',
-                body: '-mx-[0.75rem] px-[0.75rem]',
-              }}
-              items={SIDE_TABS.map(({ id, label }) => ({ key: id, label, children: side[id] }))}
-            />
-          )}
-        </Card>
+        {/* Zorunlu doküman uyarısında panel açılır, Dokümanlar kartı sallanır */}
+        <SidePanel
+          side={side}
+          tab={sideTab}
+          onTab={setSideTab}
+          onOpen={openSide}
+          warning={docsWarning}
+          docs={sideContent.docs}
+          props={sideContent.props}
+          history={sideContent.history}
+        />
       </Flex>
 
       {/* Telefonda olay şeridi altta sabit */}
@@ -709,5 +613,195 @@ function NavButton({
         className={onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND}
       />
     </Tip>
+  )
+}
+
+/** Süreç şeridinin sayfa boyu: çizgiler ve açılır liste aynı sayfayı gösterir. */
+const TRAIL_PAGE = 8
+
+/**
+ * Geri / İleri arasındaki süreç şeridi (yüzen içindekiler, yatay): listedeki her süreç kısa bir
+ * çizgi, açık olan uzun ve birincil renkte. Üstüne gelince (ya da basınca) süreçler açılır listede;
+ * satıra basınca o talebe gidilir. Uzun listede sayfalı: çizgiler listenin gösterdiği sayfayı izler,
+ * liste kapanınca açık talebin sayfasına döner. Liste şeridin hemen ardında takılı (Sekme ile içine
+ * geçilir); Esc ya da dışarı odaklanma kapatır.
+ */
+function NavTrail({ nav, onStrip }: { nav: DetailNav; onStrip: boolean }) {
+  const { ids, index, go } = nav
+  const home = Math.floor(index / TRAIL_PAGE) + 1
+  const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(home)
+  // Listede üstüne gelinen (ya da odaklanan) satırın çizgisi belirginleşir
+  const [hovered, setHovered] = useState<string | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const transition = useTransition()
+
+  const from = (page - 1) * TRAIL_PAGE
+  const shown = ids.slice(from, from + TRAIL_PAGE)
+  // Son sayfa kısa kalsa da şerit ve liste boyu sabit: boş yuvalar görünmez (çizgilerde iki yanda)
+  const size = Math.min(ids.length, TRAIL_PAGE)
+  const slots = Array.from({ length: size }, (_, i) => shown[i])
+  const lead = Math.floor((size - shown.length) / 2)
+  const ticks = Array.from({ length: size }, (_, i) => shown[i - lead])
+  const current = ids[index]
+
+  const toggle = (v: boolean) => {
+    setOpen(v)
+    if (v) return
+    setPage(home)
+    setHovered(null)
+  }
+  const close = () => {
+    toggle(false)
+    trigger.current?.focus()
+  }
+
+  const list = (
+    <Flex
+      vertical
+      gap={2}
+      role="dialog"
+      aria-label={VIEWER_LABELS.processes}
+      className="w-80 max-w-[calc(100vw-2rem)]"
+    >
+      {slots.map((id, i) => {
+        const x = id ? findRequest(id) : undefined
+        const active = !!x && id === current
+        return (
+          // Boş yuva görünmez satır: sayfa düğmeleri imlecin altından kaçmaz
+          <Button
+            key={id ?? `slot-${i}`}
+            type="text"
+            aria-current={active ? 'page' : undefined}
+            onClick={() => (active ? close() : id && go(id))}
+            onMouseEnter={() => setHovered(id ?? null)}
+            onMouseLeave={() => setHovered(null)}
+            onFocus={() => setHovered(id ?? null)}
+            onBlur={() => setHovered(null)}
+            className={cn(
+              'h-auto w-full justify-start gap-3 rounded-xl! px-2 py-1.5 text-start font-normal hover:bg-surface-secondary!',
+              active
+                ? 'text-accent-soft-foreground hover:text-accent-soft-foreground!'
+                : 'text-foreground hover:text-foreground!',
+              !x && 'invisible',
+            )}
+          >
+            <Typography.Text className="w-5 shrink-0 text-end font-mono text-xs text-current tabular-nums opacity-60">
+              {from + i + 1}
+            </Typography.Text>
+            <Flex vertical className="min-w-0 flex-1">
+              <Typography.Text
+                className={cn('truncate text-sm text-current', active && 'font-medium')}
+              >
+                {x?.template.title ?? '\u00a0'}
+              </Typography.Text>
+              <Typography.Text className="truncate text-xs text-current opacity-60">
+                {x ? (
+                  <>
+                    <Typography.Text className="font-mono text-xs text-current">
+                      {x.no}
+                    </Typography.Text>
+                    {' · '}
+                    {x.requester.name}
+                  </>
+                ) : (
+                  '\u00a0'
+                )}
+              </Typography.Text>
+            </Flex>
+          </Button>
+        )
+      })}
+      {ids.length > TRAIL_PAGE && (
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={8}
+          className="mt-1 border-t border-border px-1 pt-2"
+        >
+          <Typography.Text type="secondary" className="font-mono text-xs tabular-nums">
+            {from + 1}–{from + shown.length} / {ids.length}
+          </Typography.Text>
+          <Pagination
+            size="small"
+            aria-label="Sayfalar"
+            current={page}
+            total={ids.length}
+            pageSize={TRAIL_PAGE}
+            showSizeChanger={false}
+            onChange={(p) => {
+              setPage(p)
+              setHovered(null)
+            }}
+            className="font-mono"
+          />
+        </Flex>
+      )}
+    </Flex>
+  )
+
+  return (
+    // Liste bu kabın içine takılır: odak şeritten listeye geçince kapanmaz
+    <Flex
+      className="inline-flex"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return
+        e.stopPropagation()
+        close()
+      }}
+      onBlur={(e) => {
+        const to = e.relatedTarget
+        if (open && to && !e.currentTarget.contains(to)) toggle(false)
+      }}
+    >
+      <Popover
+        open={open}
+        onOpenChange={toggle}
+        trigger="hover"
+        placement="bottomRight"
+        arrow={false}
+        getPopupContainer={(n) => n.parentElement ?? document.body}
+        classNames={{ container: 'p-2' }}
+        content={list}
+      >
+        <Button
+          ref={trigger}
+          type="text"
+          aria-label={`${VIEWER_LABELS.processes} (${index + 1} / ${ids.length})`}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          // Dokunmatik ve klavye: basınca açılır (açıkken kapatmaz)
+          onClick={() => toggle(true)}
+          className="group h-8 gap-1.5 px-2.5 text-current hover:bg-current/8! hover:text-current!"
+        >
+          {ticks.map((id, i) => (
+            <Flex key={i} aria-hidden align="center" className="h-5 w-0.5">
+              {id && id === current ? (
+                // Açık talebin çizgisi talepten talebe kayar
+                <MotionFlex
+                  layoutId="detail-trail"
+                  transition={transition}
+                  className={cn(
+                    'block h-full w-full rounded-full',
+                    onStrip ? 'bg-current' : 'bg-accent',
+                  )}
+                />
+              ) : (
+                <Flex
+                  className={cn(
+                    'block w-full rounded-full transition-[height,background-color] duration-[calc(200ms*var(--motion-time,1))]',
+                    !id
+                      ? 'invisible h-2.5'
+                      : id === hovered
+                        ? 'h-3.5 bg-current/70'
+                        : 'h-2.5 bg-current/25 group-hover:bg-current/45',
+                  )}
+                />
+              )}
+            </Flex>
+          ))}
+        </Button>
+      </Popover>
+    </Flex>
   )
 }

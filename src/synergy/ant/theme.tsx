@@ -23,7 +23,7 @@ dayjs.locale('tr')
  * utilities); Tailwind sınıfları antd'nin varsayılanlarını her zaman ezer.
  * ------------------------------------------------------------------------------------------------- */
 
-interface Resolved {
+export interface Resolved {
   accent: string
   link: string
   success: string
@@ -90,11 +90,14 @@ function toRgba(css: string): string {
   return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${+alpha.toFixed(3)})`
 }
 
-/** Kabuğun tema değişkenlerini çözer (görünmez bir yoklama öğesiyle; `var()` zincirleri de çözülür). */
-function resolve(): Resolved {
+/**
+ * Kabuğun tema değişkenlerini çözer (görünmez bir yoklama öğesiyle; `var()` zincirleri de çözülür).
+ * `host`: değişkenlerin tanımlı olduğu öğe (varsayılan sayfa; tasarım paketinde tema kökü).
+ */
+export function resolve(host: HTMLElement = document.body): Resolved {
   const probe = document.createElement('i')
   probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none'
-  document.body.appendChild(probe)
+  host.appendChild(probe)
   const color = (v: string) => {
     probe.style.color = `var(${v})`
     return toRgba(getComputedStyle(probe).color)
@@ -151,7 +154,7 @@ function useResolved() {
 
 /* --- Tokenlar ---------------------------------------------------------------------------------- */
 
-function tokensOf(
+export function tokensOf(
   v: Resolved,
   dark: boolean,
   motion: boolean,

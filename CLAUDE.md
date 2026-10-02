@@ -35,7 +35,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`).
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults, 5 presets and nav
   positions in `theme.ts`): primary colour, accent strength, radius, button shape, background, fonts,
-  scale, spacing (`--spacing`), nav position, card style, shadow, border, animation level / speed,
+  scale, spacing (`--spacing`), nav position, trail style (Yumuşak / Dolu, `useLook().trail`), card
+  style, shadow, border, animation level / speed,
   page transition effect (rise, fade, slide, zoom, blur, off; `useLook().pageTransition`), scroll
   shadow and FPS. Only the variables of changed settings are written inline on `<html>` (button shape
   as `[&_.ant-btn…]:…` / `[&_.ant-tag]:…` classes on `<html>`) while the shell is mounted; all are
@@ -67,8 +68,9 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - `index.tsx` › `AppShell`: chrome as separate floating panels on one side, set by tema paneli ›
   Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
   `StartMenu.tsx`, morphs into the start menu) and actions / profile; "Üstte" = three columns: logo +
-  back / forward | centered dock | actions / profile. The breadcrumb lives in the dock (the active app
-  carries its sub-levels, `DockTrail`) and in full in the start menu ("Buradasınız"); the chrome height
+  back / forward | centered dock | actions / profile. The breadcrumb lives in the dock as nested pills
+  growing out of the Başlangıç circle (`DockPath`: Başlangıç › active app › sub-levels, each pill tucked
+  under the previous one, the other apps after the path) and in full in the start menu ("Buradasınız"); the chrome height
   reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +
   `Drawer`. `PerfOverlay.tsx` is the FPS meter.
 - `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
@@ -83,8 +85,20 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as agenda tabs incl.
   Geçmiş (`AgendaTabs.tsx`), search / sort / date range on top of the process list, process list
   (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete);
-  `DetailPage.tsx` + `DetailTiles.tsx` + `FormTabs.tsx` + `FormFields.tsx` (Flow Viewer, read-only
-  form fields); `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
+  `DetailPage.tsx` + `DetailSide.tsx` + `DetailTiles.tsx` + `FormTabs.tsx` + `FormFields.tsx` (Flow
+  Viewer, read-only form fields; side info = a Dokümanlar card above an Özellikler / Tarihçe tabs
+  card, laid out by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
+  folds to an icon rail (remembered), narrower (e.g. `panelSize` 1) the rail with the cards in a
+  drawer over the dimmed form (closes on outside click / Esc / showing a document), phones below
+  the form; between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
+  original: one tick per request of the list it was opened from, hover / press opens a paged
+  popover list, 8 per page); child forms open from form buttons into `FormTabs.tsx` by the child
+  process's `panelSize` (original `viewOptions.panelSize`, a 3-unit strip): 1 / 2 split the tab
+  (child right ⅓ / ⅔; in a split the opener stays beside the new child and the other form moves to
+  its own tab, returning when the child closes), 3 opens a new tab, so a split pair becomes one
+  grouped tab; a form has one open child at a time (opening another closes the previous one with
+  its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3;
+  `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
   company admins and property relations have their own views (`HrSpecial.tsx`). Data and in-memory

@@ -28,6 +28,7 @@ import {
   type Shadow,
   type ThemeKit,
   type ThemeSettings,
+  type TrailStyle,
 } from '@/synergy/shared/themeSettings'
 
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
@@ -99,6 +100,12 @@ const MOTIONS: { id: MotionLevel; label: string }[] = [
   { id: 'full', label: 'Tam' },
   { id: 'reduced', label: 'Az' },
   { id: 'off', label: 'Kapalı' },
+]
+
+/** Raftaki konum hapları (index.tsx › DockPath). */
+const TRAILS: { id: TrailStyle; label: string }[] = [
+  { id: 'soft', label: 'Yumuşak' },
+  { id: 'solid', label: 'Dolu' },
 ]
 
 const SPACINGS = [
@@ -509,6 +516,15 @@ export function ThemePanel({
             value={settings.nav}
             options={kit.navOptions}
             onChange={(nav) => set({ nav })}
+          />
+        </Section>
+
+        <Section title="Konum">
+          <Segments
+            label="Konum"
+            value={settings.trail}
+            options={TRAILS}
+            onChange={(trail) => set({ trail })}
           />
         </Section>
 

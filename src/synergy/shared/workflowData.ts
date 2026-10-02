@@ -153,6 +153,12 @@ export interface ChildLink {
   action: 'add' | 'open'
 }
 
+/**
+ * Child formun panel boyutu (orijinalde dokümanın `viewOptions.panelSize`): ekran üç birimlik bir
+ * şerit; 1 sağda üçte bir, 2 sağda üçte iki (açan form kalan yerde), 3 tam genişlik (yeni sekme).
+ */
+export type PanelSize = 1 | 2 | 3
+
 /** Talebin formu: listede ve ayrıntıda gösterilen alanlar. */
 interface RequestTemplate {
   /** Formun konu alanı ("Konu" sütunu ve ayrıntı başlığı). */
@@ -249,6 +255,8 @@ export interface Process {
   mustViewFirstAttachment?: boolean
   /** Uygulama (paket) versiyonu. */
   packageVersion: number
+  /** Child olarak açılınca panel boyutu (yoksa 1, orijinaldeki gibi). */
+  panelSize?: PanelSize
   templates: RequestTemplate[]
 }
 
@@ -315,6 +323,7 @@ const processes: Process[] = [
           { name: 'Acil müdahale paketi', qty: 1, unit: 'yıl', price: 9_500 },
         ],
         attachments: ['Karsilastirma_Tablosu.xlsx'],
+        children: [{ id: 'child-bakim-sozlesmesi-0', label: 'Mevcut Sözleşmeyi Aç', after: 'Sözleşme süresi', action: 'open' }],
       },
       {
         title: 'Toplantı odası video konferans seti',
@@ -392,6 +401,7 @@ const processes: Process[] = [
           { name: 'Araç kiralama', qty: 1, unit: 'gün', price: 940 },
         ],
         attachments: ['Fisler_Izmir.pdf'],
+        children: [{ id: 'child-masraf-fisi-0', label: 'Fiş Detaylarını Aç', after: 'Fiş sayısı', action: 'open' }],
       },
       {
         title: 'Fuar standı ekip yemekleri',
@@ -435,6 +445,7 @@ const processes: Process[] = [
         fields: { 'Karşı taraf': 'Nimbus Bulut Hizmetleri A.Ş.', 'Sözleşme türü': 'Hizmet alım · yenileme', 'Bedel': '₺486.000 / yıl', 'Süre': '1 Kasım 2026 – 31 Ekim 2027', 'Fesih bildirimi': '60 gün' },
         reason: 'Mevcut sözleşme 31 Ekim’de sona eriyor. Fiyat artışı %18 ile enflasyonun altında kaldı; SLA %99,9’dan %99,95’e yükseltildi.',
         attachments: ['Sozlesme_Taslak_v3.docx', 'Hukuk_Gorusu.pdf'],
+        children: [{ id: 'child-hukuk-gorusu-0', label: 'Hukuk Görüşü Ekle', after: 'Sözleşme türü', action: 'add' }],
       },
       {
         title: 'Temizlik hizmet sözleşmesi ek protokolü',
@@ -498,6 +509,7 @@ const processes: Process[] = [
         fields: { 'Kaynak': 'Müşteri şikâyeti', 'Müşteri': 'Anadolu Market Zinciri', 'Kök neden': 'Palet streç sarımı yetersiz', 'Hedef tarih': '15 Ekim 2026' },
         reason: 'Son iki sevkiyatta 38 kolide ezilme tespit edildi. Sarım makinesinin gerginlik ayarı standart dışı; operatör eğitimi ve günlük kontrol listesi öneriliyor.',
         attachments: ['Sikayet_Fotograflari.zip', '5Neden_Analizi.pdf'],
+        children: [{ id: 'child-kok-neden-0', label: 'Kök Neden Analizini Aç', after: 'Kök neden', action: 'open' }],
       },
       {
         title: 'İç denetim bulgusu · kalibrasyon kaydı eksik',
@@ -873,6 +885,7 @@ const childProcesses: Process[] = [
     events: [approve(), reject(), sendBack({ description: 'Revizyon İste', reasonTitle: 'Revizyon Nedeni' }), forward()],
     columns: ['Tedarikçi', 'Teklif tutarı'],
     packageVersion: 6,
+    panelSize: 2,
     templates: [
       {
         title: 'TeknoPlus teklifi · 6 adet dizüstü bilgisayar',
@@ -927,6 +940,7 @@ const childProcesses: Process[] = [
     events: [approve(), reject(), forward()],
     columns: ['Kalem', 'Birim fiyat'],
     packageVersion: 3,
+    panelSize: 3,
     templates: [
       {
         title: 'ThinkPad T14 Gen 5 · teknik uygunluk',
@@ -958,6 +972,7 @@ const childProcesses: Process[] = [
     events: [approve(), reject(), forward()],
     columns: ['Unvan', 'Tedarikçi puanı'],
     packageVersion: 4,
+    panelSize: 1,
     templates: [
       {
         title: 'TeknoPlus Bilişim · kart güncelleme',
@@ -987,6 +1002,7 @@ const childProcesses: Process[] = [
     events: [approve(), reject(), forward()],
     columns: ['Bütçe kalemi', 'Talep sonrası kalan'],
     packageVersion: 9,
+    panelSize: 1,
     templates: [
       {
         title: 'BT Donanım 2026 · bütçe uygunluğu',
@@ -999,6 +1015,127 @@ const childProcesses: Process[] = [
           'Bütçe sorumlusu': 'Kerem Aksoy',
         },
         reason: 'Talep yıllık bütçe içinde kalıyor; kalan tutar yıl sonu yenilemeleri için yeterli.',
+      },
+    ],
+  },
+  {
+    id: 'bakim-sozlesmesi',
+    project: 'Satın Alma Yönetimi',
+    name: 'Bakım Sözleşmesi',
+    form: 'Bakım Sözleşmesi Formu',
+    icon: FileSignature,
+    prefix: 'BKS',
+    steps: ['Sözleşme açıldı', 'Lojistik müdürü onayı'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Yüklenici', 'Bitiş tarihi'],
+    packageVersion: 5,
+    panelSize: 3,
+    templates: [
+      {
+        title: 'Forklift periyodik bakım sözleşmesi · 2025–2026',
+        fields: {
+          Yüklenici: 'Marmara İstif Makineleri Ltd.',
+          'Sözleşme no': 'LJS-2025-014',
+          'Başlangıç tarihi': '1 Ekim 2025',
+          'Bitiş tarihi': '30 Eylül 2026',
+          Kapsam: '4 forklift · 3 ayda bir periyodik bakım',
+          'Müdahale süresi': '4 saat',
+          'Yıllık bedel': '₺34.200',
+          Yenileme: 'Yazılı bildirimle 12 ay',
+        },
+        reason: 'Geçen dönemde 4 periyodik bakım ve 2 acil müdahale yapıldı; arıza kaynaklı duruş toplam 9 saat.',
+        attachments: ['Bakim_Sozlesmesi_2025.pdf'],
+      },
+    ],
+  },
+  {
+    id: 'masraf-fisi',
+    project: 'Finans',
+    name: 'Masraf Fişi',
+    form: 'Masraf Fişi Formu',
+    icon: Receipt,
+    prefix: 'FIS',
+    steps: ['Fiş girildi', 'Muhasebe kontrolü'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Fiş türü', 'Tutar'],
+    packageVersion: 2,
+    panelSize: 1,
+    templates: [
+      {
+        title: 'İzmir ziyareti · 6 fiş',
+        fields: {
+          'Fiş türü': 'Ulaşım ve konaklama',
+          Tutar: '₺7.420',
+          'KDV dahil': 'Evet',
+          'Fiş adedi': '6',
+          'Belge tarihleri': '16–18 Eylül 2026',
+        },
+        reason: 'Uçak bileti, iki gece otel ve bir günlük araç kiralama fişleri. Otel faturası şirket unvanına kesildi.',
+        attachments: ['Fisler_Izmir.pdf'],
+      },
+    ],
+  },
+  {
+    id: 'hukuk-gorusu',
+    project: 'Hukuk',
+    name: 'Hukuk Görüşü',
+    form: 'Hukuk Görüşü Formu',
+    icon: BookOpen,
+    prefix: 'HKG',
+    steps: ['Görüş istendi', 'Hukuk müşaviri değerlendirmesi'],
+    approverStep: 1,
+    events: [approve(), reject(), sendBack({ description: 'Revizyon İste', reasonTitle: 'Revizyon Nedeni' }), forward()],
+    columns: ['Risk düzeyi', 'Hazırlayan'],
+    packageVersion: 7,
+    panelSize: 2,
+    templates: [
+      {
+        title: 'Nimbus bulut hizmet sözleşmesi · hukuki değerlendirme',
+        fields: {
+          Sözleşme: 'Bulut sunucu hizmeti yenileme · 12 ay',
+          Hazırlayan: 'Av. Deniz Arslan',
+          'Risk düzeyi': 'Düşük',
+          'Uygulanacak hukuk': 'Türk hukuku · İstanbul mahkemeleri',
+          'Kişisel veri': 'KVKK ek protokolü imzalanacak',
+          'Sorumluluk sınırı': 'Yıllık bedelin %100’ü',
+          Fesih: '60 gün önceden yazılı bildirim',
+          'Önerilen değişiklik': 'SLA ihlalinde hizmet kredisi maddesi',
+        },
+        reason: 'Taslak v3 şirket standartlarına genel olarak uygun. SLA ihlalinde hizmet kredisinin kendiliğinden uygulanması ve verilerin fesihten sonra 30 gün içinde iadesi maddelerinin eklenmesi önerilir.',
+        attachments: ['Hukuk_Gorusu.pdf'],
+      },
+    ],
+  },
+  {
+    id: 'kok-neden',
+    project: 'Kalite Yönetim Sistemi',
+    name: 'Kök Neden Analizi',
+    form: 'Kök Neden Analizi Formu',
+    icon: ClipboardCheck,
+    prefix: 'KNA',
+    steps: ['Analiz başlatıldı', 'Kalite müdürü onayı'],
+    approverStep: 1,
+    events: [approve(), reject(), forward()],
+    columns: ['Yöntem', 'Sorumlu'],
+    packageVersion: 4,
+    panelSize: 2,
+    templates: [
+      {
+        title: 'Ambalaj hasarı · 5 Neden analizi',
+        fields: {
+          Yöntem: '5 Neden',
+          Sorumlu: 'Sevkiyat ve bakım ekibi',
+          '1. Neden': 'Kolilerde ezilme',
+          '2. Neden': 'Paletler taşımada kaydı',
+          '3. Neden': 'Streç sarım gevşek',
+          '4. Neden': 'Sarım makinesinin gerginliği düşük',
+          '5. Neden': 'Günlük ayar kontrolü tanımlı değil',
+          'Önerilen faaliyet': 'Günlük kontrol listesi ve operatör eğitimi',
+        },
+        reason: 'Analiz sevkiyat ve bakım ekibiyle yapıldı. Sarım makinesinin gerginlik ayarı bakım sonrasında standart değere getirilmemiş.',
+        attachments: ['5Neden_Analizi.pdf'],
       },
     ],
   },
@@ -1051,6 +1188,12 @@ export function findProcess(id: string | undefined) {
 
 export function processOf(r: WorkRequest): Process {
   return findProcess(r.processId)!
+}
+
+/** Child olarak açılacak talebin panel boyutu (sürecinde yoksa 1). */
+export function panelSizeOf(id: string): PanelSize {
+  const r = findRequest(id)
+  return (r && processOf(r).panelSize) || 1
 }
 
 /** Kimliğe göre ham talep (tüm kutularda; kimliğin öneki kutuyu söyler). */
@@ -1412,6 +1555,7 @@ export const VIEWER_LABELS = {
   responseDate: 'Cevap Tarihi', // 100762
   prev: 'Geri', // 102994
   next: 'İleri', // 102993
+  processes: 'Süreçler', // 102316
 } as const
 
 /* -------------------------------------------------------------------------------------------------

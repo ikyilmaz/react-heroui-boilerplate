@@ -24,6 +24,8 @@ export type ButtonShape = 'default' | 'pill' | 'square'
 export type MotionLevel = 'full' | 'reduced' | 'off'
 /** Sayfa geçişi efekti (ekran tümüyle değişince); `off` anında. */
 export type PageEffect = 'off' | 'fade' | 'rise' | 'slide' | 'zoom' | 'blur'
+/** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
+export type TrailStyle = 'soft' | 'solid'
 
 export interface ThemeSettings {
   /** Birincil renk (OKLCH): ton 0–360, doygunluk 0–0.24, açıklık 0.3–0.65. */
@@ -49,6 +51,8 @@ export interface ThemeSettings {
   buttonShape: ButtonShape
   /** Gezinme konumu; seçenekler `ThemeKit.navOptions`, `default` uygulamanın kendisi. */
   nav: string
+  /** Raftaki konum haplarının rengi (Yumuşak / Dolu). */
+  trail: TrailStyle
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. Hazır temalar buna dokunmaz. */
   motion: MotionLevel
   /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
@@ -92,6 +96,7 @@ export const BASE_LOOK = {
   accent: 'default',
   buttonShape: 'default',
   nav: 'default',
+  trail: 'soft',
   motion: 'full',
   motionSpeed: 1,
   showFps: false,
@@ -285,6 +290,8 @@ function clear(root: HTMLElement) {
 export interface Look {
   accent: AccentStrength
   nav: string
+  /** Raftaki konum haplarının rengi. */
+  trail: TrailStyle
   /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
   motion: MotionLevel
   /** Animasyon hızı çarpanı. */
@@ -298,6 +305,7 @@ export interface Look {
 export const LookContext = createContext<Look>({
   accent: 'default',
   nav: 'default',
+  trail: 'soft',
   motion: 'full',
   speed: 1,
   showFps: false,
@@ -429,6 +437,7 @@ export function useThemeSettings(kit: ThemeKit) {
   const look: Look = {
     accent: settings.accent,
     nav: settings.nav,
+    trail: settings.trail,
     motion,
     speed: settings.motionSpeed,
     showFps: settings.showFps,

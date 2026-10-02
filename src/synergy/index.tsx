@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router'
 import {
@@ -49,12 +49,13 @@ import {
   useIsDark,
   useLook,
   useThemeSettings,
+  type TrailStyle,
 } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
 import { APP_THEME } from '@/synergy/theme'
 import { PARENTS, findModule } from '@/synergy/hr/modules'
 import { MotionScope, PageTransition, useTransition } from '@/synergy/motion'
-import { AnimatePresence, animate, useMotionValue } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { PerfOverlay } from '@/synergy/PerfOverlay'
 import { AllAppsButton, AllAppsPanel } from '@/synergy/AllApps'
 import {
@@ -69,8 +70,8 @@ import { CARD, IC, MotionFlex, Tip, cn } from '@/synergy/ant/ui'
 import { Indicator } from '@/synergy/ant/motion'
 
 /*
- * Kabuk: üst çubuk (logo, konum hapları, uygulama araması, kullanıcı) ve solda dikeyde ortada
- * yüzen raf (StartMenu.tsx: tepede başlat kutusu, uygulamalar, tema). Sayfalar konumunu `useFrame`
+ * Kabuk: üst çubuk (logo, geri / ileri, raf, eylemler, kullanıcı) ya da solda dikeyde ortada
+ * yüzen raf (StartMenu.tsx: tepede başlat kutusu; konum Başlangıç'tan çıkan haplar, `DockPath`). Sayfalar konumunu `useFrame`
  * ile bildirir. 640px altında raf çekmeceye taşınır.
  */
 
@@ -724,195 +725,210 @@ function ThemeButton({ onPress }: { onPress: () => void }) {
 
 /* --- Kabuk içeriği (sol ray / üst çubuk) ------------------------------------------------------ */
 
-/**
- * Rafta bulunulan uygulamanın zemini: aktif öğenin kutusu ölçülüp (aynı kare içinde) konumlanır,
- * yeni öğeye rafın yayıyla kayar (konum hapının morph'uyla aynı tempo); ilk yerleşimde kaymaz. framer'ın paylaşılan yerleşim göstergesi
- * bir kare sonra ve kendi yayıyla başladığı için raftaki diğer hareketlerin gerisinde kalıyordu.
- */
-function DockIndicator({ current, deps }: { current: string | undefined; deps: string }) {
-  const spring = useTransition(DOCK_SPRING)
-  const [el, setEl] = useState<HTMLElement | null>(null)
-  // Konum ve boy hareket değerleriyle sürülür: ilk yerleşim anında, sonrakiler yayla (stil ile
-  // animasyon arasında geçerken boyun bir an kaybolup göstergenin görünmemesi önlenir)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const w = useMotionValue(0)
-  const h = useMotionValue(0)
-  const [shown, setShown] = useState(false)
-  const placed = useRef(false)
-  const transition = useRef(spring)
-  transition.current = spring
-  useLayoutEffect(() => {
-    const host = el?.parentElement
-    if (!host) return
-    const measure = () => {
-      const target = current
-        ? host.querySelector<HTMLElement>(`[data-dock-entry="${CSS.escape(current)}"]`)
-        : null
-      if (!target) {
-        placed.current = false
-        setShown(false)
-        return
-      }
-      const to = {
-        x: target.offsetLeft,
-        y: target.offsetTop,
-        w: target.offsetWidth,
-        h: target.offsetHeight,
-      }
-      if (!placed.current) {
-        x.jump(to.x)
-        y.jump(to.y)
-        w.jump(to.w)
-        h.jump(to.h)
-        placed.current = true
-      } else {
-        animate(x, to.x, transition.current)
-        animate(y, to.y, transition.current)
-        animate(w, to.w, transition.current)
-        animate(h, to.h, transition.current)
-      }
-      setShown(true)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(host)
-    host.querySelectorAll('[data-dock-entry]').forEach((n) => ro.observe(n))
-    return () => ro.disconnect()
-  }, [el, current, deps, x, y, w, h])
-  return (
-    <MotionFlex
-      ref={setEl}
-      aria-hidden
-      style={{ x, y, width: w, height: h }}
-      className={cn(
-        // `block`: antd'de içi boş `Flex` gizlenir
-        'pointer-events-none absolute start-0 top-0 block rounded-full bg-accent',
-        !shown && 'invisible',
-      )}
-    />
-  )
-}
+/* --- Raftaki konum: Başlangıç'tan çıkan iç içe haplar ---------------------------------------- */
 
 const NO_TRAIL: Crumb[] = []
 
-/** Raftaki uygulamanın konum çubuğundaki karşılığı (`Crumb.icon`). */
-const APP_CRUMB: Record<string, string> = {
-  baslangic: 'home',
-  'is-akis-yonetimi': 'workflow',
-  'insan-kaynaklari': 'hr',
-}
-
-/** Konumun, aktif uygulamanın altında kalan seviyeleri (ör. İş Akış › Bekleyen › Satın Alma). */
-function trailOf(crumbs: Crumb[], current: string | undefined) {
-  const key = current && APP_CRUMB[current]
-  const at = key ? crumbs.findIndex((c) => c.icon === key) : -1
-  return at < 0 ? [] : crumbs.slice(at + 1)
-}
+/**
+ * Hap ölçüleri. Üstte 32px boy, solda 34px en. Sonraki hap öncekinin altına kendi boyu kadar girer
+ * (`wrap`: eksi kenar boşluğu), içerik bu gizli kısımdan sonra başlar (`inner`). İlk hap Başlangıç
+ * dairesinin altına 28px girer.
+ */
+const TRAIL_PILL = {
+  top: {
+    wrap: '-ms-[32px]',
+    wrapFirst: '-ms-[28px]',
+    inner: 'h-[32px] ps-[40px] pe-3',
+    innerFirst: 'h-[32px] ps-[36px] pe-3',
+  },
+  left: {
+    wrap: '-mt-[34px]',
+    wrapFirst: '-mt-[28px]',
+    inner: 'w-[34px] pt-[42px] pb-2',
+    innerFirst: 'w-[34px] pt-[36px] pb-2',
+  },
+} as const
 
 /**
- * Raftaki konum: aktif uygulamanın alt seviyeleri, rafla ayrışsın diye hafif zeminli bir hap
- * içinde küçük ikonlar (adları ipucunda, tıklanır); bulunulan yer yumuşak birincil renkte, üstte
- * adıyla. Solda aktif ikonun altında dikey, üstte hapın yanında yatay (oklarla).
- *
- * Animasyonlar rafla aynı yayla (`DOCK_SPRING`) ve morph ile: hap belirirken / kaybolurken hafifçe
- * büyüyüp küçülerek solar, aktif uygulama değişince bir uygulamadan ötekine kayarak geçer
- * (`layoutId`); bulunulan yer vurgusu seviyeden seviyeye akar; seviye girerken
- * küçük bir ölçek ve kaymayla gelir, çıkarken yerinde solar ve akıştan çıkar (`popLayout`, komşular
- * kayarak yer açar); aynı seviyede ad değişince eskisi solarken yenisi aynı yerde belirir. Raf
- * boyu da aynı yayla değişir.
+ * Hapların rengi (tema paneli › Konum). Yumuşak: tek yumuşak ton, 1px yüzey rengi ayrım, bulunulan
+ * yer biraz koyu. Dolu: dolu birincil renk, 2px yüzey rengi ayrım, bulunulan yer ters renkli (yüzey
+ * zemin, birincil renk iç çerçeve). Zeminler opak (birincil renk yüzeyle karıştırılır): üst üste
+ * binen haplar birbirini göstermez.
  */
-function DockTrail({ items, left }: { items: Crumb[]; left: boolean }) {
+const TRAIL_STYLE: Record<
+  TrailStyle,
+  { home: string; item: string; hover: string; current: string }
+> = {
+  soft: {
+    home: '',
+    item: 'bg-[color-mix(in_oklab,var(--accent)_15%,var(--surface))] text-accent-soft-foreground ring-1 ring-surface',
+    hover:
+      'hover:bg-[color-mix(in_oklab,var(--accent)_22%,var(--surface))] hover:text-accent-soft-foreground',
+    current:
+      'bg-[color-mix(in_oklab,var(--accent)_30%,var(--surface))] font-medium text-accent-soft-foreground ring-1 ring-surface',
+  },
+  solid: {
+    home: 'ring-2 ring-surface',
+    item: 'bg-accent text-accent-foreground ring-2 ring-surface',
+    hover: 'hover:bg-[color-mix(in_oklab,var(--accent)_88%,var(--surface))] hover:text-accent-foreground',
+    current:
+      'bg-surface font-medium text-accent-soft-foreground ring-2 ring-surface inset-ring-2 inset-ring-accent',
+  },
+}
+
+/** Raftaki sıradan uygulama dairesi. */
+const APP_CIRCLE =
+  'flex size-[40px] shrink-0 items-center justify-center rounded-full text-foreground/70 no-underline transition-colors duration-200 hover:bg-surface-secondary hover:text-foreground'
+
+/**
+ * Raftaki konum: yol hep Başlangıç'tan başlar. Dolu daire Başlangıç; ardından her seviye (aktif
+ * uygulama, kutu, süreç, talep…) bütün köşeleri yuvarlak bir hap. Soldaki hap hep sağdakinin
+ * üstünde (`z-index` azalır; solda yukarıdan aşağıya) ve her hap bir öncekinin altına kendi boyu
+ * kadar girer: görünen birleşim öncekinin yuvarlak ucudur, çizilen köşe ya da boşluk yoktur. Diğer
+ * uygulamalar yolun ardından sıradan daire; aktif uygulama rafta ayrı daire olarak değil yolun ilk
+ * hapı olarak durur. Üstte bulunulan yerin adı da yazar (geniş ekranda); adlar ipucunda.
+ *
+ * Animasyonlar (hepsi rafın yayı `DOCK_SPRING` ile; hız ve düzey `useTransition`):
+ * - yeni seviye bir öncekinin altından kayarak çıkar (altta olduğu için onun içinden doğar gibi),
+ *   çıkan seviye aynı yoldan geri girer; `popLayout` ile akıştan çıktığından kalanlar sıçramaz;
+ * - uygulama değişince dairesi yolun ilk hapına, uygulamadan çıkınca hap yine dairesine dönüşür
+ *   (`layoutId`); diğer daireler `layout` ile yer açar / kapatır;
+ * - bulunulan yerin tonu ve adı seviye derinleşince / sığlaşınca renk geçişiyle el değiştirir;
+ * - raf boyu StartDock'taki kapsayıcının `layout`ıyla aynı yayla büyür / küçülür.
+ */
+function DockPath({
+  crumbs,
+  current,
+  left,
+}: {
+  crumbs: Crumb[]
+  /** Raftaki aktif uygulama (yolun ilk seviyesi); rafta öğesi olmayan uygulamada yok. */
+  current: string | undefined
+  left: boolean
+}) {
   const spring = useTransition(DOCK_SPRING)
-  const axis = left ? 'y' : 'x'
-  return (
-    <AnimatePresence initial={false} mode="popLayout">
-      {items.length > 0 && (
-        <MotionFlex
-          key="trail"
-          // Morph: aktif uygulama değişince hap bir uygulamadan ötekine kayarak / boyutlanarak geçer
-          layoutId="dock-trail"
-          role="list"
-          aria-label="Konum"
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          // Giderken olduğu yerde küçülerek kapanır (kısa: raf daralırken onunla kaymasın)
-          exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.14, ease: 'easeIn' } }}
-          transition={spring}
-          // Yarıçap stil olarak: boy değişirken köşeler ezilmesin
-          style={{ borderRadius: 20 }}
-          className={cn(
-            'relative flex shrink-0 items-center bg-surface-secondary p-[3px]',
-            left ? 'mt-0.5 flex-col gap-[2px]' : 'ms-0.5 gap-[2px]',
+  const style = TRAIL_STYLE[useLook().trail]
+  const pill = TRAIL_PILL[left ? 'left' : 'top']
+  const tip = left ? 'right' : 'bottom'
+  // Seviyenin saklı konumu: bir öncekinin altında (solda yukarıda, üstte solda)
+  const hidden = left ? { y: -24 } : { x: -24 }
+  // Yol: Başlangıç'tan sonraki seviyeler; Başlangıç'ın kendisinde boş
+  const trail = crumbs.length > 1 ? crumbs.slice(1) : NO_TRAIL
+  const home = dockEntries.find((e) => e.id === 'baslangic')!
+  const others = dockEntries.filter(
+    (e) => e.id !== 'geri' && e.id !== 'baslangic' && e.id !== current,
+  )
+
+  const levels = trail.map((c, i) => {
+    const Icon = crumbIcon(c.icon) ?? FileText
+    const isCurrent = i === trail.length - 1
+    const first = i === 0
+    // Aktif uygulamanın hapı rafta dairesiyle aynı kimliği taşır: daire ↔ hap dönüşümü
+    const appId = first ? current : undefined
+    const shape = cn(
+      'relative flex shrink-0 items-center justify-center gap-1.5 rounded-full no-underline transition-colors duration-300',
+      first ? pill.innerFirst : pill.inner,
+      isCurrent ? style.current : cn(style.item, c.href && style.hover),
+    )
+    const body = (
+      <>
+        <Icon {...IC} size={15} className="shrink-0" />
+        {!left && isCurrent && (
+          <Typography.Text className="hidden max-w-56 truncate text-sm text-current lg:inline">
+            {c.label}
+          </Typography.Text>
+        )}
+      </>
+    )
+    return (
+      <MotionFlex
+        // Anahtar daireninkinden ayrı (ikisi bir an birlikte bulunur); dönüşüm `layoutId` ile
+        key={appId ? `trail-app-${appId}` : `level-${i}-${c.label}`}
+        role="listitem"
+        layout
+        layoutId={appId ? `dock-app-${appId}` : undefined}
+        // Soldaki hep üstte: daire 10, haplar 9, 8, 7…
+        style={{ zIndex: 9 - i }}
+        // Uygulama hapı dairesinden dönüşerek gelir; seviyeler öncekinin altından kayarak çıkar
+        initial={appId ? false : { opacity: 0, ...hidden }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        exit={
+          appId
+            ? undefined
+            : { opacity: 0, ...hidden, transition: { duration: 0.16, ease: 'easeIn' } }
+        }
+        transition={spring}
+        className={cn('relative flex shrink-0', first ? pill.wrapFirst : pill.wrap)}
+      >
+        <Tip label={c.label} placement={tip}>
+          {isCurrent || !c.href ? (
+            <Flex
+              aria-current={isCurrent ? 'page' : undefined}
+              aria-label={c.label}
+              className={shape}
+            >
+              {body}
+            </Flex>
+          ) : (
+            <Link to={c.href} aria-label={c.label} className={shape}>
+              {body}
+            </Link>
           )}
-        >
-          <AnimatePresence initial={false} mode="popLayout">
-            {items.map((c, i) => {
-              const Icon = crumbIcon(c.icon) ?? FileText
-              const current = i === items.length - 1
-              const body = (
-                <>
-                  {/* Morph: bulunulan yer vurgusu seviyeden seviyeye akar (derine inince / çıkınca) */}
-                  {current && (
-                    <MotionFlex
-                      layoutId="dock-trail-current"
-                      transition={spring}
-                      style={{ borderRadius: 16 }}
-                      // `block`: antd'de içi boş `Flex` gizlenir
-                      className="absolute inset-0 block bg-accent-soft"
-                    />
-                  )}
-                  <Icon {...IC} size={15} className="relative shrink-0" />
-                  {!left && current && (
-                    <Typography.Text className="relative hidden max-w-56 truncate text-sm font-medium text-current lg:inline">
-                      {c.label}
-                    </Typography.Text>
-                  )}
-                </>
-              )
-              const shape = cn(
-                'relative flex h-[32px] shrink-0 items-center justify-center gap-1.5 rounded-full no-underline transition-colors duration-200',
-                !left && current ? 'min-w-[32px] lg:px-3' : 'w-[32px]',
-                current
-                  ? 'text-accent-soft-foreground'
-                  : 'text-muted hover:bg-surface hover:text-foreground',
-              )
-              return (
-                <MotionFlex
-                  key={`${i}-${c.label}`}
-                  layout
-                  role="listitem"
-                  initial={{ opacity: 0, scale: 0.6, [axis]: -6 }}
-                  animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.14, ease: 'easeIn' } }}
-                  transition={spring}
-                  className="flex items-center"
-                >
-                  {!left && i > 0 && (
-                    <ChevronRight {...IC} size={12} aria-hidden className="mx-px text-muted/60" />
-                  )}
-                  <Tip label={c.label} placement={left ? 'right' : 'bottom'}>
-                    {current || !c.href ? (
-                      <Flex
-                        aria-current={current ? 'page' : undefined}
-                        aria-label={c.label}
-                        className={shape}
-                      >
-                        {body}
-                      </Flex>
-                    ) : (
-                      <Link to={c.href} aria-label={c.label} className={shape}>
-                        {body}
-                      </Link>
-                    )}
-                  </Tip>
-                </MotionFlex>
-              )
-            })}
-          </AnimatePresence>
-        </MotionFlex>
-      )}
-    </AnimatePresence>
+        </Tip>
+      </MotionFlex>
+    )
+  })
+
+  const apps = others.map((e) => {
+    const Icon = e.icon
+    return (
+      <MotionFlex
+        key={`app-${e.id}`}
+        role="listitem"
+        layout
+        layoutId={`dock-app-${e.id}`}
+        initial={false}
+        transition={spring}
+        className="relative flex shrink-0"
+      >
+        <Tip label={e.label} placement={tip}>
+          {e.href ? (
+            <Link to={e.href} aria-label={e.label} className={APP_CIRCLE}>
+              <Icon {...IC} size={18} className="shrink-0" />
+            </Link>
+          ) : (
+            // Sayfası olmayan uygulama gezinmez (pasif)
+            <Flex role="link" aria-disabled aria-label={e.label} className={cn(APP_CIRCLE, 'opacity-45')}>
+              <Icon {...IC} size={18} className="shrink-0" />
+            </Flex>
+          )}
+        </Tip>
+      </MotionFlex>
+    )
+  })
+
+  return (
+    <Flex role="list" aria-label="Konum" className={cn('flex items-center', left && 'flex-col')}>
+      {/* Başlangıç: yolun başı; hep dolu renk ve hapların üstünde */}
+      <Flex role="listitem" className="relative z-10 flex shrink-0">
+        <Tip label={home.label} placement={tip}>
+          <Link
+            to={BASE}
+            aria-label={home.label}
+            aria-current={trail.length ? undefined : 'page'}
+            className={cn(
+              'flex size-[40px] shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground no-underline hover:text-accent-foreground',
+              style.home,
+            )}
+          >
+            <House {...IC} size={18} className="shrink-0" />
+          </Link>
+        </Tip>
+      </Flex>
+      <AnimatePresence initial={false} mode="popLayout">
+        {[...levels, ...apps]}
+      </AnimatePresence>
+    </Flex>
   )
 }
 
@@ -1044,7 +1060,6 @@ function Chrome({
   const left = place === 'left'
   const dark = useIsDark()
   const tip = left ? 'right' : 'bottom'
-  const entries = dockEntries.filter((e) => e.id !== 'geri')
   const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
 
   const logo = (
@@ -1058,70 +1073,17 @@ function Chrome({
     </Link>
   )
 
-  // Raf (StartMenu): başlat ve uygulamalar
+  // Raf (StartMenu): başlat ve konum (Başlangıç'tan çıkan haplar, ardından diğer uygulamalar)
   const dock = (
     <StartDock place={place} actions={actions} location={<PanelLocation crumbs={crumbs} />}>
       {(start) => (
         <>
           {start}
-          <DockIndicator current={current} deps={`${place}|${trailOf(crumbs, current).length}`} />
           <Divider
             orientation={left ? 'horizontal' : 'vertical'}
             className={left ? 'my-1 w-6 min-w-0' : 'top-0 mx-1 h-6'}
           />
-          {entries.map((e) => {
-            const on = e.id === current
-            const Icon = e.icon
-            const shape = cn(
-              'relative flex size-[40px] shrink-0 items-center justify-center gap-2 rounded-full no-underline transition-colors duration-200',
-              // Üstte bulunulan uygulamanın adı da yazar (geniş ekranda)
-              !left && on && 'xl:w-auto xl:px-4',
-              on
-                ? 'text-accent-foreground hover:text-accent-foreground'
-                : 'text-foreground/70 hover:bg-surface-secondary hover:text-foreground',
-            )
-            const body = (
-              <>
-                <Icon {...IC} size={18} className="relative shrink-0" />
-                {!left && on && (
-                  <Typography.Text className="relative hidden text-sm font-semibold whitespace-nowrap text-current xl:inline">
-                    {e.label}
-                  </Typography.Text>
-                )}
-              </>
-            )
-            return (
-              <Fragment key={e.id}>
-                <Tip label={e.label} placement={tip}>
-                  {e.href ? (
-                    <Link
-                      to={e.href}
-                      aria-label={e.label}
-                      aria-current={on ? 'page' : undefined}
-                      data-dock-entry={e.id}
-                      className={shape}
-                    >
-                      {body}
-                    </Link>
-                  ) : (
-                    // Sayfası olmayan uygulama gezinmez (pasif)
-                    <Flex
-                      role="link"
-                      aria-disabled
-                      aria-label={e.label}
-                      data-dock-entry={e.id}
-                      className={cn(shape, 'opacity-45')}
-                    >
-                      {body}
-                    </Flex>
-                  )}
-                </Tip>
-                {/* Aktif uygulamanın alt seviyeleri (konum) */}
-                {/* Her uygulamada bağlı: aktif değişince hap eskisinden solarak çıkıp yenisinde belirir */}
-                <DockTrail items={on ? trailOf(crumbs, current) : NO_TRAIL} left={left} />
-              </Fragment>
-            )
-          })}
+          <DockPath crumbs={crumbs} current={current} left={left} />
         </>
       )}
     </StartDock>

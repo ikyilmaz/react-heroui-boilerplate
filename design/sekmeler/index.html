@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ajanda Sekmesi Varyantları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  /*
+   * Yerleşim: başlık ve ortak kurallar, yapışkan senaryo çubuğu, referans + beş kavram çerçevesi
+   * (hepsi aynı durumu çizer), sonda karşılaştırma tablosu. Renkler src/themes/synergy.css ile aynı.
+   */
+  :root {
+    --background: oklch(0.96 0.003 250);
+    --foreground: oklch(0.21 0.01 260);
+    --muted: oklch(0.52 0.01 260);
+    --surface: oklch(1 0 0);
+    --surface-secondary: oklch(0.975 0.003 250);
+    --surface-tertiary: oklch(0.955 0.004 250);
+    --border: oklch(0.21 0.01 260 / 0.09);
+    --accent: oklch(0.5 0.16 262);
+    --accent-foreground: oklch(1 0 0);
+    --accent-soft-foreground: oklch(0.48 0.16 262);
+    --warning: oklch(0.76 0.16 80);
+    --focus: oklch(0.58 0.16 262);
+    --shadow-overlay: 0 0 0 1px var(--border), 0 4px 12px -2px oklch(0.21 0.01 260 / 0.08),
+      0 12px 32px -8px oklch(0.21 0.01 260 / 0.1);
+    /* Türetilenler */
+    --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
+    --accent-line: color-mix(in oklab, var(--accent) 32%, transparent);
+    --tab-bg: color-mix(in oklab, var(--accent) 9%, var(--background));
+    --fg-70: color-mix(in oklab, var(--foreground) 70%, transparent);
+    --fg-7: color-mix(in oklab, var(--foreground) 7%, transparent);
+    --fg-12: color-mix(in oklab, var(--foreground) 12%, transparent);
+    --warning-soft: color-mix(in oklab, var(--warning) 22%, var(--surface));
+    --warning-ink: color-mix(in oklab, var(--warning) 40%, var(--foreground));
+    --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --background: oklch(0.15 0.006 260);
+      --foreground: oklch(0.96 0.003 250);
+      --muted: oklch(0.68 0.01 260);
+      --surface: oklch(0.21 0.007 260);
+      --surface-secondary: oklch(0.235 0.008 260);
+      --surface-tertiary: oklch(0.26 0.008 260);
+      --border: oklch(1 0 0 / 0.08);
+      --accent: oklch(0.52 0.15 262);
+      --accent-soft-foreground: oklch(0.78 0.11 262);
+      --focus: oklch(0.72 0.13 262);
+      --shadow-overlay: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --background: oklch(0.15 0.006 260);
+    --foreground: oklch(0.96 0.003 250);
+    --muted: oklch(0.68 0.01 260);
+    --surface: oklch(0.21 0.007 260);
+    --surface-secondary: oklch(0.235 0.008 260);
+    --surface-tertiary: oklch(0.26 0.008 260);
+    --border: oklch(1 0 0 / 0.08);
+    --accent: oklch(0.52 0.15 262);
+    --accent-soft-foreground: oklch(0.78 0.11 262);
+    --focus: oklch(0.72 0.13 262);
+    --shadow-overlay: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--surface); color: var(--foreground);
+    font: 400 15px/1.5 var(--font-sans);
+  }
+  svg { display: block; flex-shrink: 0; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.4; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .mono { font-family: var(--font-mono); font-weight: 500; }
+
+  /* --- Sayfa ---------------------------------------------------------------------------------- */
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 48px 120px; }
+  h1 {
+    font-family: var(--font-display); font-size: 2.25rem; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.1; margin: 0 0 14px; text-wrap: balance;
+  }
+  h2 { font-family: var(--font-display); font-size: 1.375rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .lead { color: var(--muted); max-width: 72ch; margin: 0 0 18px; }
+  .rules { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; max-width: 80ch; font-size: 14px; }
+  .rules li { display: flex; gap: 10px; }
+  .rules li::before {
+    content: ''; flex: none; width: 6px; height: 6px; margin-top: 8px; border-radius: 2px; background: var(--accent);
+  }
+  .num {
+    display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--accent-soft-foreground);
+    background: var(--accent-soft); border-radius: 999px;
+  }
+  .num.ref { color: var(--muted); background: var(--surface-tertiary); }
+  .ver { font-family: var(--font-mono); font-size: 12px; color: var(--muted); background: var(--surface-tertiary); padding: 3px 9px; border-radius: 999px; vertical-align: middle; margin-left: 10px; font-weight: 500; letter-spacing: 0; }
+
+  .controls {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; flex-wrap: wrap;
+    align-items: center; gap: 12px 24px; margin: 32px -16px 0; padding: 12px 16px;
+    background: color-mix(in oklab, var(--surface) 88%, transparent); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .ctl { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  .seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 14px; background: var(--surface-tertiary); }
+  .seg button {
+    height: 30px; padding: 0 12px; border-radius: 11px; font-size: 13px; font-weight: 500; color: var(--fg-70);
+    white-space: nowrap;
+  }
+  .seg button:hover { color: var(--foreground); }
+  .seg button[aria-pressed='true'] { background: var(--surface); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
+  .state { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .state .v { padding: 2px 8px; border-radius: 8px; background: var(--surface-tertiary); color: var(--fg-70); white-space: nowrap; }
+  .state .v.on { background: var(--accent-soft); color: var(--accent-soft-foreground); font-weight: 600; }
+  .hint { flex-basis: 100%; font-size: 12.5px; color: var(--muted); }
+
+  .alt { margin-top: 56px; display: grid; gap: 14px; }
+  .alt > header { display: flex; align-items: center; gap: 12px; }
+  .sub { color: var(--muted); max-width: 78ch; margin: 0; font-size: 14.5px; }
+  .pc { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; max-width: 900px; font-size: 13.5px; }
+  .pc > div { display: grid; gap: 4px; align-content: start; }
+  .pc b { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .pc ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .pc li { display: flex; gap: 8px; }
+  .pc .plus li::before { content: '+'; color: var(--accent-soft-foreground); font-weight: 600; }
+  .pc .minus li::before { content: '–'; color: var(--muted); font-weight: 600; }
+
+  .frame-host { overflow-x: auto; padding: 2px; margin: -2px; }
+
+  /* --- Çerçeve ve formlar (bütün kavramlarda aynı) ------------------------------------------- */
+  .frame {
+    position: relative; display: flex; flex-direction: column; height: 500px; min-width: 760px;
+    padding: 12px; border-radius: 28px; background: var(--background); box-shadow: 0 0 0 1px var(--border);
+    overflow: hidden; font-size: 14px;
+  }
+  .frame.narrow { width: 760px; margin-inline: auto; }
+  .work { flex: 1; min-width: 0; min-height: 0; display: flex; }
+  .pane {
+    container-type: inline-size; position: relative; flex: 1 1 auto; min-width: 0; display: flex;
+    flex-direction: column; gap: 14px; padding: 16px 18px 18px; border-radius: 22px; background: var(--surface);
+    box-shadow: 0 0 0 1px var(--border); overflow-y: auto; scrollbar-width: thin;
+  }
+  .work.split .pane.l { flex: 0 0 calc(var(--split) - 6px); }
+  .work.split .pane.r { flex: 0 0 calc(100% - var(--split) - 6px); }
+  .div { flex: 0 0 12px; display: flex; justify-content: center; cursor: col-resize; touch-action: none; border-radius: 999px; }
+  .div::before { content: ''; width: 1px; margin-block: 28px; background: var(--fg-12); }
+  .div:hover::before, .div:focus-visible::before { width: 3px; border-radius: 3px; background: var(--accent-line); }
+  .div:focus-visible { outline: none; }
+  .band { display: flex; align-items: center; gap: 12px; }
+  .tile { width: 38px; height: 38px; border-radius: 13px; background: var(--fg-7); display: grid; place-items: center; flex: none; }
+  .work.split .pane.focus .tile { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+  .ttl { display: flex; flex-direction: column; min-width: 0; }
+  .proj { font-size: 12px; color: var(--muted); }
+  .nm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .nm b { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: var(--warning-soft); color: var(--warning-ink); white-space: nowrap; }
+  .no { margin-left: auto; align-self: flex-start; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  @container (max-width: 300px) { .no { display: none; } }
+  .fields { display: grid; grid-template-columns: 1fr; gap: 10px 14px; }
+  @container (min-width: 460px) { .fields { grid-template-columns: 1fr 1fr; } }
+  .f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .f .l { font-size: 11.5px; color: var(--muted); }
+  .f .v {
+    padding: 7px 10px; border-radius: 11px; background: var(--surface-secondary); box-shadow: inset 0 0 0 0.5px var(--border);
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; }
+  .links-h { flex-basis: 100%; font-size: 11.5px; color: var(--muted); }
+  .lnk {
+    display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 11px; border-radius: 12px;
+    background: var(--surface-tertiary); font-size: 13px; font-weight: 500; max-width: 100%;
+  }
+  .lnk > span:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lnk:hover { background: var(--fg-12); }
+  .lnk.on { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+  .sz {
+    font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 7px; background: var(--surface);
+    color: var(--muted); box-shadow: 0 0 0 1px var(--border);
+  }
+  .lnk.on .sz { color: var(--accent-soft-foreground); }
+
+  /* Ortak küçük parçalar */
+  .x, .j, .ib { display: grid; place-items: center; flex: none; color: var(--muted); border-radius: 8px; }
+  .x, .j { width: 22px; height: 22px; }
+  .ib { width: 30px; height: 30px; border-radius: 10px; }
+  .x:hover, .j:hover, .ib:hover:not(:disabled) { background: var(--fg-7); color: var(--foreground); }
+  .acts { display: flex; align-items: center; gap: 2px; flex: none; }
+  .glyph { display: flex; gap: 2px; width: 20px; height: 12px; flex: none; color: var(--muted); }
+  .glyph i { flex-basis: 0; border: 1.5px solid currentColor; border-radius: 3px; }
+  .glyph i.f { background: currentColor; }
+  .glyph.on { color: var(--accent-soft-foreground); }
+  .fresh { animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .pane.fresh-pane { animation: slide 0.36s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes rise { from { opacity: 0; translate: 0 10px; } }
+  @keyframes slide { from { opacity: 0; translate: 20px 0; } }
+  @media (prefers-reduced-motion: reduce) { .fresh, .pane.fresh-pane { animation: none; } }
+
+  /* --- Ajanda sekmeleri: referans (uygulamadaki) ve varyantların ortak hâli ------------------- */
+  .ag .r-strip { display: flex; align-items: flex-end; flex: none; }
+  .ag .r-tabs { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 4px; padding: 0 28px; overflow-x: auto; scrollbar-width: none; }
+  .ag .r-tab { position: relative; display: flex; align-items: center; height: 46px; padding: 8px 6px 0; flex: none; border-radius: 16px 16px 0 0; }
+  .ag .r-tab > * { position: relative; }
+  .ag .r-tab:not(.on)::before { content: ''; position: absolute; inset: 8px 0 0; border-radius: 16px 16px 0 0; background: var(--surface-tertiary); }
+  .ag .r-tab.on { background: var(--tab-bg); }
+  /* Seçili sekmenin kaba bağlandığı alt köşelerdeki içbükey kavisler */
+  .ag :is(.r-tab, .r-twin).on::before, .ag :is(.r-tab, .r-twin).on::after { content: ''; position: absolute; bottom: 0; width: 16px; height: 16px; }
+  .ag :is(.r-tab, .r-twin).on::before { left: -16px; background: radial-gradient(circle at 0 0, transparent 16px, var(--tab-bg) 16.5px); }
+  .ag :is(.r-tab, .r-twin).on::after { right: -16px; background: radial-gradient(circle at 100% 0, transparent 16px, var(--tab-bg) 16.5px); }
+  .ag .r-tab .glyph { margin: 0 4px 0 10px; }
+  .ag .r-name {
+    display: inline-flex; align-items: center; gap: 8px; height: 38px; min-width: 0; max-width: 240px; padding: 0 12px;
+    font-size: 13px; font-weight: 500; color: var(--fg-70); white-space: nowrap;
+  }
+  .ag .r-tx { overflow: hidden; text-overflow: ellipsis; }
+  .ag .r-name:hover { color: var(--foreground); }
+  .ag .r-name.cur { color: var(--accent-soft-foreground); font-weight: 600; }
+  .ag .r-tab > .r-name:first-child, .ag :is(.r-seg, .r-lobe):first-child > .r-name { padding-left: 18px; }
+  .ag .r-sep { width: 1px; height: 16px; background: var(--fg-12); flex: none; }
+  .ag .j { opacity: 0; transition: opacity 0.15s; }
+  .ag .r-tab:hover .j, .ag .r-tab:focus-within .j { opacity: 1; }
+  .ag .r-strip > .acts { padding: 8px 6px 0; }
+  .ag .r-page { flex: 1; min-height: 0; display: flex; border-radius: 24px; background: var(--tab-bg); padding: 12px; }
+  .ag .r-page.bare { background: none; padding: 0; }
+
+  /* 1 İkonlu: adların önünde süreç ikonu; gruplu sekmede şema yok */
+  .v1 .r-ic { display: grid; place-items: center; color: var(--muted); }
+  .v1 .r-name.cur .r-ic { color: var(--accent-soft-foreground); }
+
+  /* 2 Oranlı: gruplu sekmenin yarıları bölmelerin payında; odaktaki yarının altında çizgi */
+  .v2 .r-tab.grp { width: 540px; }
+  .v2 .r-seg { display: flex; align-items: center; flex-basis: 0; min-width: 0; height: 100%; }
+  .v2 .r-seg .r-name { flex: 1; max-width: none; }
+  .v2 .r-seg::after { content: ''; position: absolute; left: 12px; right: 8px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--fg-12); }
+  .v2 .r-tab:not(.on) .r-seg::after { opacity: 0.6; }
+  .v2 .r-tab.on .r-seg.cur::after { background: var(--accent); }
+  .v2 .r-seg:first-child::after { left: 18px; }
+
+  /* 3 İkiz: gruplu sekme yan yana iki sekme; tepeleri ayrı, tabanları ortak */
+  .v3 .r-twin { position: relative; display: flex; align-items: flex-end; height: 46px; flex: none; }
+  .v3 .r-lobe { position: relative; display: flex; align-items: center; height: 38px; padding-right: 6px; border-radius: 14px 14px 0 0; background: var(--surface-tertiary); }
+  .v3 .r-twin.on .r-lobe { height: 46px; padding-top: 8px; border-radius: 16px 16px 0 0; background: var(--tab-bg); }
+  /* Tepeler arasında 3px aralık, tabanda köprü: iki sekme tek gövde */
+  .v3 .r-lobe + .r-lobe { margin-left: 3px; }
+  .v3 .r-lobe + .r-lobe::before { content: ''; position: absolute; left: -3px; bottom: 0; width: 3px; height: 14px; background: inherit; }
+
+  /* 4 Sade: seçili olmayanların zemini yok, kapatma üstüne gelince; eylemler sekmenin içinde */
+  .v4 .r-tab:not(.on)::before { opacity: 0; transition: opacity 0.15s; }
+  .v4 .r-tab:not(.on):hover::before { opacity: 1; }
+  .v4 .r-tab:not(.on) + .r-tab:not(.on)::after { content: ''; position: absolute; left: -3px; top: 21px; width: 1px; height: 16px; background: var(--fg-12); }
+  .v4 .r-tab .x { opacity: 0; transition: opacity 0.15s; }
+  .v4 .r-tab:hover .x, .v4 .r-tab:focus-within .x, .v4 .r-tab.on .x { opacity: 1; }
+  .v4 .r-in { margin-left: 4px; padding-left: 6px; border-left: 1px solid var(--fg-12); }
+  .v4 .r-in .ib { width: 26px; height: 26px; border-radius: 8px; }
+
+  /* 5 Numaralı: adın altında talep numarası */
+  .v5 .r-tab { height: 56px; }
+  .v5 .r-name { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; height: 46px; line-height: 1.25; }
+  .v5 .r-tx { max-width: 100%; }
+  .v5 .r-no { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--muted); }
+  .v5 .r-name.cur .r-no { color: var(--accent-soft-foreground); opacity: 0.8; }
+
+  /* --- Chrome'dan (6–10): temel 1 İkonlu ------------------------------------------------------- */
+  .ag .r-tab.semi::before { background: color-mix(in oklab, var(--tab-bg) 60%, var(--surface-tertiary)); }
+
+  /* 6 Sekme grubu: etiket + grup çizgisi; etiket grubu daraltır */
+  .c6 .g-grp { position: relative; display: flex; align-items: flex-end; gap: 4px; flex: none; padding-left: 2px; }
+  .c6 .g-grp > .r-tab { z-index: 1; }
+  .c6 .g-grp > .r-tab.on { z-index: 3; }
+  .c6 .g-grp::after { content: ''; position: absolute; left: 2px; right: 0; bottom: 0; z-index: 2; height: 2px; border-radius: 2px; background: var(--accent); }
+  .c6 .g-chip {
+    position: relative; z-index: 4; align-self: center; margin: 8px 2px 0 0; display: inline-flex; align-items: center; gap: 6px;
+    height: 24px; padding: 0 8px; border-radius: 8px; background: var(--accent); color: var(--accent-foreground);
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .c6 .g-chip:hover { background: color-mix(in oklab, var(--accent) 86%, var(--foreground)); }
+  .c6 .g-grp.folded .g-chip { margin-bottom: 0; }
+  .c6 .g-n { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 5px; background: color-mix(in oklab, var(--accent-foreground) 24%, transparent); font-size: 10.5px; }
+
+  /* 7 Bölünmüş çift: iki sekme ince çerçeveyle bağlı; çiftin sonunda bölünmüş görünüm menüsü */
+  .c7 .r-tabs { overflow: visible; }
+  .c7 .sp-pair { position: relative; display: flex; align-items: flex-end; gap: 2px; flex: none; }
+  .c7 .sp-pair::before {
+    content: ''; position: absolute; left: -3px; right: -3px; top: 3px; height: 28px; pointer-events: none;
+    border: 1.5px solid var(--fg-12); border-bottom: 0; border-radius: 18px 18px 0 0;
+  }
+  .c7 .sp-pair.on::before { border-color: var(--accent-line); }
+  .c7 .sp-mb { position: relative; align-self: center; margin: 8px 4px 0 2px; }
+  .c7 .sp-btn { width: 28px; height: 28px; }
+  .c7 .sp-btn.open { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+  .c7 .sp-menu {
+    position: absolute; top: calc(100% + 8px); right: -6px; z-index: 10; display: flex; flex-direction: column; gap: 2px;
+    min-width: 236px; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-overlay);
+  }
+  .c7 .sp-h { padding: 4px 10px 6px; font-size: 11.5px; color: var(--muted); }
+  .sp-item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; font-size: 13px; text-align: left; white-space: nowrap; }
+  .sp-item:hover { background: var(--surface-secondary); }
+  .sp-item svg { color: var(--muted); }
+
+  /* 8 Etkin bölme: odaktaki bölme çerçeveli; bölmelerde küçük araç çubuğu */
+  .c8 .work.split .pane.focus { box-shadow: 0 0 0 2px var(--accent); }
+  .c8 .pbar { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-overlay); }
+  .c8 .pbar .ib { width: 28px; height: 28px; border-radius: 9px; }
+  .c8 .pbar.focus { opacity: 0; transition: opacity 0.15s; }
+  .c8 .pane:hover .pbar.focus, .c8 .pane:focus-within .pbar.focus { opacity: 1; }
+
+  /* 9 Sabitlenmiş ana form: ana form yalnızca ikon */
+  .c9 .r-name.pin { padding: 0 11px; }
+  .c9 .r-tab > .r-name.pin:first-child { padding-left: 15px; padding-right: 15px; }
+
+  /* 10 Önizleme kartı: sekmenin üstünde durunca altında açılır */
+  .c10 .r-tabs { overflow: visible; }
+  .c10 .r-tab > .hc {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 340px; display: flex; flex-direction: column; gap: 10px;
+    padding: 12px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-overlay);
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.15s, visibility 0.15s;
+  }
+  .c10 .r-tab:hover > .hc { opacity: 1; visibility: visible; transition-delay: 0.35s; }
+  .hc-map { display: flex; gap: 4px; height: 44px; padding: 4px; border-radius: 10px; background: var(--background); }
+  .hc-map span { flex-basis: 0; display: grid; place-items: center; border-radius: 7px; background: var(--surface); box-shadow: 0 0 0 1px var(--border); color: var(--muted); }
+  .hc-map span.f { background: var(--accent-soft); color: var(--accent-soft-foreground); box-shadow: 0 0 0 1px var(--accent-line); }
+  .hc-cap { margin-top: -4px; font-size: 11.5px; color: var(--muted); }
+  .hc-row { display: flex; align-items: flex-start; gap: 10px; }
+  .hc-ic { width: 30px; height: 30px; border-radius: 10px; background: var(--fg-7); display: grid; place-items: center; flex: none; }
+  .hc-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; margin-right: auto; }
+  .hc-t b { font-size: 13px; font-weight: 600; }
+  .hc-t > span { font-size: 11.5px; color: var(--muted); }
+  .part { margin-top: 88px; padding-top: 32px; border-top: 1px solid var(--border); }
+  .base { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; color: var(--accent-soft-foreground); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+
+  /* --- Karşılaştırma ----------------------------------------------------------------------- */
+  .tbl-host { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  td .mono { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ajanda sekmeleri: varyantlar <span class="ver">Sürüm 3 · 2 Ekim 2026</span></h1>
+  <p class="lead">
+    Uygulamadaki ajanda sekmeleri (referans), her biri tek bir küçük farkla beş varyant (1–5) ve ikonlu
+    varyantın üstüne Chrome'un sekme gruplarından ve bölünmüş görünümünden birer fikir ekleyen beş örnek
+    (6–10). Mantık hepsinde aynı. Bütün çerçeveler aynı durumu çizer: birinde yaptığınız değişiklik hepsine
+    yansır, böylece aynı anı yan yana karşılaştırabilirsiniz.
+  </p>
+  <ul class="rules">
+    <li>Child form panel boyutuna göre açılır: ⅓ ve ⅔ ekranı böler (child sağda, açan form solda kalan yerde), Tam yeni sekmede açılır.</li>
+    <li>Ekran bölünmüşken Tam boyut açılırsa yan yana duran iki form tek sekmede gruplanır.</li>
+    <li>Bölünmüş ekranda sağdaki form yine ⅓ ya da ⅔ açarsa şerit kayar: soldaki form kendi sekmesine çıkar, child kapanınca yerine döner.</li>
+    <li>Bir formun tek child'ı olur: yeni child öncekini (açtıklarıyla birlikte) kapatır.</li>
+    <li>Dar ekranda (1024px altı) her şey yeni sekmede açılır; bölünmüş sekmede odaktaki form görünür.</li>
+  </ul>
+
+  <div class="controls" id="controls">
+    <div class="ctl">Senaryo <div class="seg" id="seg-scn" role="group" aria-label="Senaryo"></div></div>
+    <div class="ctl">Ekran
+      <div class="seg" role="group" aria-label="Ekran genişliği">
+        <button data-a="width" data-v="wide" data-k="c:w:wide" aria-pressed="true">Geniş</button>
+        <button data-a="width" data-v="narrow" data-k="c:w:narrow" aria-pressed="false">Dar</button>
+      </div>
+    </div>
+    <div class="state" id="state" aria-live="polite"></div>
+    <div class="hint">Formlardaki child düğmelerine basın (⅓ · ⅔ · Tam panel boyutu), sekmeleri seçin, kapatın; bölücü sürüklenir, çift tıkla panel boyutuna döner.</div>
+  </div>
+
+  <section class="alt">
+    <header><span class="num ref">Referans</span><h2>Uygulamadaki</h2></header>
+    <p class="sub">Seçili sekme sayfa kabının renginde ve içbükey kavislerle kaba kaynaşır, diğerleri kısa ve gri. Gruplu sekme iki formun adını taşır; baştaki şema payları ve odaktaki bölmeyi gösterir. Yer değiştirme ve ayırma şeridin ucunda, "Yan yana aç" tek formlu sekmenin üstüne gelince.</p>
+    <div class="frame-host"><div class="frame ag ref" id="f-ref"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">1</span><h2>İkonlu</h2><span class="base">6–10'un temeli</span></header>
+    <p class="sub"><b>Fark:</b> her adın önünde formun süreç ikonu. Gruplu sekmede şema yok, iki ikon yan yana durur; odaktaki formun ikonu birincil renkte.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Formlar adı okumadan ayırt edilir.</li><li>Raf ve listelerdeki ikonlarla aynı.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Sekmeler biraz uzar.</li><li>Pay sekmede görünmez.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1" id="f-v1"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">2</span><h2>Oranlı</h2></header>
+    <p class="sub"><b>Fark:</b> gruplu sekmenin iki yarısı bölmelerin payında (⅓ · ⅔); sekme yerleşimin küçük bir kopyası olur. Şema yok, odaktaki yarının altında birincil renk çizgi. Bölücüyü sürükleyince yarılar da değişir.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Pay ve odak ek bir işaret olmadan okunur.</li><li>Hangi formun ekranın neresinde olduğu sekmeden belli.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Gruplu sekme sabit genişlikte (540px).</li><li>⅓ yarıda uzun ad kısalır.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v2" id="f-v2"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">3</span><h2>İkiz</h2></header>
+    <p class="sub"><b>Fark:</b> gruplu sekme yan yana iki sekme gibi çizilir: tepeleri ayrı, tabanları ortak. Seçiliyken ikisi birlikte kaba kaynaşır. Şema yok.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>İki formdan oluştuğu ilk bakışta anlaşılır.</li><li>Her form kendi sekmesi gibi durur.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Pay sekmede görünmez.</li><li>Seçili değilken iki ayrı sekmeye benzeyebilir.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v3" id="f-v3"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">4</span><h2>Sade</h2></header>
+    <p class="sub"><b>Fark:</b> seçili olmayan sekmelerin gri zemini yok (üstüne gelince belirir), aralarında ince çizgi; kapatma düğmesi seçili sekmede ve üstüne gelince. Yer değiştirme ve ayırma şeridin ucunda değil, seçili gruplu sekmenin içinde.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Daha sakin şerit.</li><li>Eylemler ait oldukları sekmede.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Seçili olmayan sekmeler düğme gibi durmaz.</li><li>Kapatma ilk bakışta görünmez.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v4" id="f-v4"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">5</span><h2>Numaralı</h2></header>
+    <p class="sub"><b>Fark:</b> formun adının altında talep numarası (iki satır); şerit 10px yükselir.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Aynı adlı formlar (iki teklif) sekmede ayrılır.</li><li>Numarayı görmek için üstüne gelmek gerekmez.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Şerit yükselir, form alanı kısalır.</li><li>Sekme kalabalıklaşır.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v5" id="f-v5"></div></div>
+  </section>
+
+  <section class="alt part">
+    <header><h2>Chrome'dan: sekme grupları ve bölünmüş görünüm</h2></header>
+    <p class="sub">Temel 1 İkonlu. Her örnek Chrome'dan tek bir fikir ekler: sekme grubu etiketi ve çizgisi, bağlı sekme çifti ve bölünmüş görünüm menüsü, etkin bölme çerçevesi, sabitlenmiş sekme, sekme önizleme kartı. Tek renk kuralı gereği gruplar Chrome'daki gibi renk renk değil, birincil renkte.</p>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">6</span><h2>Sekme grubu</h2></header>
+    <p class="sub"><b>Chrome'dan:</b> sekme grupları. Yan yana iki form ayrı sekmeler olarak kalır; başlarında birincil renkte "Yan yana" etiketi, altlarında grup çizgisi. Etikete basınca grup daralır: yalnızca etiket, iki ikon ve sayı kalır (seçili grup daralırken yandaki sekmeye geçilir). Seçili grupta odaktaki form kaba kaynaşır, diğeri yarı seçili.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Her form kendi sekmesi; gruplama Chrome kullananlara tanıdık.</li><li>Çok sekmede gruplar daralır.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Etiket şeritte yer kaplar.</li><li>Pay sekmede görünmez.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1 c6" id="f-c6"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">7</span><h2>Bölünmüş çift</h2></header>
+    <p class="sub"><b>Chrome'dan:</b> bölünmüş görünüm. Yan yana iki sekme ince bir çerçeveyle birbirine bağlı; çiftin sonundaki bölünmüş görünüm düğmesi bir menü açar: Yer değiştir, Ayrı sekmelere ayır, formları kapat. Şeridin ucunda eylem yok.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Eylemler ait oldukları çiftte, tek menüde.</li><li>Her form kendi sekmesi, çift olduğu yine belli.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Eylemler bir tık daha derinde.</li><li>Pay sekmede görünmez.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1 c7" id="f-c7"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">8</span><h2>Etkin bölme</h2></header>
+    <p class="sub"><b>Chrome'dan:</b> bölünmüş görünümde etkin bölmenin çerçevesi. Odaktaki bölme birincil renk çerçeveyle işaretlenir. Her bölmenin sağ altında küçük bir araç çubuğu: Yer değiştir, Ayır, Kapat (odaktaki bölmede üstüne gelince). Şeridin ucunda eylem yok.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Hangi formda çalışıldığı formun kendisinde görünür.</li><li>Eylemler bölmenin yanında.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Araç çubuğu formun bir köşesini örter.</li><li>Uygulamada olay şeridi ve yan bilgilerle yer paylaşır.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1 c8" id="f-c8"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">9</span><h2>Sabitlenmiş ana form</h2></header>
+    <p class="sub"><b>Chrome'dan:</b> sabitlenmiş sekmeler. Ana form (kapatılamaz) yalnızca ikonuyla durur, adı ipucunda; child'lar ikon ve adla. Gruplu sekmede de ana form yalnızca ikon.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Şerit kısalır, child'lara yer kalır.</li><li>Ana formun kapanmayan, sabit form olduğu belli.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Ana formun adı görünmez.</li><li>İlk kullanımda ikon tanınmayabilir.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1 c9" id="f-c9"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><span class="num">10</span><h2>Önizleme kartı</h2></header>
+    <p class="sub"><b>Chrome'dan:</b> sekme önizleme kartı. Sekmenin üstünde biraz durunca altında bir kart açılır: form adı, proje, numara ve durum; gruplu sekmede payıyla küçük bir yerleşim şeması.</p>
+    <div class="pc">
+      <div class="plus"><b>Artı</b><ul><li>Sekme sade kalır, ayrıntı istenince gelir.</li><li>Aynı adlı formlar numarayla ayrılır.</li></ul></div>
+      <div class="minus"><b>Eksi</b><ul><li>Dokunmatik ekranda üstüne gelme yok.</li><li>Bilgi kısa bir gecikmeyle gelir.</li></ul></div>
+    </div>
+    <div class="frame-host"><div class="frame ag v1 c10" id="f-c10"></div></div>
+  </section>
+
+  <section class="alt">
+    <header><h2>Karşılaştırma</h2></header>
+    <div class="tbl-host">
+      <table>
+        <thead><tr><th>Varyant</th><th>Referanstan farkı</th><th>Gruplu sekme</th><th>Odak</th><th>Şerit</th></tr></thead>
+        <tbody>
+          <tr><td>Referans</td><td>–</td><td>Şema + iki ad</td><td>Ad ve şema</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>1 İkonlu</td><td>Süreç ikonları</td><td>İki ikon + iki ad</td><td>İkon ve ad</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>2 Oranlı</td><td>Yarılar paya göre</td><td>Oranlı yarılar</td><td>Alt çizgi ve ad</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>3 İkiz</td><td>İki tepe, ortak taban</td><td>İkiz sekme</td><td>Ad</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>4 Sade</td><td>Zeminsiz sekmeler, eylemler sekmede</td><td>Şema + iki ad</td><td>Ad ve şema</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>5 Numaralı</td><td>Talep numarası</td><td>Şema + iki ad ve numaraları</td><td>Ad ve şema</td><td><span class="mono">56px</span></td></tr>
+          <tr><td>6 Sekme grubu</td><td>1 + grup etiketi ve çizgisi, daraltma</td><td>Etiket + iki sekme</td><td>Kaba kaynaşan sekme</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>7 Bölünmüş çift</td><td>1 + bağlı çift, bölünmüş görünüm menüsü</td><td>Çerçeveli iki sekme</td><td>Kaba kaynaşan sekme</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>8 Etkin bölme</td><td>1 + bölme çerçevesi ve araç çubuğu</td><td>İki ikon + iki ad</td><td>Bölme çerçevesi</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>9 Sabitlenmiş ana form</td><td>1 + ana form yalnızca ikon</td><td>İkon + ad</td><td>İkon ve ad</td><td><span class="mono">46px</span></td></tr>
+          <tr><td>10 Önizleme kartı</td><td>1 + önizleme kartı</td><td>İki ikon + iki ad, kartta şema</td><td>İkon ve ad</td><td><span class="mono">46px</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+/* İkonlar: lucide-react (uygulamadakiyle aynı çizimler) */
+const ICONS = {"shopping-cart":"<path d=\"m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18\"/><path d=\"M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25\"/><circle cx=\"18\" cy=\"20\" r=\"2\"/><circle cx=\"8\" cy=\"20\" r=\"2\"/>","receipt":"<path d=\"M12 17V7\"/><path d=\"M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8\"/><path d=\"M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z\"/>","chart-column":"<path d=\"M3 3v16a2 2 0 0 0 2 2h16\"/><path d=\"M18 17V9\"/><path d=\"M13 17V5\"/><path d=\"M8 17v-3\"/>","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/>","clipboard-check":"<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><path d=\"m9 14 2 2 4-4\"/>","x":"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>","arrow-left-right":"<path d=\"M8 3 4 7l4 4\"/><path d=\"M4 7h16\"/><path d=\"m16 21 4-4-4-4\"/><path d=\"M20 17H4\"/>","ungroup":"<rect x=\"11\" y=\"14\" width=\"10\" height=\"7\" rx=\"2\"/><rect x=\"3\" y=\"3\" width=\"10\" height=\"7\" rx=\"2\"/>","columns-2":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M12 3v18\"/>","file-plus-corner":"<path d=\"M11.35 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5.35\"/><path d=\"M14 2v5a1 1 0 0 0 1 1h5\"/><path d=\"M14 19h6\"/><path d=\"M17 16v6\"/>","square-arrow-out-up-right":"<path d=\"M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6\"/><path d=\"m21 3-9 9\"/><path d=\"M15 3h6v6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","arrow-left":"<path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/>","panel-left-close":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M9 3v18\"/><path d=\"m16 15-3-3 3-3\"/>","panel-left-open":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M9 3v18\"/><path d=\"m14 9 3 3-3 3\"/>","corner-down-right":"<path d=\"m15 10 5 5-5 5\"/><path d=\"M4 4v7a4 4 0 0 0 4 4h12\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/><path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/><path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","check":"<path d=\"M20 6 9 17l-5-5\"/>","ellipsis":"<circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"19\" cy=\"12\" r=\"1\"/><circle cx=\"5\" cy=\"12\" r=\"1\"/>"};
+const ic = (n, s = 16, w = 1.75) =>
+  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+/* --- Veri: uygulamadaki satın alma talebi ve child formları (workflowData.ts) --------------- */
+const FORMS = {
+  root: { name: 'Satın Alma Talebi', form: 'Satın Alma Talep Formu', short: 'Satın Alma', project: 'Satın Alma Yönetimi', no: 'SAT-2026-0412', icon: 'shopping-cart',
+    fields: [['Toplam tutar', '₺325.800'], ['Maliyet merkezi', '1200 · Muhasebe'], ['Tercih edilen tedarikçi', 'TeknoPlus Bilişim A.Ş.'], ['Bütçe kodu', 'BT-DON-2026-014']] },
+  teklif0: { name: 'Tedarikçi Teklifi', form: 'Tedarikçi Teklif Formu', short: 'Teklif · TeknoPlus', project: 'Satın Alma Yönetimi', no: 'TKL-2026-1180', icon: 'receipt', size: 2, label: 'Tedarikçi Teklifi Ekle', add: true,
+    fields: [['Tedarikçi', 'TeknoPlus Bilişim A.Ş.'], ['Teklif no', 'TP-2026-0918'], ['Teklif tutarı', '₺325.800'], ['Teslim süresi', '10 iş günü']] },
+  teklif1: { name: 'Tedarikçi Teklifi', form: 'Tedarikçi Teklif Formu', short: 'Teklif · Bilişim', project: 'Satın Alma Yönetimi', no: 'TKL-2026-1203', icon: 'receipt', size: 2, label: 'Alternatif Teklif Ekle', add: true,
+    fields: [['Tedarikçi', 'Bilişim A.Ş.'], ['Teklif no', 'BA-26-4471'], ['Teklif tutarı', '₺350.600'], ['Teslim süresi', '15 iş günü']] },
+  butce: { name: 'Bütçe Kontrolü', form: 'Bütçe Kontrol Formu', short: 'Bütçe', project: 'Finans', no: 'BTK-2026-1249', icon: 'chart-column', size: 1, label: 'Bütçe Kontrolü Başlat', add: true,
+    fields: [['Bütçe kalemi', 'BT Donanım 2026'], ['Yıllık bütçe', '₺1.200.000'], ['Bu talep', '₺325.800'], ['Talep sonrası kalan', '₺261.800']] },
+  kart: { name: 'Tedarikçi Kartı', form: 'Tedarikçi Kartı Formu', short: 'Tedarikçi Kartı', project: 'Satın Alma Yönetimi', no: 'TDK-2026-1226', icon: 'users', size: 1, label: 'Tedarikçi Kartını Aç',
+    fields: [['Unvan', 'TeknoPlus Bilişim Teknolojileri A.Ş.'], ['Vergi no', '8410293756'], ['Yetkili', 'Murat Kılıç'], ['Tedarikçi puanı', '4,6 / 5']] },
+  kalem: { name: 'Teklif Kalemi Detayı', form: 'Teklif Kalemi Detay Formu', short: 'Teklif Kalemi', project: 'Satın Alma Yönetimi', no: 'TKD-2026-1272', icon: 'clipboard-check', size: 3, label: 'Kalem Detayı Ekle', add: true,
+    fields: [['Model', 'ThinkPad T14 Gen 5'], ['İşlemci', 'Intel Core i7-1365U'], ['Bellek', '32 GB'], ['Birim fiyat', '₺32.400']] },
+};
+const LINKS = { root: ['teklif0', 'teklif1', 'butce'], teklif0: ['kart', 'kalem'] };
+const SZ = { 1: '⅓', 2: '⅔', 3: 'Tam' };
+
+/* --- Mantık: FormTabs.tsx'teki openIn / closeIn / focusIn'in aynısı ------------------------- */
+const single = (key, id) => ({ key, ids: [id], focus: id, ratio: 50, base: 50 });
+const LEFT_SHARE = { 1: 200 / 3, 2: 100 / 3 };
+const initial = () => ({ entries: [], views: [single('root', 'root')], active: 'root', seq: 0 });
+
+function withDesc(entries, id) {
+  const out = new Set([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const e of entries) if (out.has(e.parent) && !out.has(e.id)) { out.add(e.id); grew = true; }
+  }
+  return out;
+}
+
+function closeIn(s, id) {
+  const gone = withDesc(s.entries, id);
+  const back = s.entries.find((e) => e.id === id)?.parent ?? 'root';
+  let views = s.views
+    .map((v) => {
+      const ids = v.ids.filter((x) => !gone.has(x));
+      if (ids.length === v.ids.length) return v;
+      const focus = ids.includes(v.focus) ? v.focus : ids.includes(back) ? back : ids[0];
+      return { ...v, ids, focus };
+    })
+    .filter((v) => v.ids.length > 0);
+  for (const e of [...s.entries].reverse()) {
+    const u = e.undo;
+    if (!u || !gone.has(e.id)) continue;
+    const host = views.find((v) => v.key === u.view);
+    const out = views.find((v) => v.key === u.out);
+    const stayed = s.views.find((v) => v.key === u.view)?.ids.includes(e.id);
+    if (!host || !out || !stayed || host.ids.length !== 1 || out.ids.length !== 1) continue;
+    const ids = u.left ? [out.ids[0], host.ids[0]] : [host.ids[0], out.ids[0]];
+    views = views.filter((v) => v !== out).map((v) => (v === host ? { ...v, ids, ratio: u.ratio, base: u.base } : v));
+  }
+  let active = s.active;
+  if (!views.some((v) => v.key === active)) {
+    const home = views.find((v) => v.ids.includes(back)) ?? views[0];
+    active = home.key;
+    if (home.ids.includes(back)) views = views.map((v) => (v === home ? { ...v, focus: back } : v));
+  }
+  return { ...s, entries: s.entries.filter((e) => !gone.has(e.id)), views, active };
+}
+
+function openIn(prev, from, id, size) {
+  const known = prev.views.find((v) => v.ids.includes(id));
+  if (known) return { ...prev, active: known.key, views: prev.views.map((v) => (v === known ? { ...v, focus: id } : v)) };
+  // Formun tek child'ı olur: açık child'ı kapanır, yenisi açılır
+  const s = prev.entries.filter((e) => e.parent === from).reduce((acc, e) => closeIn(acc, e.id), prev);
+  const host = s.views.find((v) => v.ids.includes(from));
+  const at = s.views.indexOf(host);
+  const views = [...s.views];
+  let seq = s.seq;
+  if (size === 3) {
+    const family = withDesc(s.entries, from);
+    const last = s.views.reduce((n, v, i) => (v.ids.some((x) => family.has(x)) ? i : n), at);
+    const key = 'v' + seq++;
+    views.splice(last + 1, 0, single(key, id));
+    return { entries: [...s.entries, { id, parent: from }], views, active: key, seq };
+  }
+  let undo;
+  if (host.ids.length === 2) {
+    const left = host.ids[1] === from;
+    const out = single('v' + seq++, host.ids.find((x) => x !== from));
+    views.splice(left ? at : at + 1, 0, out);
+    undo = { view: host.key, out: out.key, left, ratio: host.ratio, base: host.base };
+  }
+  const ratio = LEFT_SHARE[size];
+  views[views.indexOf(host)] = { ...host, ids: [from, id], focus: id, ratio, base: ratio };
+  return { entries: [...s.entries, { id, parent: from, undo }], views, active: host.key, seq };
+}
+
+function focusIn(s, key, id) {
+  const v = s.views.find((x) => x.key === key);
+  if (!v || !v.ids.includes(id)) return s;
+  return { ...s, active: key, views: s.views.map((x) => (x === v ? { ...x, focus: id } : x)) };
+}
+const swapIn = (s, key) => ({
+  ...s,
+  views: s.views.map((v) => (v.key === key && v.ids.length === 2 ? { ...v, ids: [v.ids[1], v.ids[0]], ratio: 100 - v.ratio, base: 100 - v.base } : v)),
+});
+function ungroupIn(s, key) {
+  const i = s.views.findIndex((v) => v.key === key);
+  const v = s.views[i];
+  if (!v || v.ids.length < 2) return s;
+  const [a, b] = v.ids;
+  const other = single('v' + s.seq, b);
+  const views = [...s.views];
+  views.splice(i, 1, { ...v, ids: [a], focus: a, ratio: 50, base: 50 }, other);
+  return { ...s, views, active: v.focus === b ? other.key : v.key, seq: s.seq + 1 };
+}
+function joinIn(s, key) {
+  const host = s.views.find((v) => v.key === s.active);
+  const other = s.views.find((v) => v.key === key);
+  if (!host || !other || host === other || host.ids.length > 1 || other.ids.length > 1) return s;
+  const ids = [host.ids[0], other.ids[0]];
+  return { ...s, views: s.views.filter((v) => v !== other).map((v) => (v === host ? { ...v, ids, focus: ids[1], ratio: 50, base: 50 } : v)) };
+}
+const SNAPS = [100 / 3, 50, 200 / 3];
+const clampRatio = (v) => { const c = Math.min(70, Math.max(30, v)); return SNAPS.find((p) => Math.abs(p - c) < 1.5) ?? c; };
+
+/* --- Durum ve senaryolar ------------------------------------------------------------------- */
+let S = initial();
+const UI = { wide: true, scenario: 'gruplu', folded: new Set(), menu: null };
+let FRESH = new Set();
+let FRESH_PANE = null;
+
+const SCENARIOS = [
+  { id: 'tek', label: 'Yalnız ana form', steps: [] },
+  { id: 'bolunmus', label: 'Bölünmüş · ⅔', steps: [['root', 'teklif0']] },
+  { id: 'gruplu', label: 'Gruplu + yeni sekme', steps: [['root', 'teklif0'], ['teklif0', 'kalem']] },
+  { id: 'kaymis', label: 'Kaymış · ⅓', steps: [['root', 'teklif0'], ['teklif0', 'kart']] },
+  { id: 'ayri', label: 'Ayrı sekmeler', steps: [['root', 'teklif0'], ['teklif0', 'kart'], ['ungroup']] },
+];
+const sizeFor = (id) => (UI.wide ? FORMS[id].size : 3);
+function applyScenario(id) {
+  let s = initial();
+  for (const [from, to] of SCENARIOS.find((x) => x.id === id).steps)
+    s = from === 'ungroup' ? ungroupIn(s, s.active) : openIn(s, from, to, sizeFor(to));
+  S = s;
+  UI.scenario = id;
+  UI.folded = new Set();
+  UI.menu = null;
+}
+function commit(next) {
+  const before = new Set(S.views.map((v) => v.key));
+  FRESH = new Set(next.views.filter((v) => !before.has(v.key)).map((v) => v.key));
+  S = next;
+  UI.scenario = null;
+}
+
+/* --- Ortak parçalar ------------------------------------------------------------------------ */
+let C = '';
+const act = (a, v = '', id = '', from = '') =>
+  `data-a="${a}" data-v="${v}" data-id="${id}" data-from="${from}" data-k="${C}:${a}:${v}:${id}:${from}"`;
+const activeView = () => S.views.find((v) => v.key === S.active) ?? S.views[0];
+const cur = (v, id) => v.key === S.active && (v.ids.length === 1 || v.focus === id);
+const fresh = (v) => (FRESH.has(v.key) ? 'fresh' : '');
+const closable = (id) => id !== 'root';
+const canJoin = (v) => UI.wide && activeView().ids.length === 1 && v.key !== S.active && v.ids.length === 1;
+const tip = (id) => `${FORMS[id].form} · ${FORMS[id].no}`;
+const depth = (id) => { let d = 0, e = S.entries.find((x) => x.id === id); while (e) { d++; e = S.entries.find((x) => x.id === e.parent); } return d; };
+const FR = (r) => {
+  const near = (a) => Math.abs(r - a) < 1;
+  if (near(100 / 3)) return '⅓ · ⅔';
+  if (near(50)) return '½ · ½';
+  if (near(200 / 3)) return '⅔ · ⅓';
+  return `${Math.round(r)} · ${100 - Math.round(r)}`;
+};
+const glyph = (v, on) =>
+  `<span class="glyph ${on ? 'on' : ''}" aria-hidden="true">${[v.ratio, 100 - v.ratio]
+    .map((g, i) => `<i style="flex-grow:${g}" class="${v.ids.indexOf(v.focus) === i ? 'f' : ''}"></i>`).join('')}</span>`;
+const closeBtn = (id, extra = '') =>
+  closable(id) ? `<button class="x ${extra}" ${act('close', '', id)} aria-label="Kapat: ${FORMS[id].form}" title="Kapat">${ic('x', 14)}</button>` : '';
+const joinBtn = (v) =>
+  canJoin(v) ? `<button class="j" ${act('join', v.key)} aria-label="Yan yana aç: ${FORMS[v.ids[0]].form}" title="Yan yana aç">${ic('columns-2', 14)}</button>` : '';
+function groupActs(cls = '') {
+  const v = activeView();
+  if (!(UI.wide && v.ids.length === 2)) return '';
+  return `<div class="acts ${cls}"><button class="ib" ${act('swap', v.key)} aria-label="Bölmelerin yerini değiştir" title="Yer değiştir">${ic('arrow-left-right', 15)}</button><button class="ib" ${act('ungroup', v.key)} aria-label="Ayrı sekmelere ayır" title="Ayrı sekmelere ayır">${ic('ungroup', 15)}</button></div>`;
+}
+
+/* Formlar: görünen bölmeler (bütün kavramlarda aynı) */
+function pane(id, v, slot, focus) {
+  const f = FORMS[id];
+  const kids = LINKS[id] || [];
+  const links = kids.map((cid) => {
+    const open = S.entries.some((e) => e.id === cid);
+    const k = FORMS[cid];
+    return `<button class="lnk ${open ? 'on' : ''}" ${act('open', '', cid, id)} aria-pressed="${open}">${ic(k.add ? 'file-plus-corner' : 'square-arrow-out-up-right', 15)}<span>${k.label}</span><span class="sz" title="Panel boyutu">${SZ[k.size]}</span></button>`;
+  }).join('');
+  return `<div class="pane ${slot} ${focus ? 'focus' : ''} ${FRESH_PANE === id ? 'fresh-pane' : ''}" ${act('focus', v.key, id)}>
+    <div class="band"><span class="tile">${ic(f.icon, 18)}</span><div class="ttl"><span class="proj">${f.project}</span><span class="nm"><b>${f.name}</b><span class="tag">Onay bekliyor</span></span></div><span class="no">${f.no}</span></div>
+    <div class="fields">${f.fields.map(([l, val]) => `<div class="f"><span class="l">${l}</span><span class="v" title="${val}">${val}</span></div>`).join('')}</div>
+    ${links ? `<div class="links"><span class="links-h">Child formlar</span>${links}</div>` : ''}
+    ${C === 'c8' && slot !== 's' ? paneBar(id, v, focus) : ''}
+  </div>`;
+}
+function work() {
+  const v = activeView();
+  const split = UI.wide && v.ids.length === 2;
+  const shown = split ? v.ids : [v.focus];
+  const p = shown.map((id, i) => pane(id, v, split ? (i ? 'r' : 'l') : 's', split && id === v.focus));
+  const div = `<div class="div" data-drag="1" role="separator" aria-orientation="vertical" aria-label="Bölücü" aria-valuemin="30" aria-valuemax="70" aria-valuenow="${Math.round(v.ratio)}" tabindex="0" data-k="${C}:div" title="Sürükleyin; çift tık panel boyutuna döner"></div>`;
+  return `<div class="work ${split ? 'split' : ''}" style="--split:${v.ratio}%">${split ? p[0] + div + p[1] : p[0]}</div>`;
+}
+
+/* --- Varyantlar ---------------------------------------------------------------------------- */
+// Ajanda sekmeleri: referans ve varyantlar aynı çizimle; küçük farklar seçeneklerle
+function agenda(o = {}) {
+  if (!S.entries.length) return `<div class="r-page bare">${work()}</div>`;
+  const name = (v, id) => tabName(v, id, o);
+  const tabs = S.views.map((v) => {
+    const on = v.key === S.active;
+    const grouped = v.ids.length > 1;
+    if (grouped && o.twin)
+      return `<div class="r-twin ${on ? 'on' : ''} ${fresh(v)}" role="group" aria-label="Yan yana">${v.ids.map((id) => `<div class="r-lobe">${name(v, id)}${closeBtn(id)}</div>`).join('')}</div>`;
+    const body = grouped && o.ratio
+      ? v.ids.map((id, i) => `<div class="r-seg ${cur(v, id) ? 'cur' : ''}" style="flex-grow:${i ? 100 - v.ratio : v.ratio}">${name(v, id)}${closeBtn(id)}</div>`).join('<span class="r-sep"></span>')
+      : (grouped && !o.icons ? glyph(v, on) : '') + v.ids.map((id, i) => (i ? '<span class="r-sep"></span>' : '') + name(v, id) + closeBtn(id)).join('');
+    const inner = o.innerActs && on && grouped ? groupActs('r-in') : '';
+    return `<div class="r-tab ${on ? 'on' : ''} ${grouped ? 'grp' : ''} ${fresh(v)}" ${grouped ? 'role="group" aria-label="Yan yana"' : ''}>${body}${inner}${joinBtn(v)}${o.card ? hoverCard(v) : ''}</div>`;
+  }).join('');
+  return strip(tabs, o.innerActs || o.bare ? '' : groupActs());
+}
+
+/* Sekmedeki ad: ikon (seçenekle), ad (sabitlenmiş ana formda yok), numara (seçenekle) */
+function tabName(v, id, o = {}) {
+  const pin = o.pin && id === 'root';
+  return `<button class="r-name ${cur(v, id) ? 'cur' : ''} ${pin ? 'pin' : ''}" ${act('select', v.key, id)} title="${tip(id)}" ${pin ? `aria-label="${FORMS[id].form}"` : ''}>${o.icons ? `<span class="r-ic">${ic(FORMS[id].icon, 15)}</span>` : ''}${pin ? '' : `<span class="r-tx">${FORMS[id].form}</span>`}${o.numbers ? `<span class="r-no">${FORMS[id].no}</span>` : ''}</button>`;
+}
+const strip = (tabs, end = '') =>
+  `<div class="r-strip"><div class="r-tabs" role="group" aria-label="Açık formlar">${tabs}</div>${end}</div><div class="r-page">${work()}</div>`;
+const singleTab = (v, o) =>
+  `<div class="r-tab ${v.key === S.active ? 'on' : ''} ${fresh(v)}">${tabName(v, v.ids[0], o)}${closeBtn(v.ids[0])}${joinBtn(v)}</div>`;
+/* Gruptaki tek sekme: odaktaki form kaba kaynaşır, seçili gruptaki diğeri yarı seçili */
+const memberTab = (v, id, o) =>
+  `<div class="r-tab ${cur(v, id) ? 'on' : v.key === S.active ? 'semi' : ''}">${tabName(v, id, o)}${closeBtn(id)}</div>`;
+
+/* 6 Sekme grubu: etiket + grup çizgisi; etiket grubu daraltır */
+function tabGroups() {
+  if (!S.entries.length) return `<div class="r-page bare">${work()}</div>`;
+  const o = { icons: true };
+  const tabs = S.views.map((v) => {
+    if (v.ids.length === 1) return singleTab(v, o);
+    const folded = UI.folded.has(v.key) && v.key !== S.active;
+    const chip = `<button class="g-chip" ${act('fold', v.key)} aria-expanded="${!folded}" title="${folded ? 'Grubu aç' : 'Grubu daralt'}">${folded ? v.ids.map((id) => ic(FORMS[id].icon, 13)).join('') : ic('columns-2', 13)}<span>Yan yana</span>${folded ? '<span class="g-n">2</span>' : ''}</button>`;
+    return `<div class="g-grp ${folded ? 'folded' : ''} ${fresh(v)}" role="group" aria-label="Yan yana">${chip}${folded ? '' : v.ids.map((id) => memberTab(v, id, o)).join('')}</div>`;
+  }).join('');
+  return strip(tabs, groupActs());
+}
+
+/* 7 Bölünmüş çift: çerçeveyle bağlı iki sekme; çiftin sonunda bölünmüş görünüm menüsü */
+function splitPairs() {
+  if (!S.entries.length) return `<div class="r-page bare">${work()}</div>`;
+  const o = { icons: true };
+  const tabs = S.views.map((v) => {
+    if (v.ids.length === 1) return singleTab(v, o);
+    const open = UI.menu === v.key;
+    const items = [
+      UI.wide ? `<button class="sp-item" role="menuitem" ${act('swap', v.key)}>${ic('arrow-left-right', 15)}Yer değiştir</button>` : '',
+      `<button class="sp-item" role="menuitem" ${act('ungroup', v.key)}>${ic('ungroup', 15)}Ayrı sekmelere ayır</button>`,
+      ...v.ids.filter(closable).map((id) => `<button class="sp-item" role="menuitem" ${act('close', '', id, 'menu')}>${ic('x', 15)}Kapat: ${FORMS[id].name}</button>`),
+    ].join('');
+    const menu = open ? `<div class="sp-menu" role="menu" aria-label="Bölünmüş görünüm"><span class="sp-h">Bölünmüş görünüm · ${FR(v.ratio)}</span>${items}</div>` : '';
+    return `<div class="sp-pair ${v.key === S.active ? 'on' : ''} ${fresh(v)}" role="group" aria-label="Yan yana">${v.ids.map((id) => memberTab(v, id, o)).join('')}<div class="sp-mb"><button class="ib sp-btn ${open ? 'open' : ''}" ${act('menu', v.key)} aria-haspopup="menu" aria-expanded="${open}" title="Bölünmüş görünüm">${ic('columns-2', 15)}</button>${menu}</div></div>`;
+  }).join('');
+  return strip(tabs);
+}
+
+/* 8 Etkin bölme: bölmelerin araç çubuğu */
+const paneBar = (id, v, focus) =>
+  `<div class="pbar ${focus ? 'focus' : ''}"><button class="ib" ${act('swap', v.key, '', id)} aria-label="Bölmelerin yerini değiştir" title="Yer değiştir">${ic('arrow-left-right', 14)}</button><button class="ib" ${act('ungroup', v.key, '', id)} aria-label="Ayrı sekmelere ayır" title="Ayrı sekmelere ayır">${ic('ungroup', 14)}</button>${closable(id) ? `<button class="ib" ${act('close', '', id, 'bar')} aria-label="Kapat: ${FORMS[id].form}" title="Kapat">${ic('x', 14)}</button>` : ''}</div>`;
+
+/* 10 Önizleme kartı */
+function hoverCard(v) {
+  const map = v.ids.length > 1
+    ? `<div class="hc-map">${v.ids.map((id, i) => `<span style="flex-grow:${i ? 100 - v.ratio : v.ratio}" class="${v.focus === id ? 'f' : ''}">${ic(FORMS[id].icon, 14)}</span>`).join('')}</div><span class="hc-cap">Yan yana · ${FR(v.ratio)}</span>`
+    : '';
+  const rows = v.ids.map((id) => `<div class="hc-row"><span class="hc-ic">${ic(FORMS[id].icon, 16)}</span><span class="hc-t"><b>${FORMS[id].form}</b><span>${FORMS[id].project} · <span class="mono">${FORMS[id].no}</span></span></span><span class="tag">Onay bekliyor</span></div>`).join('');
+  return `<div class="hc" aria-hidden="true">${map}${rows}</div>`;
+}
+const CH = {
+  ref: () => agenda(),
+  v1: () => agenda({ icons: true }),
+  v2: () => agenda({ ratio: true }),
+  v3: () => agenda({ twin: true }),
+  v4: () => agenda({ innerActs: true }),
+  v5: () => agenda({ numbers: true }),
+  c6: tabGroups,
+  c7: splitPairs,
+  c8: () => agenda({ icons: true, bare: true }),
+  c9: () => agenda({ icons: true, pin: true }),
+  c10: () => agenda({ icons: true, card: true }),
+};
+const FRAME = { c6: 'v1 c6', c7: 'v1 c7', c8: 'v1 c8', c9: 'v1 c9', c10: 'v1 c10' };
+
+/* --- Çizim --------------------------------------------------------------------------------- */
+const ORDER = ['ref', 'v1', 'v2', 'v3', 'v4', 'v5', 'c6', 'c7', 'c8', 'c9', 'c10'];
+function render() {
+  const k = document.activeElement?.dataset?.k;
+  for (const c of ORDER) {
+    C = c;
+    const el = document.getElementById('f-' + c);
+    el.className = `frame ag ${FRAME[c] ?? c} ${UI.wide ? '' : 'narrow'}`;
+    el.innerHTML = CH[c]();
+  }
+  C = 'c';
+  document.getElementById('seg-scn').innerHTML = SCENARIOS.map((s) =>
+    `<button data-a="scenario" data-v="${s.id}" data-k="c:s:${s.id}" aria-pressed="${UI.scenario === s.id}">${s.label}</button>`).join('');
+  document.querySelectorAll('[data-a="width"]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.v === 'wide') === UI.wide)));
+  document.getElementById('state').innerHTML = 'Açık:' + S.views.map((v) =>
+    `<span class="v ${v.key === S.active ? 'on' : ''}">${v.ids.map((id) => FORMS[id].short).join(' | ')}</span>`).join('');
+  if (k) document.querySelector(`[data-k="${CSS.escape(k)}"]`)?.focus();
+  FRESH = new Set();
+  FRESH_PANE = null;
+}
+
+/* --- Etkileşim ----------------------------------------------------------------------------- */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-a]');
+  // Açık menü dışarı basınca kapanır
+  let dirty = false;
+  if (UI.menu && !(t && (t.dataset.a === 'menu' || t.closest('.sp-menu')))) { UI.menu = null; dirty = true; }
+  if (!t || t.disabled) { if (dirty) render(); return; }
+  const { a, v, id, from } = t.dataset;
+  if (t.closest('.sp-menu')) UI.menu = null;
+  switch (a) {
+    case 'open': {
+      const size = sizeFor(id);
+      commit(openIn(S, from, id, size));
+      const av = activeView();
+      if (UI.wide && size < 3 && av.ids.length === 2 && av.ids[1] === id) FRESH_PANE = id;
+      break;
+    }
+    case 'select':
+    case 'focus': {
+      const next = focusIn(S, v, id);
+      if (next === S || (S.active === v && activeView().focus === id)) { if (dirty) render(); return; }
+      commit(next);
+      break;
+    }
+    case 'close': commit(closeIn(S, id)); break;
+    case 'swap': commit(swapIn(S, v)); break;
+    case 'ungroup': commit(ungroupIn(S, v)); break;
+    case 'join': commit(joinIn(S, v)); break;
+    case 'scenario': applyScenario(v); break;
+    case 'width': UI.wide = v === 'wide'; break;
+    case 'menu': UI.menu = UI.menu === v ? null : v; break;
+    case 'fold': {
+      // Daralmış grup açılır ve seçilir; seçili grup daralırken yandaki sekmeye geçilir
+      const view = S.views.find((x) => x.key === v);
+      if (UI.folded.has(v)) { UI.folded.delete(v); commit(focusIn(S, v, view.focus)); break; }
+      if (S.active === v) {
+        const i = S.views.indexOf(view);
+        const other = S.views[i - 1] ?? S.views[i + 1];
+        if (!other) return;
+        commit(focusIn(S, other.key, other.focus));
+      }
+      UI.folded.add(v);
+      break;
+    }
+    default: if (dirty) render(); return;
+  }
+  render();
+});
+
+/* Bölücü: sürükle, ok tuşları, çift tık */
+const setRatio = (r) => {
+  S = { ...S, views: S.views.map((x) => (x.key === S.active ? { ...x, ratio: clampRatio(typeof r === 'function' ? r(x.ratio) : r) } : x)) };
+  UI.scenario = null;
+  render();
+};
+document.addEventListener('pointerdown', (e) => {
+  const d = e.target.closest('[data-drag]');
+  if (!d || e.button !== 0) return;
+  e.preventDefault();
+  const host = d.parentElement.getBoundingClientRect();
+  const move = (ev) => setRatio(((ev.clientX - host.left) / host.width) * 100);
+  const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', up);
+});
+document.addEventListener('dblclick', (e) => {
+  if (!e.target.closest('[data-drag]')) return;
+  setRatio(activeView().base);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && UI.menu) { UI.menu = null; render(); return; }
+  if (!e.target.closest?.('[data-drag]') || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  e.preventDefault();
+  setRatio((r) => r + (e.key === 'ArrowLeft' ? -2 : 2));
+});
+
+applyScenario('gruplu');
+render();
+</script>
+</body>
+</html>
