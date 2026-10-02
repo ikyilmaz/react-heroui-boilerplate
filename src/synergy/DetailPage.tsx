@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
 import {
   Avatar,
@@ -48,7 +49,7 @@ import {
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import { useHistoryViewOptions } from '@/synergy/shared/historyView'
-import { FLOW_TEXT, statusColor } from '@/synergy/shared/flowLabels'
+import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
 import { START_CRUMB, WF_CRUMB, boxLink, processLink, requestLink, useFrame } from '@/synergy/paths'
 import { CellValue, EmptyNote, GroupLabel, SearchField, useBand } from '@/synergy/ant/parts'
 import {
@@ -61,11 +62,11 @@ import {
   GridFooter,
 } from '@/synergy/ant/grid'
 import { searchText } from '@/synergy/shared/grid'
-import { CARD, cn, IC, MotionFlex, Scroll, TintIcon, Tip } from '@/synergy/ant/ui'
+import { CARD, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
 import { SwitchPanel } from '@/synergy/ant/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
-import { useMediaQuery, useScrolled } from '@/synergy/shared/hooks'
+import { useFillHeight, useMediaQuery, useRadiusPx, useScrolled } from '@/synergy/shared/hooks'
 import { FormTabs, useTabScroller } from '@/synergy/FormTabs'
 import { SidePanel, useSidePanel, type SideTab, type SideTarget } from '@/synergy/DetailSide'
 import {
@@ -129,7 +130,8 @@ export function DetailPage() {
             href: processLink(box.id, process.id),
             icon: `process:${process.id}`,
           },
-          { label: r.no, icon: 'request' },
+          // Son halka formun adı (kodu değil; kod formun başlık kartında ve özelliklerde)
+          { label: process.form, icon: 'request' },
         ]
       : [],
     box?.id ?? null,
@@ -217,14 +219,15 @@ const OUTLINE_ON_STRIP = cn(
   'border-current/40 bg-transparent text-current hover:border-current! hover:bg-accent-foreground/10! hover:text-current!',
   OFF,
 )
-/** Band metni: antd yazı rengini ezip bandın rengini izler. */
-const FAINT = 'text-current opacity-75'
+/** Kartın köşesi: AntTheme › Card `borderRadiusLG` ile aynı (temel yarıçapın 3 katı, en çok 32px). */
+const CARD_RADIUS = 'min(32px, calc(var(--radius) * 3))'
+
+/** Form kartı: Motion düzen animasyonu için. */
+const MotionCard = motion.create(Card)
+
 const TITLE = 'm-0 font-display text-lg font-semibold'
 const ROW = 'flex flex-wrap items-center gap-2'
 const SPLIT = 'flex flex-wrap items-center justify-between gap-3'
-
-/** Durum etiketinin rengi (antd adlarıyla). */
-const TAG_COLOR = { success: 'success', danger: 'error', warning: 'warning' } as const
 
 function Viewer({
   r,
@@ -250,7 +253,6 @@ function Viewer({
   const viewed = useViewedDocuments(r.id)
   const events = eventsFor(r)
   const isDraft = r.status === 'Taslak'
-  const status = statusColor(r.status)
   // Geri / İleri listedeki komşu taleplere
   const prev = nav && nav.index > 0 ? () => nav.go(nav.ids[nav.index - 1]) : undefined
   const next =
@@ -276,6 +278,19 @@ function Viewer({
   const solid = !bandStyle.light
   const band = cn(CARD, bandStyle.band)
   const scrolled = useScrolled(220, scroller)
+  // Form ve yan bilgiler kabın (sayfa ya da form sekmesinin bölmesi) altına kadar uzanır
+  const [attachFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const attachBento = useCallback(
+    (el: HTMLElement | null) => {
+      attachSide(el)
+      attachFill(el)
+    },
+    [attachSide, attachFill],
+  )
+  // Form kartının yan sütunla birlikte hareketi (aşağıda)
+  const sideLayout = `${side.mode}:${side.open}`
+  const moveT = useTransition({ duration: 0.42, ease: [0.22, 1, 0.36, 1] })
+  const cardRadius = useRadiusPx(CARD_RADIUS)
 
   const flow = useFlow(r, {
     onDocsRequired: () => {
@@ -328,11 +343,8 @@ function Viewer({
     history:
       r.history.length > 0 ? (
         <Flex vertical gap={12}>
-          {/* Halka kadar (0.75rem; tema boşluk ölçeğinden bağımsız) iç boşluk + eşit negatif boşluk:
-              bekleyen adımın nabız halkası kaydırma kabında kesilmesin, yerleşim değişmesin */}
-          <Scroll className="-m-[0.75rem] max-h-[27.5rem] p-[0.75rem] pe-[1rem]">
-            <HistoryTimeline r={r} options={historyOptions} compact />
-          </Scroll>
+          {/* Kart kendi içinde kayar (DetailSide.tsx); nabız halkasına yer orada bırakılır */}
+          <HistoryTimeline r={r} options={historyOptions} compact />
           {/* Görünüm seçenekleri (bilgilendirmeler, ham tarih) tam tarihçe düğmesinin yanında */}
           <Flex align="center" gap={8}>
             <Button
@@ -370,23 +382,22 @@ function Viewer({
           )}
           classNames={{ body: 'flex h-full items-center gap-4 px-6 py-0' }}
         >
-          {/* Konu her formda olmayabilir: şeritte süreç adı ve talep numarası */}
-          <Flex vertical className="min-w-0 flex-1">
-            <Typography.Text ellipsis className={`${TITLE} text-current`}>
-              {caption}
-            </Typography.Text>
-            <Typography.Text ellipsis className={`font-mono text-xs ${FAINT}`}>
-              {r.no}
-            </Typography.Text>
-          </Flex>
+          {/* Olaylar en solda; formun adı (yalnızca ad, kod yok) en sağda, uzunsa kısalır */}
           {!phone && scrolled && <Flex className={cn(ROW, 'shrink-0')}>{actions(true)}</Flex>}
+          <Typography.Text
+            ellipsis
+            title={caption}
+            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current`}
+          >
+            {process.form}
+          </Typography.Text>
         </Card>
       </Flex>
 
       {/* --- Band ---------------------------------------------------------------------------- */}
       {/*
-       * Başlık bandı: solda süreç ikonu, proje ve süreç adı (sayfa başlığı) ile durum; sağda Geri /
-       * İleri, aralarında listedeki süreçlerin şeridi. Altında olaylar.
+       * Başlık bandı: solda süreç ikonu ve süreç adı (sayfa başlığı); sağda Geri / İleri, aralarında
+       * listedeki süreçlerin şeridi ve sırası. Altında olaylar.
        */}
       <Card className={band} classNames={{ body: 'flex flex-col gap-5 p-6' }}>
         <Flex wrap align="start" justify="space-between" gap={16}>
@@ -399,25 +410,15 @@ function Viewer({
             >
               <process.icon {...IC} size={22} />
             </Flex>
-            <Flex vertical className="min-w-0">
-              <Typography.Text ellipsis className={`text-sm ${FAINT}`}>
-                {process.project}
-              </Typography.Text>
-              <Flex wrap align="center" className="min-w-0 gap-x-3 gap-y-1">
-                {/* `data-tab-cue`: form sekmeleri arasında geçince kısa kayarak yenilenir (FormTabs.tsx) */}
-                <Typography.Title
-                  level={1}
-                  title={caption}
-                  data-tab-cue
-                  className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current sm:text-[1.75rem]"
-                >
-                  {isDraft ? process.form : process.name}
-                </Typography.Title>
-                <Tag variant="solid" color={TAG_COLOR[status]} data-tab-cue className="me-0">
-                  {r.status}
-                </Tag>
-              </Flex>
-            </Flex>
+            {/* `data-tab-cue`: form sekmeleri arasında geçince kısa kayarak yenilenir (FormTabs.tsx) */}
+            <Typography.Title
+              level={1}
+              title={caption}
+              data-tab-cue
+              className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current sm:text-[1.75rem]"
+            >
+              {isDraft ? process.form : process.name}
+            </Typography.Title>
           </Flex>
           {isChild ? null : (
             <Flex className={ROW}>
@@ -453,52 +454,75 @@ function Viewer({
       </Card>
 
       {/* --- Bento ---------------------------------------------------------------------------- */}
-      {/* Solda form (ya da tam tarihçe), sağda yan bilgiler; telefonda alt alta */}
+      {/* Solda form (ya da tam tarihçe), sağda yan bilgiler; telefonda alt alta. Form kartı kabın
+          altına kadar uzanır (`--fill-h`; yan sütun da aynı boyda) */}
       <Flex
-        ref={attachSide}
+        ref={attachBento}
         vertical={side.mode === 'stack'}
+        style={side.mode === 'stack' ? undefined : fillStyle}
         className={cn('relative gap-3', side.mode !== 'stack' && 'items-start')}
       >
-        <Card
-          className={cn(CARD, 'min-w-0', side.mode !== 'stack' && 'flex-1')}
+        {/*
+         * Yan sütun açılıp katlanınca form kartı Motion düzen animasyonuyla (FLIP, yalnızca dönüşüm)
+         * daralır / genişler: içerik bir kez son genişliğinde dizilir (`layout="position"`, ölçek
+         * geri alınır), kart onu kırpar. Köşe px (Motion düzeltir). Yalnızca yan yerleşim değişince
+         * ölçülür (`layoutDependency`).
+         */}
+        <MotionCard
+          layout
+          layoutDependency={sideLayout}
+          transition={{ layout: moveT }}
+          style={cardRadius === undefined ? undefined : { borderRadius: cardRadius }}
+          className={cn(
+            CARD,
+            'min-w-0 overflow-clip',
+            side.mode !== 'stack' && 'min-h-(--fill-h) flex-1',
+          )}
           classNames={{ body: 'p-6 sm:p-8' }}
         >
-          {view === 'history' ? (
-            // Form ↔ tarihçe geçişinde içerik yeniden belirir
-            <Flex key="history" vertical gap={24} className="animate-rise">
-              <Flex className={SPLIT}>
-                <Flex align="center" gap={12}>
-                  <TintIcon icon={History} />
-                  <Typography.Title level={2} className={TITLE}>
-                    {VIEWER_LABELS.history}
-                  </Typography.Title>
+          <MotionFlex
+            layout="position"
+            layoutDependency={sideLayout}
+            transition={{ layout: moveT }}
+            className="block"
+          >
+            {view === 'history' ? (
+              // Form ↔ tarihçe geçişinde içerik yeniden belirir
+              <Flex key="history" vertical gap={24} className="animate-rise">
+                <Flex className={SPLIT}>
+                  <Flex align="center" gap={12}>
+                    <TintIcon icon={History} />
+                    <Typography.Title level={2} className={TITLE}>
+                      {VIEWER_LABELS.history}
+                    </Typography.Title>
+                  </Flex>
+                  <Flex className={ROW}>
+                    {historyMenu}
+                    <Button
+                      variant="filled"
+                      color="default"
+                      icon={<FileText {...IC} />}
+                      onClick={() => setView('form')}
+                    >
+                      {FLOW_TEXT.showForm}
+                    </Button>
+                  </Flex>
                 </Flex>
-                <Flex className={ROW}>
-                  {historyMenu}
-                  <Button
-                    variant="filled"
-                    color="default"
-                    icon={<FileText {...IC} />}
-                    onClick={() => setView('form')}
-                  >
-                    {FLOW_TEXT.showForm}
-                  </Button>
-                </Flex>
+                <HistoryTimeline r={r} options={historyOptions} />
               </Flex>
-              <HistoryTimeline r={r} options={historyOptions} />
-            </Flex>
-          ) : active.kind === 'form' ? (
-            <FormBody
-              r={r}
-              files={documents.filter((d) => d.kind === 'file')}
-              onOpenFile={openDocument}
-            />
-          ) : (
-            <Flex key={active.id} vertical className="animate-rise">
-              <FileBody doc={active} onShowForm={() => setActiveId(form.id)} />
-            </Flex>
-          )}
-        </Card>
+            ) : active.kind === 'form' ? (
+              <FormBody
+                r={r}
+                files={documents.filter((d) => d.kind === 'file')}
+                onOpenFile={openDocument}
+              />
+            ) : (
+              <Flex key={active.id} vertical className="animate-rise">
+                <FileBody doc={active} onShowForm={() => setActiveId(form.id)} />
+              </Flex>
+            )}
+          </MotionFlex>
+        </MotionCard>
 
         {/* Zorunlu doküman uyarısında panel açılır, Dokümanlar kartı sallanır */}
         <SidePanel
@@ -762,38 +786,47 @@ function NavTrail({
             aria-haspopup="dialog"
             aria-expanded={open}
             className={cn(
-              'group h-8 gap-1.5 px-2.5 text-current hover:bg-current/8! hover:text-current!',
+              'group h-auto flex-col gap-1 px-2.5 py-1.5 text-current hover:bg-current/8! hover:text-current!',
               open && 'bg-current/10!',
             )}
           >
-            {ticks.map((id, i) => (
-              <Flex key={i} aria-hidden align="center" className="h-5 w-0.5">
-                {id && id === current ? (
-                  // Açık talebin çizgisi talepten talebe kayar (yalnızca talep değişince; form
-                  // sekmelerinde bölme daralıp genişlerken yerinde kalır)
-                  <MotionFlex
-                    layoutId="detail-trail"
-                    layoutDependency={current}
-                    transition={transition}
-                    className={cn(
-                      'block h-full w-full rounded-full',
-                      onStrip ? 'bg-current' : 'bg-accent',
-                    )}
-                  />
-                ) : (
-                  <Flex
-                    className={cn(
-                      'block w-full rounded-full transition-[height,background-color] duration-[calc(200ms*var(--motion-time,1))]',
-                      !id
-                        ? 'invisible h-2.5'
-                        : id === hovered
-                          ? 'h-3.5 bg-current/70'
-                          : 'h-2.5 bg-current/25 group-hover:bg-current/45',
-                    )}
-                  />
-                )}
-              </Flex>
-            ))}
+            <Flex aria-hidden gap={6}>
+              {ticks.map((id, i) => (
+                <Flex key={i} aria-hidden align="center" className="h-5 w-0.5">
+                  {id && id === current ? (
+                    // Açık talebin çizgisi talepten talebe kayar (yalnızca talep değişince; form
+                    // sekmelerinde bölme daralıp genişlerken yerinde kalır)
+                    <MotionFlex
+                      layoutId="detail-trail"
+                      layoutDependency={current}
+                      transition={transition}
+                      className={cn(
+                        'block h-full w-full rounded-full',
+                        onStrip ? 'bg-current' : 'bg-accent',
+                      )}
+                    />
+                  ) : (
+                    <Flex
+                      className={cn(
+                        'block w-full rounded-full transition-[height,background-color] duration-[calc(200ms*var(--motion-time,1))]',
+                        !id
+                          ? 'invisible h-2.5'
+                          : id === hovered
+                            ? 'h-3.5 bg-current/70'
+                            : 'h-2.5 bg-current/25 group-hover:bg-current/45',
+                      )}
+                    />
+                  )}
+                </Flex>
+              ))}
+            </Flex>
+            {/* Sıra: listedeki yeri (ör. 2 / 8); ekran okuyucu düğmenin adından okur */}
+            <Typography.Text
+              aria-hidden
+              className="font-mono text-[0.6875rem] leading-none text-current tabular-nums opacity-60"
+            >
+              {index + 1} / {ids.length}
+            </Typography.Text>
           </Button>
         </Popover>
       </Flex>

@@ -9,6 +9,7 @@ import {
   Drawer,
   Dropdown,
   Flex,
+  Image,
   Input,
   Popover,
   Typography,
@@ -20,7 +21,6 @@ import {
   FileText,
   FolderOpen,
   House,
-  Layers,
   Megaphone,
   Menu,
   MessageCircle,
@@ -68,6 +68,10 @@ import {
 import { AntTheme } from '@/synergy/ant/theme'
 import { CARD, IC, MotionFlex, Tip, cn } from '@/synergy/ant/ui'
 import { Indicator } from '@/synergy/ant/motion'
+import brandIcon from '@/synergy/assets/brand/icon.svg'
+import brandIconDark from '@/synergy/assets/brand/icon-dark.svg'
+import brandWordmark from '@/synergy/assets/brand/wordmark.svg'
+import brandWordmarkLight from '@/synergy/assets/brand/wordmark-light.svg'
 
 /*
  * Kabuk: üst çubuk (logo, geri / ileri, raf, eylemler, kullanıcı) ya da solda dikeyde ortada
@@ -93,7 +97,7 @@ const dockEntries: DockEntry[] = [
     id: 'is-akis-yonetimi',
     label: 'İş Akış Yönetimi',
     icon: Workflow,
-    href: '/is-akislari/bekleyen',
+    href: '/is-akislari',
     match: '/is-akislari',
   },
   {
@@ -133,14 +137,31 @@ function UserAvatar({ size, className }: { size: number; className?: string }) {
   )
 }
 
-/** Logo rozeti (birincil renkte katman ikonu). */
-function LogoMark({ icon }: { icon: number }) {
+/** Marka işareti (Bimser Synergy): dört renkli kare, ortada göbek; koyu temada göbek beyaz. */
+function LogoMark({ size = 34 }: { size?: number }) {
+  const dark = useIsDark()
   return (
-    <Avatar
-      size={36}
-      aria-hidden
-      icon={<Layers size={icon} aria-hidden />}
-      className="inline-flex! shrink-0 items-center justify-center bg-accent text-accent-foreground"
+    <Image
+      src={dark ? brandIconDark : brandIcon}
+      alt=""
+      preview={false}
+      width={size}
+      height={size}
+      rootClassName="block shrink-0"
+    />
+  )
+}
+
+/** Yazı logosu ("bimser synergy"); koyu temada beyaz. */
+function Wordmark({ height, className }: { height: number; className?: string }) {
+  const dark = useIsDark()
+  return (
+    <Image
+      src={dark ? brandWordmarkLight : brandWordmark}
+      alt=""
+      preview={false}
+      height={height}
+      rootClassName={cn('shrink-0', className)}
     />
   )
 }
@@ -440,11 +461,13 @@ function TopBar({
         icon={<Menu {...IC} size={20} />}
         className="size-10 sm:hidden"
       />
-      <Link to={BASE} className="flex shrink-0 items-center gap-2 no-underline">
-        <LogoMark icon={20} />
-        <Typography.Text className="hidden font-display text-xl font-bold md:inline">
-          synergy
-        </Typography.Text>
+      <Link
+        to={BASE}
+        aria-label="Bimser Synergy"
+        className="flex shrink-0 items-center gap-2.5 no-underline"
+      >
+        <LogoMark />
+        <Wordmark height={20} className="hidden md:block" />
       </Link>
 
       <Flex className="hidden min-w-0 flex-1 xl:flex">
@@ -1063,13 +1086,13 @@ function Chrome({
   const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
 
   const logo = (
-    <Link to={BASE} aria-label="synergy" className="flex shrink-0 items-center gap-2 no-underline">
-      <LogoMark icon={18} />
-      {!left && (
-        <Typography.Text className="hidden font-display text-lg font-bold lg:inline">
-          synergy
-        </Typography.Text>
-      )}
+    <Link
+      to={BASE}
+      aria-label="Bimser Synergy"
+      className="flex shrink-0 items-center gap-2.5 no-underline"
+    >
+      <LogoMark />
+      {!left && <Wordmark height={18} className="hidden lg:block" />}
     </Link>
   )
 

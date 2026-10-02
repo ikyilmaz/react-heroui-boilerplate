@@ -35,7 +35,7 @@ import {
   tabsReducer,
   type View,
 } from '@/synergy/shared/formTabs'
-import { useMediaQuery } from '@/synergy/shared/hooks'
+import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { useTransition } from '@/synergy/motion'
 import { cn, IC, MotionFlex, Scroll, Tip } from '@/synergy/ant/ui'
@@ -121,32 +121,6 @@ const LOAD_MS = 1000
 
 /** Yaprağın köşesi (`rounded-2xl`). */
 const SHEET_RADIUS = 'calc(var(--radius) * 2)'
-
-/**
- * Bir CSS yarıçapının px değeri. Motion boyut değişiminde köşeyi ölçeğe göre düzeltir (köşe
- * basıklaşmaz), ama yalnızca `style` ile verilen px değerini; tema değişkeni çözülüp okunur, tema
- * paneli değiştirince (<html>'in sınıfı / stili) yeniden.
- */
-function useRadiusPx(css: string) {
-  const [px, setPx] = useState<number>()
-  useEffect(() => {
-    const read = () => {
-      const probe = document.createElement('i')
-      probe.style.cssText = `position:absolute;visibility:hidden;border-radius:${css}`
-      document.body.append(probe)
-      setPx(parseFloat(getComputedStyle(probe).borderTopLeftRadius) || 0)
-      probe.remove()
-    }
-    read()
-    const mo = new MutationObserver(read)
-    mo.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'style', 'data-theme'],
-    })
-    return () => mo.disconnect()
-  }, [css])
-  return px
-}
 
 /** Sekmedeki ad ve ikon, ipucundaki talep numarası. */
 function formMeta(id: string) {
@@ -765,7 +739,6 @@ function TabLabel({
   )
 }
 
-
 /**
  * Bir formun bölmesi. Her zaman aynı yerde takılı; `slot` -1 gizli, 0 sol (ya da tek), 1 sağ.
  * Sekmeler açıkken bir yaprak (zemin + köşe) ve kendi kaydırma kabıdır: gizlenince tarayıcı
@@ -888,7 +861,8 @@ function Pane({
     }
     if (paired && level === 'full') {
       const box = el.offsetParent as HTMLElement | null
-      const to = slot === 1 ? (box?.clientWidth ?? 0) - el.offsetLeft : -el.offsetLeft - el.offsetWidth
+      const to =
+        slot === 1 ? (box?.clientWidth ?? 0) - el.offsetLeft : -el.offsetLeft - el.offsetWidth
       frame.update(() => void animate(x, to, moveT).then(done))
     } else void animate(opacity, 0, fadeT).then(done)
   }, [present, safeToRemove, paired, slot, level, moveT, fadeT, x, opacity])

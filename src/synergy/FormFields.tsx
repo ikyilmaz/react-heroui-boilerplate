@@ -7,7 +7,15 @@ import { DatePicker, Form, Input, InputNumber } from 'antd'
  * seçilir: "₺12.900" para (InputNumber), "6" sayı, "10 Ekim 2026" / "26 Eylül 2026 13:00" tarih
  * (DatePicker), uzun metin çok satırlı alan, geri kalanı Input. Etiketler `Form.Item` ile üstte
  * (sayfadaki `Form layout="vertical"`).
+ *
+ * Çok satırlı alanlar içeriğe göre CSS ile boylanır (`field-sizing: content`, en az / en çok satır
+ * `lh` ile). antd'nin `autoSize`'ı kullanılmıyor: boyut her değişince yerleşim etkisinde ölçüp durum
+ * yazıyor, bu ölçüm döngüsü sayfayı düşürüyordu ("Maximum update depth"). Desteklemeyen tarayıcıda
+ * alan `rows` boyunda kalır, içi kayar.
  */
+
+/** Çok satırlı salt okunur alan: içerik boyu, 2–6 satır (dolgu ve kenarlık 10px). */
+const AREA = 'resize-none field-sizing-content min-h-[calc(2lh+10px)] max-h-[calc(6lh+10px)]'
 
 const MONTHS = [
   'Ocak',
@@ -101,7 +109,7 @@ function Control({ id, value, label }: { id: string; value: string; label: strin
       />
     )
   if (value.length > 60)
-    return <Input.TextArea id={id} readOnly value={value} autoSize={{ minRows: 2, maxRows: 6 }} />
+    return <Input.TextArea id={id} readOnly value={value} rows={2} className={AREA} />
   return <Input id={id} readOnly value={value} />
 }
 
@@ -123,8 +131,11 @@ export function LongField({
       id={id}
       readOnly
       value={value}
-      autoSize={{ minRows: rows }}
+      rows={rows}
       aria-label={hideLabel ? label : undefined}
+      // En az `rows` satır (sayı dinamik: satır içi stil), üst sınır yok
+      style={{ minHeight: `calc(${rows}lh + 10px)` }}
+      className="resize-none field-sizing-content"
     />
   )
   if (hideLabel) return area

@@ -38,7 +38,8 @@ export function AgendaTabs({
 }: {
   label: string
   tabs: AgendaTab[]
-  active: string
+  /** Seçili sekme; yoksa boş durum (seçim zemini yok). */
+  active?: string
   /** Kabın içeriği. */
   children: ReactNode
 }) {
@@ -57,7 +58,9 @@ export function AgendaTabs({
   useLayoutEffect(() => {
     if (!row) return
     const measure = () => {
-      const el = row.querySelector<HTMLElement>(`[data-tab="${CSS.escape(active)}"]`)
+      const el = active
+        ? row.querySelector<HTMLElement>(`[data-tab="${CSS.escape(active)}"]`)
+        : null
       setBar((b) => {
         if (!el) return null
         // Konum şeride göre (sekme konumlu bir sarmalayıcıda; offsetLeft ona göre 0 çıkıyordu)
@@ -150,7 +153,11 @@ export function AgendaTabs({
         </Flex>
       </Scroll>
       <Flex className="relative flex min-w-0 flex-col rounded-3xl bg-(--tab-bg) p-3 lg:min-h-0 lg:flex-1">
-        <SwitchPanel id={active} dir={dir} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
+        <SwitchPanel
+          id={active ?? ''}
+          dir={dir}
+          className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1"
+        >
           {children}
         </SwitchPanel>
       </Flex>

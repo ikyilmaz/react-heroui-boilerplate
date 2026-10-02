@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Plus, Save, Trash2, UsersRound, X } from 'lucide-react'
-import { Button, Card, Flex, Form, Modal, Segmented, Select, Transfer, Typography } from 'antd'
+import { Button, Card, Flex, Form, Segmented, Select, Transfer, Typography } from 'antd'
+import { SoftModal } from '@/synergy/ant/modal'
 import {
   HR_LABELS,
   fullName,
@@ -348,7 +349,7 @@ function GroupMembers({
   }
   const users = hrRecords('kullanicilar')
   return (
-    <Modal
+    <SoftModal
       open={isOpen}
       onCancel={onClose}
       width={720}
@@ -400,6 +401,6 @@ function GroupMembers({
         )}
         className="w-full [&_.ant-transfer-list]:h-80 [&_.ant-transfer-list]:min-w-0 [&_.ant-transfer-list]:flex-1"
       />
-    </Modal>
+    </SoftModal>
   )
 }

@@ -44,8 +44,11 @@ export function useFrame(crumbs: Crumb[], _scope?: unknown) {
 }
 
 export const START_CRUMB: Crumb = { label: 'Başlangıç', href: BASE, icon: 'home' }
+/** İş Akış Yönetimi'nin boş durumu: hiçbir kutu / süreç seçili değil. */
+export const WF_HOME = '/is-akislari'
+
 export const WF_CRUMB: Crumb = {
   label: 'İş Akış Yönetimi',
-  href: boxLink('bekleyen'),
+  href: WF_HOME,
   icon: 'workflow',
 }

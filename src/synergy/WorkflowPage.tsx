@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { useMemo } from 'react'
+import { MousePointerClick } from 'lucide-react'
+import { Link, Navigate, useParams } from 'react-router'
 import { Card, Flex, Tag, Typography } from 'antd'
 import { useBoxRequests } from '@/synergy/shared/decisions'
 import { useRemembered } from '@/synergy/shared/remembered'
@@ -18,7 +19,8 @@ import {
   type DateRange,
   type ProcessGroup,
 } from '@/synergy/shared/workflowData'
-import { START_CRUMB, WF_CRUMB, boxLink, processLink, useFrame } from '@/synergy/paths'
+import { START_CRUMB, WF_CRUMB, WF_HOME, boxLink, processLink, useFrame } from '@/synergy/paths'
+import { START_LABELS } from '@/synergy/shared/startLabels'
 import { CARD, IC, Scroll, cn } from '@/synergy/ant/ui'
 import { EmptyNote, SearchField, RangeFields, SortMenu, type SortValue } from '@/synergy/ant/parts'
 import { RequestGrid } from '@/synergy/RequestGrid'
@@ -29,9 +31,13 @@ import { Count, Indicator } from '@/synergy/ant/motion'
  * İş Akış Yönetimi (/is-akislari/:box/:processId), antd. Kutular üstte ajanda sekmeleri (geçmiş kutuları
  * "Geçmiş" başlığıyla şeridin sağında); seçili sekme içeriği saran kaba kaynaşır. Kabın içinde
  * ayrı bir başlık bandı yok (kutunun adı sekmede); solda süreç listesi (%20; üstünde arama,
- * sıralama, geçmişte tarih aralığı), sağda seçili sürecin talep ızgarası. Kutuya girince listedeki
- * ilk süreç seçilir. Kutu değişince içerik anında değişir.
+ * sıralama, geçmişte tarih aralığı), sağda seçili sürecin talep ızgarası. Hiçbir şey kendiliğinden
+ * seçilmez: `/is-akislari`'de kutu, kutuda süreç seçili değildir (boş durum; kırıntı ve uygulama
+ * bağlantıları buraya gelir). Kutu değişince içerik seçilen sekmenin yönünden gelir.
  */
+
+/** Kutu seçili değilken (104028). */
+const PICK_ITEM = 'Görüntülemek için bir öğe seçin'
 
 interface ListSettings {
   search: string
@@ -52,17 +58,30 @@ const TABS: AgendaTab[] = [
 
 export function WorkflowPage() {
   const params = useParams()
-  const box = findBox(params.box)
-  if (!box) return <Navigate to={boxLink('bekleyen')} replace />
+  const box = params.box ? findBox(params.box) : undefined
+  // Adresteki kutu yoksa boş duruma
+  if (params.box && !box) return <Navigate to={WF_HOME} replace />
   return (
-    <AgendaTabs label="İş Akış Yönetimi" tabs={TABS} active={box.id}>
-      <BoxView key={box.id} box={box} processId={params.processId} />
+    <AgendaTabs label="İş Akış Yönetimi" tabs={TABS} active={box?.id}>
+      {box ? <BoxView key={box.id} box={box} processId={params.processId} /> : <Idle />}
     </AgendaTabs>
   )
 }
 
+/** Boş durum: hiçbir kutu seçili değil. */
+function Idle() {
+  useFrame([START_CRUMB, WF_CRUMB])
+  return (
+    <Card
+      className={cn(CARD, 'lg:flex-1')}
+      classNames={{ body: 'flex h-full items-center justify-center' }}
+    >
+      <EmptyNote icon={MousePointerClick} text={PICK_ITEM} className="py-16" />
+    </Card>
+  )
+}
+
 function BoxView({ box, processId }: { box: WorkBox; processId: string | undefined }) {
-  const navigate = useNavigate()
   const [settings, setSettings] = useRemembered<ListSettings>(`karo:list:${box.id}`, () => ({
     search: '',
     sort: DEFAULT_SORT,
@@ -78,14 +97,8 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
       }),
     [box, requests, settings],
   )
-  // Süreç seçili değilse (ya da adresteki süreç yoksa) listedeki ilk süreç seçilir. İçerik hemen
-  // ilk süreçle çizilir, adres arkadan düzeltilir (araya boş kare ve ikinci kurulum girmez).
-  const first = groups[0]?.process.id
-  const process = findProcess(processId) ?? (first ? findProcess(first) : undefined)
-  const fix = !findProcess(processId) && first ? processLink(box.id, first) : null
-  useEffect(() => {
-    if (fix) navigate(fix, { replace: true })
-  }, [fix, navigate])
+  // Süreç kendiliğinden seçilmez; adresteki süreç yoksa kutunun boş durumuna dönülür (aşağıda)
+  const process = findProcess(processId)
 
   useFrame([
     START_CRUMB,
@@ -94,6 +107,7 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
     ...(process ? [{ label: boxProcessCaption(box, process), icon: `process:${process.id}` }] : []),
   ])
 
+  if (processId && !process) return <Navigate to={boxLink(box.id)} replace />
   return (
     <Flex className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
       {/* Kutunun adı sekmede yazıyor; sayfa başlığı yalnızca ekran okuyucu için */}
@@ -114,16 +128,28 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
             settings={settings}
             onChange={setSettings}
           />
-          {process && (
-            <Flex className="flex w-full min-w-0 flex-1 flex-col lg:min-h-0">
+          <Flex className="flex w-full min-w-0 flex-1 flex-col lg:min-h-0">
+            {process ? (
               <RequestGrid
                 key={`${box.id}/${process.id}`}
                 box={box}
                 process={process}
                 range={box.history ? settings.range : undefined}
               />
-            </Flex>
-          )}
+            ) : (
+              // Boş durum: süreç seçilmedi (Başlangıç'taki iş bloğuyla aynı ileti)
+              <Card
+                className={cn(CARD, 'lg:flex-1')}
+                classNames={{ body: 'flex h-full items-center justify-center' }}
+              >
+                <EmptyNote
+                  icon={MousePointerClick}
+                  text={box.id === 'taslaklar' ? START_LABELS.pickDraft : START_LABELS.pickProcess}
+                  className="py-16"
+                />
+              </Card>
+            )}
+          </Flex>
         </Flex>
       )}
     </Flex>

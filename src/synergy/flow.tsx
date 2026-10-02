@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Flex, Form, Input, Modal, Select, Typography } from 'antd'
+import { AnimatePresence } from 'framer-motion'
+import { Button, Flex, Form, Input, Select, Typography } from 'antd'
+import { SoftModal } from '@/synergy/ant/modal'
 import {
   CONFIRM_MESSAGE,
   FORWARD_EMPTY,
@@ -19,7 +21,7 @@ import {
 } from '@/synergy/shared/pipeline'
 
 /* -------------------------------------------------------------------------------------------------
- * Olay hattının pencereleri (antd `Modal`; mantık `shared/pipeline.ts`'te). Pencerelerin üstünde
+ * Olay hattının pencereleri (`SoftModal`: antd `Modal` + Motion; mantık `shared/pipeline.ts`'te). Pencerelerin üstünde
  * olayın anlam renginde şerit (onay yeşil, ret / geri gönderme kırmızı).
  * ------------------------------------------------------------------------------------------------- */
 
@@ -59,23 +61,26 @@ export function useFlow(
         onYes={() => proceed()}
         onNo={cancel}
       />
-      {open?.stage === 'reason' && (
-        <ReasonDialog
-          key={key}
-          tone={toneOf(open.event.kind)}
-          title={open.event.reasonTitle ?? REASON_TITLE}
-          onOk={(reason) => proceed(reason)}
-          onCancel={cancel}
-        />
-      )}
-      {open?.stage === 'forward' && (
-        <ForwardDialog
-          key={key}
-          candidates={forwardCandidates(open.request)}
-          onOk={forward}
-          onCancel={cancel}
-        />
-      )}
+      {/* Hattın pencereleri kaldırılınca da yumuşakça kapanır (SoftModal, `usePresence`) */}
+      <AnimatePresence>
+        {open?.stage === 'reason' && (
+          <ReasonDialog
+            key={key}
+            tone={toneOf(open.event.kind)}
+            title={open.event.reasonTitle ?? REASON_TITLE}
+            onOk={(reason) => proceed(reason)}
+            onCancel={cancel}
+          />
+        )}
+        {open?.stage === 'forward' && (
+          <ForwardDialog
+            key={key}
+            candidates={forwardCandidates(open.request)}
+            onOk={forward}
+            onCancel={cancel}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 
@@ -99,7 +104,7 @@ export function ConfirmDialog({
   tone?: Tone
 }) {
   return (
-    <Modal
+    <SoftModal
       open={isOpen}
       onCancel={onNo}
       width={400}
@@ -127,7 +132,7 @@ export function ConfirmDialog({
       }
     >
       <Typography.Paragraph className="mb-0!">{message}</Typography.Paragraph>
-    </Modal>
+    </SoftModal>
   )
 }
 
@@ -145,7 +150,7 @@ function FlowModal({
   onCancel: () => void
 }) {
   return (
-    <Modal
+    <SoftModal
       open
       onCancel={onCancel}
       width={420}
@@ -174,7 +179,7 @@ function FlowModal({
       <Form layout="vertical" component={false}>
         {children}
       </Form>
-    </Modal>
+    </SoftModal>
   )
 }
 

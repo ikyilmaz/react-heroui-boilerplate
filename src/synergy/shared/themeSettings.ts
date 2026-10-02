@@ -101,7 +101,7 @@ export const BASE_LOOK = {
   motionSpeed: 1,
   showFps: false,
   scrollShadow: true,
-  pageTransition: 'rise',
+  pageTransition: 'fade',
 } as const
 
 export const FONTS: { id: FontId; label: string; stack: string }[] = [
@@ -310,7 +310,7 @@ export const LookContext = createContext<Look>({
   speed: 1,
   showFps: false,
   scrollShadow: true,
-  pageTransition: 'rise',
+  pageTransition: 'fade',
 })
 
 const REDUCE = '(prefers-reduced-motion: reduce)'

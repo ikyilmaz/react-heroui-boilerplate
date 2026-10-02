@@ -1,10 +1,35 @@
-import { useEffect, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from 'react'
+import {
+  AnimatePresence,
+  motion,
+  stagger,
+  useMotionTemplate,
+  useMotionValue,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+  type MotionStyle,
+  type Transition,
+  type Variants,
+} from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import { Files, History, Info, PanelRightClose, PanelRightOpen } from 'lucide-react'
-import { Button, Card, Divider, Flex, Tabs, Typography } from 'antd'
+import { Button, Card, Divider, Flex, Segmented, Typography } from 'antd'
 import { DOCUMENT_LABELS } from '@/synergy/shared/workflowData'
 import { useMediaQuery } from '@/synergy/shared/hooks'
-import { CARD, cn, IC, Scroll, Tip } from '@/synergy/ant/ui'
+import { useLook } from '@/synergy/shared/themeSettings'
+import { useTransition } from '@/synergy/motion'
+import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
 
 /* -------------------------------------------------------------------------------------------------
  * Talep ayrıntısının yan bilgileri: üstte bağımsız Dokümanlar kartı, altında Özellikler / Tarihçe
@@ -41,8 +66,13 @@ function loadFolded() {
 /** Kaydırınca yapışkan şeridin (4rem, üstte 0.5rem) altında, 1rem boşlukla. */
 const STICKY = 'sticky top-[calc(var(--chrome-top,0px)+var(--spacing)*22)]'
 
-/** Ekrana sığan en uzun boy: görünen alan eksi yapışma yeri ve alt boşluk. */
-const FIT = 'max-h-[calc(var(--view-h,100dvh)-var(--chrome-top,0px)-var(--spacing)*22-1rem)]'
+/**
+ * Kartların kabının boyu (kartlar yarı yarıya): alt kenarı hep kabın / ekranın altında. Durgunken
+ * form kartıyla aynı (`--fill-h`); kaydırdıkça kaydırılan kadar uzar (`--scrolled`, Motion
+ * `useScroll`), yapışınca görünen alanda durur (görünen alan eksi yapışma yeri ve alt boşluk).
+ */
+const FILL =
+  'h-[min(calc(var(--fill-h,100dvh)+var(--scrolled,0px)),calc(var(--view-h,100dvh)-var(--chrome-top,0px)-var(--spacing)*22-1rem))]'
 
 const RAIL: { id: SideTarget; label: string; icon: LucideIcon }[] = [
   { id: 'docs', label: DOCUMENT_LABELS.title, icon: Files },
@@ -59,6 +89,8 @@ export interface SideState {
   /** Çekmecenin tepsisi: formun altındaki zeminin rengi (sekmelerde sayfa kabı, yoksa sayfa). */
   tray: string
   style: CSSProperties
+  /** Formun kaydırma kabı (sekmeler açıkken bölme; yoksa `null`: pencere). */
+  scroller: HTMLElement | null
 }
 
 /**
@@ -123,13 +155,61 @@ export function useSidePanel(
     dismiss: () => setDrawer(false),
     tray: scroller ? 'bg-(--tab-bg)' : 'bg-background',
     style: (viewH === null ? {} : { '--view-h': `${viewH}px` }) as CSSProperties,
+    scroller,
   }
   return [state, setBox]
 }
 
+/* --- Hareket ------------------------------------------------------------------------------------ */
+
+/** Kartlar raftan (sağdan) kısa kayıp belirir; kap sırayı yönetir (`stagger`). */
+const cardVariants = (enter: Transition, exit: Transition): Variants => ({
+  hidden: { opacity: 0, x: 24, transition: exit },
+  shown: { opacity: 1, x: 0, transition: enter },
+})
+
+/**
+ * Kartların kabı: girişte kartlar sırayla (önce Dokümanlar), çıkışta ters sırayla. Çekmecede kabın
+ * kendisi (tepsi) de sağdan kayarak gelir.
+ */
+function useStack(tray: boolean) {
+  const { motion: level, speed } = useLook()
+  const enter = useTransition({ duration: 0.36, ease: [0.22, 1, 0.36, 1] })
+  const exit = useTransition({ duration: 0.16, ease: [0.4, 0, 1, 1] })
+  const off = level === 'off'
+  const stack: Variants = {
+    hidden: {
+      ...(tray && { opacity: 0, x: 16 }),
+      transition: { ...exit, delayChildren: off ? 0 : stagger(0.04 / speed, { from: 'last' }) },
+    },
+    shown: {
+      ...(tray && { opacity: 1, x: 0 }),
+      transition: { ...enter, delayChildren: off ? 0 : stagger(0.07 / speed) },
+    },
+  }
+  return { stack, card: cardVariants(enter, exit), fade: enter }
+}
+
+/** Sekme içeriği: değişimin yönünden gelir, ters yöne kısa çıkar (`mode="wait"`). */
+const tabVariants = (enter: Transition, exit: Transition): Variants => ({
+  enter: (dir: number) => ({ opacity: 0, x: dir * 16 }),
+  center: { opacity: 1, x: 0, transition: enter },
+  exit: (dir: number) => ({ opacity: 0, x: dir * -12, transition: exit }),
+})
+
+const MotionCard = motion.create(Card)
+
+/* --- Yan bilgiler -------------------------------------------------------------------------------- */
+
 /**
  * Yan bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı; yerleşime göre sütun, raf +
- * çekmece ya da formun altında. Formla aynı kabın (`useSidePanel` ile ölçülen) çocuğudur.
+ * çekmece ya da formun altında. Formla aynı kabın (`useSidePanel` ile ölçülen) çocuğudur. Sütunda
+ * ve çekmecede iki kart kabı yarı yarıya paylaşır, taşan içerik kartın içinde kayar.
+ *
+ * Hareket (Motion): panel açılınca kartlar sırayla raftan kayarak gelir, katlanınca ters sırayla
+ * çıkar (`AnimatePresence`, `stagger`); sütunun genişliği tek adımda değişir, form kartı Motion düzen
+ * animasyonuyla daralır / genişler (DetailPage.tsx). Sekmeler arasında alt çizgi kayar (`layoutId`),
+ * içerik yönünden gelir. Kaydırılabilen kartın kenarları içerik taştıkça solar (`useScroll`).
  */
 export function SidePanel({
   side,
@@ -153,16 +233,28 @@ export function SidePanel({
   history: ReactNode
 }) {
   const { mode, open, setOpen } = side
+  // Kaydırma miktarı CSS değişkeninde (`FILL`): sütun yapışana kadar kaydırılan kadar uzar, alt
+  // kenarı ekranın altında kalır. MotionValue: React çizmez
+  const container = useMemo(() => ({ current: side.scroller }), [side.scroller])
+  const { scrollY } = useScroll(side.scroller ? { container } : undefined)
+  const sticky = { ...side.style, '--scrolled': useMotionTemplate`${scrollY}px` } as MotionStyle
   const drawer = mode === 'drawer'
   const foldLabel = drawer ? 'Paneli kapat' : 'Paneli katla'
+  const { stack: stackVariants, card, fade } = useStack(drawer)
 
-  const cards = (
+  // `fill`: kartlar kabı yarı yarıya paylaşır ve içleri kayar (sütun, çekmece); telefonda doğal boy
+  const cards = (fill: boolean) => (
     <>
-      <Card
-        className={cn(CARD, 'shrink-0', warning && 'animate-shake ring-2 ring-warning')}
-        classNames={{ body: 'flex flex-col gap-2 p-5 pt-4' }}
+      <MotionCard
+        variants={card}
+        className={cn(
+          CARD,
+          fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0',
+          warning && 'animate-shake ring-2 ring-warning',
+        )}
+        classNames={{ body: cn('flex flex-col gap-2 p-5 pt-4', fill && 'min-h-0 flex-1') }}
       >
-        <Flex align="center" justify="space-between" gap={8} className="min-h-8">
+        <Flex align="center" justify="space-between" gap={8} className="min-h-8 shrink-0">
           <Typography.Title level={2} className="m-0 font-display text-base font-semibold">
             {DOCUMENT_LABELS.title}
           </Typography.Title>
@@ -181,33 +273,22 @@ export function SidePanel({
             </Tip>
           )}
         </Flex>
-        {docs}
-      </Card>
-      <Card className={cn(CARD, 'shrink-0')} classNames={{ body: 'p-5 pt-2' }}>
-        <Tabs
-          activeKey={tab}
-          onChange={(key) => onTab(key as SideTab)}
-          animated={{ inkBar: true, tabPane: true }}
-          // Sekmeler şeridi eşit paylaşır; içerik kabı yanlara halka kadar (0.75rem) taşar:
-          // tarihçedeki nabız halkası kesilmesin
-          classNames={{
-            header: 'mb-3 [&_.ant-tabs-nav-list]:w-full',
-            item: 'm-0 flex-1 justify-center',
-            body: '-mx-[0.75rem] px-[0.75rem]',
-          }}
-          items={[
-            { key: 'props', label: 'Özellikler', children: props },
-            { key: 'history', label: 'Tarihçe', children: history },
-          ]}
-        />
-      </Card>
+        <FadeScroll fill={fill}>{docs}</FadeScroll>
+      </MotionCard>
+      <MotionCard
+        variants={card}
+        className={cn(CARD, fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0')}
+        classNames={{ body: cn('flex flex-col p-5 pt-4', fill && 'min-h-0 flex-1') }}
+      >
+        <SideTabs tab={tab} onTab={onTab} panes={{ props, history }} fill={fill} />
+      </MotionCard>
     </>
   )
 
   if (mode === 'stack')
     return (
       <Flex vertical gap={12}>
-        {cards}
+        {cards(false)}
       </Flex>
     )
 
@@ -244,57 +325,226 @@ export function SidePanel({
     </Card>
   )
 
-  // Kartlar ekrana sığmazsa kendi içinde kayar; halka ve sallanma kesilmesin diye 0.25rem taşar
-  const stack = (className: string, label?: string) => (
-    <Scroll
+  // Kartların kabı: ekrana sığan boyda (kartlar yarı yarıya); kartlar sırayla gelir / gider
+  const stack = (key: string, className: string, label?: string) => (
+    <MotionFlex
+      key={key}
+      vertical
       role={label ? 'dialog' : undefined}
       aria-label={label}
-      className={cn('-m-1 gap-3 p-1', FIT, className)}
+      variants={stackVariants}
+      initial="hidden"
+      animate="shown"
+      exit="hidden"
+      className={cn('gap-3', FILL, className)}
     >
-      {cards}
-    </Scroll>
+      {cards(true)}
+    </MotionFlex>
   )
 
+  // Sütun: genişlik tek adımda değişir (form kartı Motion'la daralır / genişler); kartlar ile raf
+  // yer değiştirir. Çıkan, akıştan hemen çıkar ve sağ kenara bağlı kalır (`popLayout`, `anchorX`)
   if (mode === 'column')
     return (
-      <Flex
-        style={side.style}
+      <MotionFlex
+        style={sticky}
         className={cn(
+          // Yapışkan öğe çıkan kartların (`popLayout`, mutlak) konum kabı da olur: `relative` gerekmez
+          // (eklenirse `cn` yapışkanlığı siler)
           STICKY,
-          'z-10 shrink-0 self-start transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          'z-10 shrink-0 self-start',
           open ? 'w-[calc((100%-0.75rem)/3)]' : 'w-14',
         )}
       >
-        {open
-          ? stack(
-              'w-[calc(100%+0.5rem)] animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out_both]',
-            )
-          : rail}
-      </Flex>
+        <AnimatePresence initial={false} mode="popLayout" anchorX="right">
+          {open ? (
+            stack('cards', 'w-full')
+          ) : (
+            <MotionFlex
+              key="rail"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={fade}
+            >
+              {rail}
+            </MotionFlex>
+          )}
+        </AnimatePresence>
+      </MotionFlex>
     )
 
   // Çekmece: raf yerinde kalır, kartlar onun solunda formun üstüne kayar; form soluklaşır. Kartlar
   // zemin renginde bir tepside: aralarından alttaki form görünmesin
   return (
     <>
-      {open && (
-        <Flex
-          aria-hidden
-          onClick={() => setOpen(false)}
-          className="absolute inset-0 z-10 block animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out] rounded-3xl bg-background/60"
-        />
-      )}
-      <Flex style={side.style} className={cn(STICKY, 'z-20 shrink-0 self-start')}>
+      <AnimatePresence>
+        {open && (
+          <MotionFlex
+            key="dim"
+            aria-hidden
+            onClick={() => setOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={fade}
+            className="absolute inset-0 z-10 block rounded-3xl bg-background/60"
+          />
+        )}
+      </AnimatePresence>
+      <MotionFlex style={sticky} className={cn(STICKY, 'z-20 shrink-0 self-start')}>
         {rail}
-        {open &&
-          stack(
-            cn(
-              'absolute end-[calc(100%+0.25rem)] -top-2 m-0 w-[min(25rem,calc(100cqw-4.5rem))] animate-slide-in rounded-[2.25rem] p-2',
-              side.tray,
-            ),
-            'Yan bilgiler',
-          )}
-      </Flex>
+        <AnimatePresence>
+          {open &&
+            stack(
+              'drawer',
+              cn(
+                'absolute end-[calc(100%+0.25rem)] -top-2 w-[min(25rem,calc(100cqw-4.5rem))] rounded-[2.25rem] p-2',
+                side.tray,
+              ),
+              'Yan bilgiler',
+            )}
+        </AnimatePresence>
+      </MotionFlex>
     </>
+  )
+}
+
+/**
+ * Özellikler / Tarihçe: bölümlü seçim (antd `Segmented`, tam genişlik; seçim zemini kendi kayar,
+ * klavyede oklar). İçerik değişimin yönünden gelir, eskisi önce kısa çıkar (`mode="wait"`: kart
+ * sabit boylu, iki içerik üst üste binmez); yeni içerik baştan başlar.
+ */
+function SideTabs({
+  tab,
+  onTab,
+  panes,
+  fill,
+}: {
+  tab: SideTab
+  onTab: (tab: SideTab) => void
+  panes: Record<SideTab, ReactNode>
+  fill: boolean
+}) {
+  const enter = useTransition({ duration: 0.24, ease: 'easeOut' })
+  const exit = useTransition({ duration: 0.12, ease: 'easeIn' })
+  const scroller = useRef<HTMLElement | null>(null)
+
+  // Değişimin yönü (sağdaki bölüme geçince içerik sağdan gelir)
+  const [seen, setSeen] = useState({ tab, dir: 1 })
+  if (seen.tab !== tab)
+    setSeen({
+      tab,
+      dir:
+        TABS.findIndex((t) => t.key === tab) > TABS.findIndex((t) => t.key === seen.tab) ? 1 : -1,
+    })
+
+  return (
+    <Flex vertical className={cn(fill && 'min-h-0 flex-1')}>
+      <Segmented<SideTab>
+        block
+        aria-label="Yan bilgiler"
+        value={tab}
+        onChange={onTab}
+        options={TABS.map(({ key, label }) => ({ value: key, label }))}
+        className="shrink-0"
+      />
+      {/* Yanlara nabız halkası kadar (0.75rem) taşar: tarihçedeki halka kesilmesin */}
+      <FadeScroll ref={scroller} fill={fill} className="-mx-3 px-3">
+        <AnimatePresence
+          mode="wait"
+          initial={false}
+          custom={seen.dir}
+          onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}
+        >
+          <MotionFlex
+            key={tab}
+            aria-label={TABS.find((t) => t.key === tab)?.label}
+            role="region"
+            custom={seen.dir}
+            variants={tabVariants(enter, exit)}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="block pt-4"
+          >
+            {panes[tab]}
+          </MotionFlex>
+        </AnimatePresence>
+      </FadeScroll>
+    </Flex>
+  )
+}
+
+const TABS: { key: SideTab; label: string }[] = [
+  { key: 'props', label: 'Özellikler' },
+  { key: 'history', label: 'Tarihçe' },
+]
+
+/**
+ * Kartın içindeki kaydırma alanı. İçerik taşınca kenarları solarak biter: kaydırılmış üst kenar ve
+ * daha aşağısı olan alt kenar (CSS maskesi; zemin renginden bağımsız, kart stili ne olursa olsun).
+ * Maskeyi kaydırmaya bağlı MotionValue'lar sürer (`useScroll`): React çizmez. Tema paneli ›
+ * Kaydırma gölgesi kapalıysa maske yok. `fill`: kalan boyu doldurur; değilse (telefon) en çok 27.5rem.
+ */
+function FadeScroll({
+  ref,
+  fill,
+  className,
+  children,
+}: {
+  ref?: Ref<HTMLElement>
+  fill: boolean
+  className?: string
+  children: ReactNode
+}) {
+  const { scrollShadow } = useLook()
+  const box = useRef<HTMLElement | null>(null)
+  const content = useRef<HTMLElement | null>(null)
+  const attach = useCallback(
+    (el: HTMLElement | null) => {
+      box.current = el
+      if (typeof ref === 'function') ref(el)
+      else if (ref) ref.current = el
+    },
+    [ref],
+  )
+
+  // Üst kenar: kaydırıldıkça (ilk 32px'te) 24px'e kadar solar; alt kenar: kalan kaydırma kadar
+  const { scrollY } = useScroll({ container: box })
+  const top = useTransform(scrollY, [0, 32], [0, 24])
+  const bottom = useMotionValue(0)
+  const measure = useCallback(() => {
+    const el = box.current
+    if (!el) return
+    const rest = el.scrollHeight - el.clientHeight - el.scrollTop
+    bottom.set(Math.min(24, Math.max(0, rest) * 0.75))
+  }, [bottom])
+  useMotionValueEvent(scrollY, 'change', measure)
+  // İçerik ya da kart boyu değişince (sekme, doküman uyarısı, pencere) alt kenar yeniden ölçülür
+  useEffect(() => {
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (box.current) ro.observe(box.current)
+    if (content.current) ro.observe(content.current)
+    return () => ro.disconnect()
+  }, [measure])
+  const mask = useMotionTemplate`linear-gradient(to bottom, transparent, #000 ${top}px, #000 calc(100% - ${bottom}px), transparent)`
+
+  return (
+    <MotionFlex
+      ref={attach}
+      vertical
+      style={scrollShadow ? { maskImage: mask } : undefined}
+      className={cn(
+        'overflow-y-auto overscroll-contain',
+        fill ? 'min-h-0 flex-1' : 'max-h-[27.5rem]',
+        className,
+      )}
+    >
+      <Flex ref={content} vertical className="shrink-0">
+        {children}
+      </Flex>
+    </MotionFlex>
   )
 }

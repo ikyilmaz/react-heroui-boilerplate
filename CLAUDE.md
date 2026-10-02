@@ -84,14 +84,30 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   stacked below 960px), `widgets.tsx` (the extra widgets).
 - İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as agenda tabs incl.
   Geçmiş (`AgendaTabs.tsx`), search / sort / date range on top of the process list, process list
-  (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete);
+  (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete). Nothing is
+  selected automatically: `/is-akislari` (`WF_HOME`; breadcrumb, dock and app links) has no box
+  selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
+  taleplerini görmek için bir proje/süreç seçin", 104054 / drafts 104146);
   `DetailPage.tsx` + `DetailSide.tsx` + `DetailTiles.tsx` + `FormTabs.tsx` + `FormFields.tsx` (Flow
-  Viewer, read-only form fields; side info = a Dokümanlar card above an Özellikler / Tarihçe tabs
-  card, laid out by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
+  Viewer, read-only form fields — long ones size with CSS `field-sizing: content` (no antd
+  `autoSize`: its layout-effect measuring looped into "Maximum update depth"); the breadcrumb ends
+  with the form's name (`process.form`), not the code; the header band shows the process icon and
+  name only (no project name, no status tag); the floating strip after scrolling has the events
+  at the far left and only the form's name at the far right; the form row reaches the bottom of
+  its container (`useFillHeight` against the page or the form tab's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
+  card, each half of the side column / drawer with its own scrolling (`FadeScroll`: edges fade
+  through a CSS mask driven by `useScroll`, off when tema paneli › scroll shadow is off), laid out
+  by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
   folds to an icon rail (remembered), narrower (e.g. `panelSize` 1) the rail with the cards in a
   drawer over the dimmed form (closes on outside click / Esc / showing a document), phones below
-  the form; between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
-  original: one tick per request of the list it was opened from (the current request's page of 8);
+  the form at natural height. Side motion (Motion): the cards enter one after the other from the
+  rail side and leave in reverse (`AnimatePresence` + variants with `stagger`; column swap with the
+  rail via `popLayout` + `anchorX="right"`); the column width switches in one step and the form card
+  follows with a layout animation (`layout` + content `layout="position"`, px corner radius); the
+  Özellikler / Tarihçe is an antd `Segmented` (block) and the content enters from the chosen
+  side's direction (`mode="wait"`); between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
+  original: one tick per request of the list it was opened from (the current request's page of 8)
+  with its position below (e.g. 2 / 8);
   pressing it opens a popover with that list as the workflow DataGrid — same columns, date groups,
   unread bold, current row selected, search and paging, row click opens the request); child forms open from form buttons into `FormTabs.tsx` by the child
   process's `panelSize` (original `viewOptions.panelSize`, a 3-unit strip): 1 / 2 split the tab
@@ -124,7 +140,15 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - `AllApps.tsx` ("Tüm uygulamalar" panel: search, order ↔ alphabetic sort, collapsible app tree from
   `shared/menuTree.ts`; no menu editing), `AppPage.tsx`, `paths.ts`, `theme.ts`, `motion.tsx`
   (`MotionScope`, `useTransition`, `useLeaving`, `PageTransition`).
-- `ant/`: shared antd pieces — `theme.tsx` (`AntTheme`), `ui.tsx` (`cn` (tailwind-merge), `IC`,
+- Brand (Bimser Synergy): `assets/brand/` — `icon.svg` / `icon-dark.svg` (four-colour mark; dark
+  theme has a white centre) and `wordmark.svg` / `wordmark-light.svg` ("bimser synergy"), cut from
+  the official logo SVGs; the shell logo is the mark (+ wordmark in the top nav and the phone bar),
+  `public/favicon.svg` is the mark. Default page transition: fade.
+- `ant/`: shared antd pieces — `theme.tsx` (`AntTheme`), `modal.tsx` (`SoftModal`: every dialog;
+  antd's zoom off, the panel springs in from 96 % via `modalRender` + Motion and fades out before
+  antd closes it, also when a parent unmounts it inside `AnimatePresence` (`usePresence`; a closed
+  dialog releases at once, otherwise page transitions would wait forever); mask fades via
+  `starting:`), `ui.tsx` (`cn` (tailwind-merge), `IC`,
   `MotionFlex`, `Tip`, `TintIcon`, `StatusTag`, `Scroll`, `CARD`), `parts.tsx` (`SearchField`,
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via

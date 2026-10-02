@@ -16,7 +16,8 @@ export const router = createBrowserRouter([
       // Menü uygulamaları (Favoriler / Son Kullanılan Uygulamalar)
       { path: '/uygulamalar/:appId', Component: AppPage },
       // İş Akış Yönetimi: kutu → süreç → talepler
-      { path: '/is-akislari', element: <Navigate to="/is-akislari/bekleyen" replace /> },
+      // Boş durum: kutu / süreç seçili değil (kırıntı ve uygulama bağlantıları buraya gelir)
+      { path: '/is-akislari', Component: WorkflowPage },
       {
         path: '/is-akislari/gecmis',
         element: <Navigate to="/is-akislari/gecmis-onaylar" replace />,

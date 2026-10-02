@@ -1583,7 +1583,7 @@ const app = (id: string, caption: string, pinned: boolean, icon?: LucideIcon, hr
 
 /** Son kullanılan menü öğeleri, en yeni önce (orijinal ilk 20'yi gösterir). */
 export const menuApps: MenuApp[] = [
-  app('is-akis-yonetimi', 'İş Akış Yönetimi', true, Workflow, '/is-akislari/bekleyen'),
+  app('is-akis-yonetimi', 'İş Akış Yönetimi', true, Workflow, '/is-akislari'),
   app('satin-alma-talebi', 'Satın Alma Talebi', true, ShoppingCart),
   app('izin-talebi', 'Yıllık İzin Talebi', false, TreePalm),
   app('masraf-bildirimi', 'Masraf Bildirimi', true, Receipt),
