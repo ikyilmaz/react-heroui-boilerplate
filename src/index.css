@@ -50,10 +50,13 @@
   --radius-4xl: calc(var(--radius) * 4);
 }
 
-/* Tailwind tema anahtarları: `font-display` (başlıklar) ve `font-mono` (numaralar) */
+/*
+ * Tailwind tema anahtarları: `font-display` (başlıklar). Eşaralıklı yazı tipi yok: `font-mono`
+ * anahtarı kaldırıldı, sayılar seçili yazı tipinde (hizalı sütunlar için `tabular-nums`).
+ */
 @theme {
   --font-display: 'Bricolage Grotesque', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: initial;
 }
 
 /*

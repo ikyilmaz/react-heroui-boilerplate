@@ -119,11 +119,22 @@ const ITEM = 'px-3 py-1 transition-colors'
 const CATEGORY =
   'relative h-16 w-full min-w-0 justify-start gap-2 overflow-hidden rounded-t-2xl rounded-b-none px-5 shadow-none'
 
-/** Seçili sekmenin alt köşelerindeki içbükey kavis (yüzey rengi, zeminden oyulmuş çeyrek daire). */
+/**
+ * Seçili sekme (Chrome sekmeleri gibi): yüzey renginde, yanlarda ve üstte kartın konturu
+ * (`--border-width`); alt köşelerde zeminden oyulmuş içbükey kavisler. Kontur kavis boyunca
+ * kartın üst çizgisine kesintisiz bağlanır: kavis halkasının orta çizgisi 1rem yarıçaplı, bir ucu
+ * sekmenin kenar çizgisinin, öbür ucu kartın halkasının (kartın dışında, `ring`) tam üstünde. Halka
+ * zemin rengi üstüne çizilir (alttaki kart halkasıyla üst üste binip koyulaşmasın); halkanın dışı
+ * yüzey (kartla kaynaşır), içi saydam. Sekmenin dolgusu çerçevenin altına girmez (`bg-clip-padding`):
+ * yarı saydam çizgi kartınki gibi zeminin üstünde durur. `--fa` / `--fb` halkanın iç / dış yarıçapı.
+ */
+const TAB =
+  'rounded-t-2xl rounded-b-none bg-surface bg-clip-padding border-x-(length:--border-width) border-t-(length:--border-width) [--fa:calc(1rem_-_var(--border-width)/2)] [--fb:calc(1rem_+_var(--border-width)/2)]'
+// Sabit metin (Tailwind görsün): üstte halka (`--border`), altında zemin + dışında yüzey
 const FLARE_L =
-  "before:absolute before:bottom-0 before:-start-4 before:size-4 before:bg-[radial-gradient(circle_at_0_0,transparent_1rem,var(--surface)_1rem)] before:content-['']"
+  "before:absolute before:bottom-0 before:start-[calc(var(--border-width)/2_-_1rem)] before:size-(--fb) before:bg-[radial-gradient(circle_at_0_0,transparent_var(--fa),var(--border)_var(--fa),var(--border)_var(--fb),transparent_var(--fb)),radial-gradient(circle_at_0_0,transparent_var(--fa),var(--background)_var(--fa),var(--background)_var(--fb),var(--surface)_var(--fb))] before:content-['']"
 const FLARE_R =
-  "after:absolute after:bottom-0 after:-end-4 after:size-4 after:bg-[radial-gradient(circle_at_100%_0,transparent_1rem,var(--surface)_1rem)] after:content-['']"
+  "after:absolute after:bottom-0 after:end-[calc(var(--border-width)/2_-_1rem)] after:size-(--fb) after:bg-[radial-gradient(circle_at_100%_0,transparent_var(--fa),var(--border)_var(--fa),var(--border)_var(--fb),transparent_var(--fb)),radial-gradient(circle_at_100%_0,transparent_var(--fa),var(--background)_var(--fa),var(--background)_var(--fb),var(--surface)_var(--fb))] after:content-['']"
 
 /**
  * Olaylar sütunu en solda; tablo yatay kaysa da görünür kalır (hızlı onay hiç gizlenmez); köşeleri
@@ -282,9 +293,8 @@ function WorkBlock({ refreshing }: { refreshing: boolean }) {
     <Flex vertical className="h-full min-h-0">
       <Categories selected={category} onSelect={choose} />
       {/* İş bloğu: seçili sekmenin devamı; hücrenin kalanını doldurur, sütunlar içeride kayar */}
-      {/* `overflow-hidden`: içteki düz köşeli yüzey kartın yuvarlak köşesinden taşmasın */}
       <Card
-        className={cn(CARD, 'flex min-h-0 flex-1 flex-col overflow-hidden')}
+        className={cn(CARD, 'flex min-h-0 flex-1 flex-col')}
         classNames={{ body: 'flex min-h-0 flex-1 flex-col p-1.5' }}
       >
         <WorkSplit
@@ -342,7 +352,7 @@ function Greeting({
   const counts = useBoxCounts()
   const { text, daytime } = greetingOf(now)
   const Icon = daytime ? Sun : Moon
-  // Vurgu gücüne göre band (tema paneli)
+  // Dolu birincil renkte band
   const band = useBand()
   // Cümledeki sayı sayarak gelir; metnin geri kalanı yerelleştirmeden
   const pending = counts.get('bekleyen') ?? 0
@@ -623,13 +633,8 @@ function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: Box
           const n = counts.get(b.id) ?? 0
           return (
             <Flex key={b.id} className={cn('relative grid min-w-0 grow basis-0', isSel && 'z-10')}>
-              {/* Seçili sekme (yüzey + içbükey kavisler) sekmeden sekmeye kayar */}
-              {isSel && (
-                <Indicator
-                  id="start-category"
-                  className={cn('rounded-t-2xl rounded-b-none bg-surface', FLARE_L, FLARE_R)}
-                />
-              )}
+              {/* Seçili sekme (yüzey, kontur, içbükey kavisler) sekmeden sekmeye kayar */}
+              {isSel && <Indicator id="start-category" className={cn(TAB, FLARE_L, FLARE_R)} />}
               <Button
                 type="text"
                 aria-pressed={isSel}
@@ -696,8 +701,8 @@ function WorkSplit({ left, right }: { left: ReactNode; right: ReactNode }) {
   }
   return (
     <Flex
-      // Hücrenin kalanını doldurur; iki sütun kendi içinde kayar
-      className="flex min-h-0 flex-1 flex-col bg-surface text-foreground lg:flex-row"
+      // Hücrenin kalanını doldurur; iki sütun kendi içinde kayar (zemin kartın kendisi)
+      className="flex min-h-0 flex-1 flex-col text-foreground lg:flex-row"
       style={{ '--split': `${split}%` } as CSSProperties}
     >
       {/* Sol sütun iş bloğunun tüm yüksekliğini alır (süreç listesi en alta kadar uzar) */}
@@ -765,13 +770,16 @@ function GroupList({
         <SortMenu box={box} sort={sort} onSort={onSort} />
         <Refresh pending={loading} onPress={onReload} />
         {SHOW_ALL_BOXES.includes(box.id) && (
-          <Link
-            to={boxLink(box.id)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent-soft px-3 text-sm font-medium text-accent-soft-foreground no-underline transition-colors hover:bg-accent/20 hover:text-accent-soft-foreground hover:no-underline focus-visible:outline-2 focus-visible:outline-focus"
-          >
-            {START_LABELS.showAll}
-            <ExternalLink {...IC} />
-          </Link>
+          // Yalnızca ikon; ad ipucunda ve erişilebilir adda
+          <Tip label={START_LABELS.showAll}>
+            <Link
+              to={boxLink(box.id)}
+              aria-label={START_LABELS.showAll}
+              className="inline-grid size-9 place-items-center rounded-lg bg-accent-soft text-accent-soft-foreground transition-colors hover:bg-accent/20 hover:text-accent-soft-foreground focus-visible:outline-2 focus-visible:outline-focus"
+            >
+              <ExternalLink {...IC} />
+            </Link>
+          </Tip>
         )}
       </Flex>
       <SearchField value={search} onChange={onSearch} label={START_LABELS.search} />

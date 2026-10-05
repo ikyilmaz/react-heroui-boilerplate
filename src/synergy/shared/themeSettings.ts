@@ -5,74 +5,55 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore } 
  *
  * Temel tema `src/themes/synergy.css`'te durur. Panelde değişen her ayar yalnızca kendi CSS
  * değişkenlerini <html>'e satır içi yazar (açık / koyu için ayrı hesaplanır); varsayılanda kalan
- * ayarlar hiçbir şey yazmaz, tema dosyası geçerli kalır. Düğme biçimi <html>'e sınıf olarak eklenir
- * (açılır pencereler de kapsansın). Vurgu gücü ve gezinme sayfalara `LookContext` ile gider.
- * Kabuktan çıkınca hepsi silinir. Varsayılan ve hazır temalar `synergy/theme.ts`'te (`ThemeKit`).
+ * ayarlar hiçbir şey yazmaz, tema dosyası geçerli kalır. Gezinme ve animasyon sayfalara
+ * `LookContext` ile gider. Kabuktan çıkınca hepsi silinir. Varsayılan `synergy/theme.ts`'te
+ * (`ThemeKit`).
  * ------------------------------------------------------------------------------------------------- */
 
-export type Background = 'neutral' | 'cool' | 'warm' | 'tinted'
-export type FontId = 'bricolage' | 'inter' | 'jakarta' | 'figtree' | 'geist'
-export type Shadow = 'none' | 'soft' | 'strong'
-export type CardStyle = 'filled' | 'outlined' | 'elevated'
+export type ColorId =
+  'blue' | 'indigo' | 'purple' | 'rose' | 'orange' | 'green' | 'teal' | 'petrol' | 'graphite'
+/** Zemin: nötr / serin / sıcak / beyaz ve birincil renge göre dört uyumlu ton (`HARMONY`). */
+export type Background =
+  'neutral' | 'cool' | 'warm' | 'white' | 'analogous' | 'square' | 'triadic' | 'complement'
+/** `synergy`: tema dosyasının eşi (başlıklar Bricolage Grotesque, metin Inter); diğerleri her yerde. */
+export type FontId = 'synergy' | 'inter' | 'bricolage' | 'jakarta' | 'figtree' | 'geist'
+/** Yoğunluk: kök yazı boyutu ve boşluk birimi birlikte. */
+export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
 /**
- * `default`: uygulamanın kendi karışımı (karşılama dolu, talep başlığı beyaz). `medium`:
- * belirgin açık ton, `outline`: beyaz zemin + birincil çerçeve, `ink`: nötr koyu zemin.
+ * Kartın dolgusu: dolu (yüzey), çerçeveli (zemin rengi + çizgi), yükseltilmiş (kabarık alt
+ * kenar), tonlu (birincil rengin çok açık tonu), gri (zeminden koyu, gömme).
  */
-export type AccentStrength = 'default' | 'soft' | 'medium' | 'solid' | 'outline' | 'ink'
-export type ButtonShape = 'default' | 'pill' | 'square'
+export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
+export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
-/** Sayfa geçişi efekti (ekran tümüyle değişince); `off` anında. */
-export type PageEffect = 'off' | 'fade' | 'rise' | 'slide' | 'zoom' | 'blur'
 /** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
 export type TrailStyle = 'soft' | 'solid'
 
 export interface ThemeSettings {
-  /** Birincil renk (OKLCH): ton 0–360, doygunluk 0–0.24, açıklık 0.3–0.65. */
-  hue: number
-  chroma: number
-  lightness: number
+  /** Birincil renk (`COLORS`). */
+  color: ColorId
   /** Temel yarıçap (rem); alanlar bunun iki katı (en çok 1.25rem). */
   radius: number
   background: Background
-  headingFont: FontId
-  bodyFont: FontId
-  /** Kök yazı boyutu (px); rem'e bağlı tüm ölçüler onunla büyür. */
-  scale: number
-  /** Boşluk birimi (rem, Tailwind `--spacing`): iç boşluk, aralık, satır yüksekliği; yazıya dokunmaz. */
-  spacing: number
-  /** Dolu (beyaz), çerçeveli (zemin rengi + çizgi), yükseltilmiş (belirgin gölge). */
+  /** Yazı tipi: başlıklar ve metin. */
+  font: FontId
+  /** Kök yazı boyutu (rem'e bağlı tüm ölçüler) ve boşluk birimi (Tailwind `--spacing`). */
+  density: Density
+  /** Kartların dolgusu (kabuktaki ve sayfalardaki tüm kartlar, `CARD`). */
   cardStyle: CardStyle
-  /** Dolu kartta gölge. */
+  /** Kart gölgesi (her kart stilinde). */
   shadow: Shadow
-  /** Kart / kenarlık kalınlığı (px). */
+  /** Kart konturu (px); çerçeveli kartta en az 1. */
   border: number
-  accent: AccentStrength
-  buttonShape: ButtonShape
   /** Gezinme konumu; seçenekler `ThemeKit.navOptions`, `default` uygulamanın kendisi. */
   nav: string
   /** Raftaki konum haplarının rengi (Yumuşak / Dolu). */
   trail: TrailStyle
-  /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. Hazır temalar buna dokunmaz. */
+  /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. */
   motion: MotionLevel
   /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
   motionSpeed: number
-  /** Sağ üstte FPS ve performans kutusu. */
-  showFps: boolean
-  /** Kayan alanlarda kenar gölgesi. */
-  scrollShadow: boolean
-  /** Sayfa geçişi efekti. */
-  pageTransition: PageEffect
-}
-
-export interface ThemePreset {
-  id: string
-  label: string
-  description: string
-  settings: ThemeSettings
-  /** Önizleme sınıfları (birincil renk ve zemin); Tailwind'in görmesi için sabit metin. */
-  swatch: string
-  surface: string
 }
 
 /** Tema paneli yapılandırması. */
@@ -81,58 +62,50 @@ export interface ThemeKit {
   storageKey: string
   /** Tema dosyasının karşılığı; bu değerlerde hiçbir değişken yazılmaz. */
   defaults: ThemeSettings
-  /** Beş hazır tema; ilki varsayılan. */
-  presets: ThemePreset[]
   /** Gezinme konumu seçenekleri (ilki `default`). */
   navOptions: { id: string; label: string }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
 }
 
-/** Ortak varsayılanların yeni ayarları (`theme.ts` kendi değerlerini üstüne yazar). */
-export const BASE_LOOK = {
-  spacing: 0.25,
-  cardStyle: 'filled',
-  accent: 'default',
-  buttonShape: 'default',
-  nav: 'default',
-  trail: 'soft',
-  motion: 'full',
-  motionSpeed: 1,
-  showFps: false,
-  scrollShadow: true,
-  pageTransition: 'fade',
-} as const
-
-export const FONTS: { id: FontId; label: string; stack: string }[] = [
-  {
-    id: 'bricolage',
-    label: 'Bricolage Grotesque',
-    stack: "'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif",
-  },
-  { id: 'inter', label: 'Inter', stack: "'Inter', ui-sans-serif, system-ui, sans-serif" },
-  {
-    id: 'jakarta',
-    label: 'Plus Jakarta Sans',
-    stack: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
-  },
-  { id: 'figtree', label: 'Figtree', stack: "'Figtree', ui-sans-serif, system-ui, sans-serif" },
-  { id: 'geist', label: 'Geist', stack: "'Geist', ui-sans-serif, system-ui, sans-serif" },
+/** Birincil renkler (OKLCH); `cls` önizleme sınıfı (sabit metin; Tailwind görsün). */
+export const COLORS: {
+  id: ColorId
+  label: string
+  h: number
+  c: number
+  l: number
+  cls: string
+}[] = [
+  { id: 'blue', label: 'Mavi', h: 262, c: 0.16, l: 0.5, cls: 'bg-[oklch(0.5_0.16_262)]' },
+  { id: 'indigo', label: 'Çivit', h: 280, c: 0.17, l: 0.5, cls: 'bg-[oklch(0.5_0.17_280)]' },
+  { id: 'purple', label: 'Mor', h: 305, c: 0.18, l: 0.5, cls: 'bg-[oklch(0.5_0.18_305)]' },
+  { id: 'rose', label: 'Gül', h: 355, c: 0.16, l: 0.55, cls: 'bg-[oklch(0.55_0.16_355)]' },
+  { id: 'orange', label: 'Turuncu', h: 50, c: 0.15, l: 0.56, cls: 'bg-[oklch(0.56_0.15_50)]' },
+  { id: 'green', label: 'Yeşil', h: 155, c: 0.11, l: 0.47, cls: 'bg-[oklch(0.47_0.11_155)]' },
+  { id: 'teal', label: 'Turkuaz', h: 190, c: 0.1, l: 0.5, cls: 'bg-[oklch(0.5_0.1_190)]' },
+  { id: 'petrol', label: 'Petrol', h: 210, c: 0.1, l: 0.5, cls: 'bg-[oklch(0.5_0.1_210)]' },
+  { id: 'graphite', label: 'Grafit', h: 260, c: 0.02, l: 0.32, cls: 'bg-[oklch(0.32_0.02_260)]' },
 ]
 
-/**
- * Düğme ve etiket biçimi: <html>'e eklenen sınıflar (sabit metin; Tailwind görsün). antd `Button`
- * ve `Tag`'e uygulanır; liste seçeneği (`role=option`) ve aç / kapa (`aria-pressed`) düğmeleri
- * düğme sayılmaz.
- */
-const SHAPE_CLASSES: Record<Exclude<ButtonShape, 'default'>, string[]> = {
-  pill: [
-    '[&_.ant-btn:not([role=option],[aria-pressed])]:rounded-full',
-    '[&_.ant-tag]:rounded-full',
-  ],
-  square: ['[&_.ant-btn:not([role=option],[aria-pressed])]:rounded-md', '[&_.ant-tag]:rounded-sm'],
+const SANS = 'ui-sans-serif, system-ui, sans-serif'
+
+export const FONTS: { id: FontId; label: string; stack?: string }[] = [
+  { id: 'synergy', label: 'Bricolage Grotesque + Inter' },
+  { id: 'inter', label: 'Inter', stack: `'Inter', ${SANS}` },
+  { id: 'bricolage', label: 'Bricolage Grotesque', stack: `'Bricolage Grotesque', ${SANS}` },
+  { id: 'jakarta', label: 'Plus Jakarta Sans', stack: `'Plus Jakarta Sans', ${SANS}` },
+  { id: 'figtree', label: 'Figtree', stack: `'Figtree', ${SANS}` },
+  { id: 'geist', label: 'Geist', stack: `'Geist', ${SANS}` },
+]
+
+/** Yoğunluk: kök yazı boyutu (px) ve boşluk birimi (rem). */
+export const DENSITIES: Record<Density, { scale: number; spacing: number }> = {
+  tight: { scale: 14, spacing: 0.22 },
+  compact: { scale: 15, spacing: 0.235 },
+  normal: { scale: 16, spacing: 0.25 },
+  roomy: { scale: 17, spacing: 0.27 },
 }
-const ALL_SHAPE_CLASSES = Object.values(SHAPE_CLASSES).flat()
 
 /** Yazılabilen tüm değişkenler (temizlik için). */
 const VARS = [
@@ -151,6 +124,10 @@ const VARS = [
   '--field-radius',
   '--border-width',
   '--surface-shadow',
+  '--field-fill',
+  '--field-hover',
+  '--field-border-width',
+  '--field-shadow',
   '--font-sans',
   '--font-display',
   '--spacing',
@@ -160,33 +137,138 @@ const VARS = [
 
 type VarName = (typeof VARS)[number]
 
-export const same = (
-  a: ThemeSettings,
-  b: ThemeSettings,
-  skip: readonly (keyof ThemeSettings)[] = [],
-) => (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => skip.includes(k) || a[k] === b[k])
+export const same = (a: ThemeSettings, b: ThemeSettings) =>
+  (Object.keys(b) as (keyof ThemeSettings)[]).every((k) => a[k] === b[k])
 
-/** Görünüşten sayılmayan tercihler: hazır temalar bunlara dokunmaz, eşleşmede sayılmaz. */
-export const PREFERENCES = [
-  'motion',
-  'motionSpeed',
-  'showFps',
-  'scrollShadow',
-  'pageTransition',
-] as const satisfies readonly (keyof ThemeSettings)[]
+const ok = (l: number, c: number, h: number, a?: number) =>
+  `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)}${a == null ? '' : ` / ${a}`})`
 
-/** Ayarlar bir hazır temaya eşitse onun kimliği (tercihler görünüşten sayılmaz). */
-export function presetOf(kit: ThemeKit, s: ThemeSettings) {
-  return kit.presets.find((p) => same(p.settings, s, PREFERENCES))?.id ?? null
+/** Gölge katmanları; koyu zeminde gölge az görünür, opaklık artar. */
+const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
+  // Boş gölge: `none` olmaz (halkayla aynı `box-shadow` listesinde geçersiz kalıp konturu da siler)
+  none: () => '0 0 #0000',
+  subtle: (d) => `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}`,
+  soft: (d) =>
+    `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.25 : 0.05)}, 0 6px 20px -8px ${ok(0, 0, 0, d ? 0.45 : 0.12)}`,
+  strong: (d) =>
+    `0 2px 4px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 14px 36px -10px ${ok(0, 0, 0, d ? 0.6 : 0.22)}`,
+  deep: (d) =>
+    `0 4px 8px -2px ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 28px 60px -12px ${ok(0, 0, 0, d ? 0.7 : 0.3)}`,
 }
 
-const ok = (l: number, c: number, h: number) =>
-  `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)})`
+/** Yükseltilmiş kartın kabarık kenarı: üstte ışık, altta koyu bir dudak. */
+const RAISED = (dark: boolean) =>
+  dark
+    ? `inset 0 1px 0 0 ${ok(1, 0, 0, 0.07)}, 0 2px 0 0 ${ok(0, 0, 0, 0.45)}`
+    : `inset 0 -1px 0 0 ${ok(0, 0, 0, 0.04)}, 0 2px 0 0 ${ok(0.21, 0.01, 260, 0.13)}`
 
-const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
-  none: (dark) => (dark ? '0 0 0 1px var(--border)' : 'none'),
-  soft: () => '0 1px 2px 0 oklch(0 0 0 / 0.05), 0 6px 20px -8px oklch(0 0 0 / 0.12)',
-  strong: () => '0 2px 4px 0 oklch(0 0 0 / 0.06), 0 14px 36px -10px oklch(0 0 0 / 0.22)',
+/**
+ * Form alanlarının (antd: Input, Select, DatePicker…) gölgesi: kart gölgesinin küçültülmüşü (alan
+ * kartın içinde, aynı ışıkta; büyük gölge alanı boğar).
+ */
+const FIELD_SHADOWS: Record<Shadow, (dark: boolean) => string> = {
+  none: () => '0 0 #0000',
+  subtle: (d) => `0 1px 1px 0 ${ok(0, 0, 0, d ? 0.25 : 0.04)}`,
+  soft: (d) => `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.07)}`,
+  strong: (d) =>
+    `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 3px 8px -3px ${ok(0, 0, 0, d ? 0.45 : 0.14)}`,
+  deep: (d) =>
+    `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 6px 14px -6px ${ok(0, 0, 0, d ? 0.55 : 0.2)}`,
+}
+
+/** Yükseltilmiş kart stilinde alanların kabarık alt kenarı. */
+const FIELD_RAISED = (dark: boolean) =>
+  dark
+    ? `inset 0 1px 0 0 ${ok(1, 0, 0, 0.06)}, 0 1px 0 0 ${ok(0, 0, 0, 0.4)}`
+    : `0 1px 0 0 ${ok(0.21, 0.01, 260, 0.12)}`
+
+/**
+ * Alanın dolgusu ve üzerine gelince dolgusu, kart stiline göre: dolu kartta tema dosyasınınki (ikinci
+ * yüzey), çerçeveli ve yükseltilmişte kartın kendisi (çizgi / kenar ayırır), tonluda birincil rengin
+ * açık tonu, gri kartta beyaz alan.
+ */
+const FIELD_FILL: Record<CardStyle, [string, string] | null> = {
+  filled: null,
+  outlined: ['var(--surface)', 'var(--surface-secondary)'],
+  elevated: ['var(--surface)', 'var(--surface-secondary)'],
+  tinted: [
+    'color-mix(in oklab, var(--accent) 7%, var(--surface))',
+    'color-mix(in oklab, var(--accent) 12%, var(--surface))',
+  ],
+  muted: ['var(--field-background)', 'var(--surface-secondary)'],
+}
+
+/**
+ * Birincil renge göre zeminlerin tonu (renk çemberinde birincil tondan uzaklık): benzer (komşu ton),
+ * dörtlü (dik açı), üçlü (üçte bir tur) ve zıt (tam karşı). Hepsi çok açık / çok koyu, az doygun.
+ */
+const HARMONY = { analogous: -30, square: 90, triadic: 120, complement: 180 } as const
+
+export const BACKGROUND_IDS = [
+  'neutral',
+  'cool',
+  'warm',
+  'white',
+  ...(Object.keys(HARMONY) as (keyof typeof HARMONY)[]),
+] as const
+
+/** Zemin: zemin, yüzey, ikinci yüzey, üçüncü yüzey (son dördü birincil tondan). */
+function backgrounds(dark: boolean, h: number): Record<Background, string[]> {
+  const tint = (off: number) => {
+    const t = (h + off + 360) % 360
+    return dark
+      ? [ok(0.18, 0.018, t), ok(0.22, 0.02, t), ok(0.245, 0.022, t), ok(0.27, 0.024, t)]
+      : [ok(0.962, 0.022, t), ok(1, 0, 0), ok(0.972, 0.012, t), ok(0.948, 0.02, t)]
+  }
+  const harmony = Object.fromEntries(
+    Object.entries(HARMONY).map(([id, off]) => [id, tint(off)]),
+  ) as Record<keyof typeof HARMONY, string[]>
+  return dark
+    ? {
+        neutral: [ok(0.16, 0, 0), ok(0.2, 0, 0), ok(0.225, 0, 0), ok(0.25, 0, 0)],
+        cool: [
+          ok(0.17, 0.006, 260),
+          ok(0.21, 0.007, 260),
+          ok(0.235, 0.008, 260),
+          ok(0.26, 0.008, 260),
+        ],
+        warm: [ok(0.17, 0.008, 70), ok(0.21, 0.009, 70), ok(0.235, 0.01, 70), ok(0.26, 0.01, 70)],
+        // Tek ton: zemin yüzeyle aynı, kartları kontur ayırır
+        white: [
+          ok(0.19, 0.005, 260),
+          ok(0.19, 0.005, 260),
+          ok(0.225, 0.006, 260),
+          ok(0.25, 0.007, 260),
+        ],
+        ...harmony,
+      }
+    : {
+        neutral: [ok(0.975, 0, 0), ok(1, 0, 0), ok(0.97, 0, 0), ok(0.95, 0, 0)],
+        cool: [ok(0.96, 0.003, 250), ok(1, 0, 0), ok(0.975, 0.003, 250), ok(0.955, 0.004, 250)],
+        warm: [ok(0.968, 0.008, 80), ok(1, 0, 0), ok(0.972, 0.006, 80), ok(0.95, 0.008, 80)],
+        white: [ok(1, 0, 0), ok(1, 0, 0), ok(0.975, 0.002, 250), ok(0.955, 0.003, 250)],
+        ...harmony,
+      }
+}
+
+/** Zeminin rengi (tema panelindeki örnek nokta için). */
+export function backgroundSwatch(bg: Background, color: ColorId, dark: boolean) {
+  const { h } = COLORS.find((c) => c.id === color) ?? COLORS[0]
+  return backgrounds(dark, h)[bg][0]
+}
+
+/** Kartın dolgusu (`surface`: zeminin kendi yüzeyi); dolu kartta yok. */
+function cardFill(style: CardStyle, dark: boolean, surface: string): string | null {
+  switch (style) {
+    case 'outlined':
+      return 'var(--background)'
+    case 'tinted':
+      return `color-mix(in oklab, var(--accent) ${dark ? 9 : 5}%, ${surface})`
+    case 'muted':
+      return `color-mix(in oklab, var(--foreground) ${dark ? 3 : 4}%, var(--background))`
+    default:
+      return null
+  }
 }
 
 /** Varsayılandan ayrılan ayarların değişkenleri (açık / koyu). */
@@ -197,9 +279,9 @@ function variables(
   motion: MotionLevel,
 ): Partial<Record<VarName, string>> {
   const out: Partial<Record<VarName, string>> = {}
-  const { hue: h, chroma: c, lightness: l } = s
+  const { h, c, l } = COLORS.find((x) => x.id === s.color) ?? COLORS[0]
 
-  if (s.hue !== d.hue || s.chroma !== d.chroma || s.lightness !== d.lightness) {
+  if (s.color !== d.color) {
     out['--accent'] = dark ? ok(Math.max(l, 0.52), c, h) : ok(l, c, h)
     out['--accent-soft-foreground'] = dark
       ? ok(0.8, c * 0.7, h)
@@ -208,28 +290,10 @@ function variables(
     out['--link'] = 'var(--accent-soft-foreground)'
   }
 
-  // Zemin (renkli zemin birincil tondan türediği için ton değişince de yenilenir)
-  if (s.background !== d.background || (s.background === 'tinted' && s.hue !== d.hue)) {
-    const bg: Record<Background, [string, string, string, string]> = dark
-      ? {
-          // zemin, yüzey, ikinci yüzey, üçüncü yüzey
-          neutral: [ok(0.16, 0, 0), ok(0.2, 0, 0), ok(0.225, 0, 0), ok(0.25, 0, 0)],
-          cool: [
-            ok(0.17, 0.006, 260),
-            ok(0.21, 0.007, 260),
-            ok(0.235, 0.008, 260),
-            ok(0.26, 0.008, 260),
-          ],
-          warm: [ok(0.17, 0.008, 70), ok(0.21, 0.009, 70), ok(0.235, 0.01, 70), ok(0.26, 0.01, 70)],
-          tinted: [ok(0.17, 0.02, h), ok(0.21, 0.022, h), ok(0.235, 0.024, h), ok(0.26, 0.026, h)],
-        }
-      : {
-          neutral: [ok(0.975, 0, 0), ok(1, 0, 0), ok(0.97, 0, 0), ok(0.95, 0, 0)],
-          cool: [ok(0.96, 0.003, 250), ok(1, 0, 0), ok(0.975, 0.003, 250), ok(0.955, 0.004, 250)],
-          warm: [ok(0.968, 0.008, 80), ok(1, 0, 0), ok(0.972, 0.006, 80), ok(0.95, 0.008, 80)],
-          tinted: [ok(0.965, 0.02, h), ok(1, 0, 0), ok(0.97, 0.012, h), ok(0.945, 0.02, h)],
-        }
-    const [background, surface, secondary, tertiary] = bg[s.background]
+  // Zemin (renkli zeminler birincil tondan türediği için renk değişince de yenilenir)
+  const hued = s.background in HARMONY
+  if (s.background !== d.background || (hued && s.color !== d.color)) {
+    const [background, surface, secondary, tertiary] = backgrounds(dark, h)[s.background]
     Object.assign(out, {
       '--background': background,
       '--surface': surface,
@@ -241,26 +305,46 @@ function variables(
     })
   }
 
+  // Kart stili: dolgu yüzeyin yerine geçer (kartın içindeki tablolar, düğmeler de ona uyar)
+  const fill = cardFill(s.cardStyle, dark, backgrounds(dark, h)[s.background][1])
+  if (fill) {
+    out['--surface'] = fill
+    out['--surface-secondary'] = `color-mix(in oklab, var(--foreground) 3%, ${fill})`
+    out['--surface-tertiary'] = `color-mix(in oklab, var(--foreground) 6%, ${fill})`
+    out['--default'] = 'var(--surface-tertiary)'
+  }
+
   if (s.radius !== d.radius) {
     out['--radius'] = `${s.radius}rem`
     out['--field-radius'] = `${Math.min(s.radius * 2, 1.25)}rem`
   }
-  if (s.border !== d.border) out['--border-width'] = `${s.border}px`
-
-  // Kart stili gölgeyi de belirler; dolu kartta gölge ayarı geçerli
-  if (s.cardStyle === 'outlined') {
-    out['--surface'] = 'var(--background)'
-    out['--surface-shadow'] = `0 0 0 ${Math.max(s.border, 1)}px var(--border)`
-  } else if (s.cardStyle === 'elevated') {
-    out['--surface-shadow'] = SHADOWS.strong(dark)
-  } else if (s.shadow !== d.shadow || s.cardStyle !== d.cardStyle) {
-    out['--surface-shadow'] = SHADOWS[s.shadow](dark)
+  // Çerçeveli kartta kontur en az 1px; form alanlarının çerçevesi de aynı kalınlıkta (0: çerçevesiz)
+  const border = s.cardStyle === 'outlined' ? Math.max(s.border, 1) : s.border
+  if (border !== d.border) {
+    out['--border-width'] = `${border}px`
+    out['--field-border-width'] = `${border}px`
   }
 
-  const font = (id: FontId) => FONTS.find((f) => f.id === id)!.stack
-  if (s.bodyFont !== d.bodyFont) out['--font-sans'] = font(s.bodyFont)
-  if (s.headingFont !== d.headingFont) out['--font-display'] = font(s.headingFont)
-  if (s.spacing !== d.spacing) out['--spacing'] = `${s.spacing}rem`
+  // Gölge: yükseltilmiş kartın kenarı seçilen gölgenin üstüne eklenir; alanlar küçüğünü alır
+  const raised = s.cardStyle === 'elevated'
+  if (s.shadow !== d.shadow || raised) {
+    const shadow = SHADOWS[s.shadow](dark)
+    const field = FIELD_SHADOWS[s.shadow](dark)
+    out['--surface-shadow'] = raised ? `${RAISED(dark)}, ${shadow}` : shadow
+    out['--field-shadow'] = raised ? `${FIELD_RAISED(dark)}, ${field}` : field
+  }
+
+  // Alanların dolgusu kart stiline göre
+  const fieldFill = FIELD_FILL[s.cardStyle]
+  if (fieldFill) [out['--field-fill'], out['--field-hover']] = fieldFill
+
+  // Yazı tipi: seçilen tip başlıklarda ve metinde
+  const font = FONTS.find((f) => f.id === s.font)?.stack
+  if (font) {
+    out['--font-sans'] = font
+    out['--font-display'] = font
+  }
+  if (s.density !== d.density) out['--spacing'] = `${DENSITIES[s.density].spacing}rem`
   // Animasyon: az = kayma / ölçek yok, kapalı = süre de yok
   if (motion !== 'full') out['--motion-shift'] = '0'
   // Hız çarpanı süreleri böler (2× → yarı süre); kapalıda süre 0
@@ -273,7 +357,26 @@ function variables(
 function load(kit: ThemeKit): ThemeSettings {
   try {
     const raw = localStorage.getItem(kit.storageKey)
-    return raw ? { ...kit.defaults, ...(JSON.parse(raw) as Partial<ThemeSettings>) } : kit.defaults
+    if (!raw) return kit.defaults
+    // Yalnızca bilinen ayarlar (kaldırılmış eski anahtarlar taşınmaz)
+    const saved = JSON.parse(raw) as Partial<ThemeSettings>
+    // Seçeneği kaldırılmış değer (ör. eski bir zemin) varsayılana döner
+    const valid: Partial<Record<keyof ThemeSettings, readonly unknown[]>> = {
+      color: COLORS.map((c) => c.id),
+      background: BACKGROUND_IDS,
+      font: FONTS.map((x) => x.id),
+      density: Object.keys(DENSITIES),
+      shadow: Object.keys(SHADOWS),
+      cardStyle: Object.keys(FIELD_FILL),
+    }
+    const keys = Object.keys(kit.defaults) as (keyof ThemeSettings)[]
+    return Object.fromEntries(
+      keys.map((k) => {
+        const v = saved[k]
+        const keep = v != null && (valid[k]?.includes(v) ?? true)
+        return [k, keep ? v : kit.defaults[k]]
+      }),
+    ) as unknown as ThemeSettings
   } catch {
     return kit.defaults
   }
@@ -282,13 +385,11 @@ function load(kit: ThemeKit): ThemeSettings {
 function clear(root: HTMLElement) {
   VARS.forEach((v) => root.style.removeProperty(v))
   root.style.removeProperty('font-size')
-  root.classList.remove(...ALL_SHAPE_CLASSES)
 }
 
 /* --- Görünüm bağlamı (sayfalar okur) ---------------------------------------------------------- */
 
 export interface Look {
-  accent: AccentStrength
   nav: string
   /** Raftaki konum haplarının rengi. */
   trail: TrailStyle
@@ -296,21 +397,13 @@ export interface Look {
   motion: MotionLevel
   /** Animasyon hızı çarpanı. */
   speed: number
-  showFps: boolean
-  scrollShadow: boolean
-  /** Sayfa geçişi efekti. */
-  pageTransition: PageEffect
 }
 
 export const LookContext = createContext<Look>({
-  accent: 'default',
   nav: 'default',
   trail: 'soft',
   motion: 'full',
   speed: 1,
-  showFps: false,
-  scrollShadow: true,
-  pageTransition: 'fade',
 })
 
 const REDUCE = '(prefers-reduced-motion: reduce)'
@@ -418,9 +511,8 @@ export function useThemeSettings(kit: ThemeKit) {
     Object.entries(variables(settings, kit.defaults, dark, motion)).forEach(
       ([k, val]) => val && root.style.setProperty(k, val),
     )
-    if (settings.scale !== 16) root.style.fontSize = `${settings.scale}px`
-    if (settings.buttonShape !== 'default')
-      root.classList.add(...SHAPE_CLASSES[settings.buttonShape])
+    const { scale } = DENSITIES[settings.density]
+    if (scale !== 16) root.style.fontSize = `${scale}px`
     return () => clear(root)
   }, [settings, dark, kit, motion])
 
@@ -435,14 +527,10 @@ export function useThemeSettings(kit: ThemeKit) {
   }
 
   const look: Look = {
-    accent: settings.accent,
     nav: settings.nav,
     trail: settings.trail,
     motion,
     speed: settings.motionSpeed,
-    showFps: settings.showFps,
-    scrollShadow: settings.scrollShadow,
-    pageTransition: settings.pageTransition,
   }
   return [settings, update, look] as const
 }

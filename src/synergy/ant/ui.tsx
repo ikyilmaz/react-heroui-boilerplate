@@ -106,7 +106,7 @@ export function Scroll({
 }
 
 /**
- * Kart çerçevesi: kabuktaki kartlarla aynı ince çizgi ve tema paneli › Kart stili / Gölge
- * (`--surface-shadow`; düz varsayılanda yok).
+ * Kart çerçevesi (tüm kartlar): tema paneli › Kontur (`--border-width`) ve Kart gölgesi / Kart
+ * stili (`--surface-shadow`; düz varsayılanda boş). Dolguyu kart stili `--surface`'le verir.
  */
 export const CARD = 'ring-(length:--border-width) ring-border shadow-(--surface-shadow)'

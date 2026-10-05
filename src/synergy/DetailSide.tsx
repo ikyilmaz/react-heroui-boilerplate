@@ -484,8 +484,8 @@ const TABS: { key: SideTab; label: string }[] = [
 /**
  * Kartın içindeki kaydırma alanı. İçerik taşınca kenarları solarak biter: kaydırılmış üst kenar ve
  * daha aşağısı olan alt kenar (CSS maskesi; zemin renginden bağımsız, kart stili ne olursa olsun).
- * Maskeyi kaydırmaya bağlı MotionValue'lar sürer (`useScroll`): React çizmez. Tema paneli ›
- * Kaydırma gölgesi kapalıysa maske yok. `fill`: kalan boyu doldurur; değilse (telefon) en çok 27.5rem.
+ * Maskeyi kaydırmaya bağlı MotionValue'lar sürer (`useScroll`): React çizmez. `fill`: kalan boyu
+ * doldurur; değilse (telefon) en çok 27.5rem.
  */
 function FadeScroll({
   ref,
@@ -498,7 +498,6 @@ function FadeScroll({
   className?: string
   children: ReactNode
 }) {
-  const { scrollShadow } = useLook()
   const box = useRef<HTMLElement | null>(null)
   const content = useRef<HTMLElement | null>(null)
   const attach = useCallback(
@@ -535,7 +534,7 @@ function FadeScroll({
     <MotionFlex
       ref={attach}
       vertical
-      style={scrollShadow ? { maskImage: mask } : undefined}
+      style={{ maskImage: mask }}
       className={cn(
         'overflow-y-auto overscroll-contain',
         fill ? 'min-h-0 flex-1' : 'max-h-[27.5rem]',

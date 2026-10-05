@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import { ChevronDown, FilterX, Plus, Trash2 } from 'lucide-react'
 import {
   Button,
@@ -162,9 +162,7 @@ function NavItem({
       <Typography.Text ellipsis className="relative min-w-0 flex-1 text-current [font:inherit]">
         {m.label}
       </Typography.Text>
-      <Typography.Text
-        className={cn('relative font-mono text-xs text-current', !current && 'opacity-60')}
-      >
+      <Typography.Text className={cn('relative text-xs text-current', !current && 'opacity-60')}>
         {n}
       </Typography.Text>
     </Link>
@@ -272,7 +270,7 @@ function ModuleSwitcher({ current, className }: { current: ModuleDef; className?
 
 /* --- Band -------------------------------------------------------------------------------------- */
 
-/** Modül bandı: simge, ad, kayıt sayısı; sağda modülün denetimleri. Vurgu gücüne uyar. */
+/** Modül bandı: simge, ad, kayıt sayısı; sağda modülün denetimleri. Dolu birincil renkte. */
 function Band({ def, count, children }: { def: ModuleDef; count: number; children?: ReactNode }) {
   const band = useBand()
   const Icon = def.icon
@@ -326,6 +324,12 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
   const onBand = useBand().on
   const wide = useMediaQuery('(min-width: 1280px)')
   const slide = useTransition({ duration: 0.3, ease: [0.22, 1, 0.36, 1] })
+  // Düzenleme kartı genişlerken / daralırken kırpılır; tam açıkken kırpılmaz (kontur ve gölge
+  // kesilmesin). Kırpma genişlikten türer: animasyonun bitiş olayını beklemez
+  const inspectorW = useMotionValue<number | string>(0)
+  const inspectorClip = useTransform(inspectorW, (w) =>
+    parseFloat(String(w)) < parseFloat(INSPECTOR_W) ? 'hidden' : 'visible',
+  )
   const notify = useNotify()
 
   const editing = recordId === 'yeni' ? null : recordId ? hrRecord(def.id, recordId) : undefined
@@ -510,7 +514,7 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
                       <Typography.Text className="text-current [font:inherit]">
                         {s === 'Tümü' ? HR_LABELS.all : s}
                       </Typography.Text>
-                      <Typography.Text type="secondary" className="font-mono text-xs">
+                      <Typography.Text type="secondary" className="text-xs">
                         {s === 'Tümü' ? all.length : all.filter((r) => r.status === s).length}
                       </Typography.Text>
                     </Flex>
@@ -605,12 +609,13 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
             <MotionFlex
               key="inspector"
               vertical
+              style={wide ? { width: inspectorW, overflow: inspectorClip } : undefined}
               initial={wide ? { width: 0, opacity: 0 } : { opacity: 0, y: 12 }}
               // Kartın kendi genişliğiyle aynı birim (rem): tema ölçeği değişince sağda boşluk kalmasın
               animate={wide ? { width: INSPECTOR_W, opacity: 1 } : { opacity: 1, y: 0 }}
               exit={wide ? { width: 0, opacity: 0 } : { opacity: 0, y: 12 }}
               transition={slide}
-              className="w-full shrink-0 overflow-hidden xl:h-full"
+              className="w-full shrink-0 xl:h-full"
             >
               {/* Genişlik `INSPECTOR_W` ile aynı */}
               <Flex vertical className="w-full xl:h-full xl:w-[30rem]">

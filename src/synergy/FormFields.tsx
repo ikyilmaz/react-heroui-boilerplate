@@ -3,7 +3,8 @@ import dayjs from 'dayjs'
 import { DatePicker, Form, Input, InputNumber } from 'antd'
 
 /*
- * Form alanları (antd), salt okunur. Maket veride alanlar metin; değerin biçimine göre bileşen
+ * Form alanları (antd), düzenlenebilir: değer alanın kendi durumunda, bir yere kaydedilmez (form
+ * yeniden kurulunca maket değere döner). Maket veride alanlar metin; değerin biçimine göre bileşen
  * seçilir: "₺12.900" para (InputNumber), "6" sayı, "10 Ekim 2026" / "26 Eylül 2026 13:00" tarih
  * (DatePicker), uzun metin çok satırlı alan, geri kalanı Input. Etiketler `Form.Item` ile üstte
  * (sayfadaki `Form layout="vertical"`).
@@ -14,7 +15,7 @@ import { DatePicker, Form, Input, InputNumber } from 'antd'
  * alan `rows` boyunda kalır, içi kayar.
  */
 
-/** Çok satırlı salt okunur alan: içerik boyu, 2–6 satır (dolgu ve kenarlık 10px). */
+/** Çok satırlı alan: içerik boyu, 2–6 satır (dolgu ve kenarlık 10px). */
 const AREA = 'resize-none field-sizing-content min-h-[calc(2lh+10px)] max-h-[calc(6lh+10px)]'
 
 const MONTHS = [
@@ -41,6 +42,9 @@ const TRY = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 0,
 })
 const NUM = new Intl.NumberFormat('tr-TR')
+
+/** Biçimli sayıdan rakamlar ("₺12.900" → "12900"). */
+const digits = (s: string | undefined) => (s ?? '').replace(/\D/g, '')
 
 /** "₺224.400" → 224400 (yalnızca tek tutar; "₺486.000 / yıl" gibi ekli olanlar metin kalır). */
 function money(v: string) {
@@ -72,48 +76,44 @@ function Control({ id, value, label }: { id: string; value: string; label: strin
   const amount = money(value)
   if (amount != null)
     return (
-      <InputNumber
+      <InputNumber<number | string>
         id={id}
-        readOnly
         controls={false}
-        value={amount}
-        formatter={(n) => TRY.format(Number(n))}
+        defaultValue={amount}
+        formatter={(n) => (n === '' || n == null ? '' : TRY.format(Number(n)))}
+        parser={digits}
         className="w-full!"
       />
     )
   if (/^\d+$/.test(value))
     return (
-      <InputNumber
+      <InputNumber<number | string>
         id={id}
-        readOnly
         controls={false}
-        value={Number(value)}
-        formatter={(n) => NUM.format(Number(n))}
+        defaultValue={Number(value)}
+        formatter={(n) => (n === '' || n == null ? '' : NUM.format(Number(n)))}
+        parser={digits}
         className="w-full!"
       />
     )
   const d = date(value)
   if (d)
     return (
-      // Salt okunur: takvim açılmaz, yazılamaz
       <DatePicker
         id={id}
-        value={d.value}
+        defaultValue={d.value}
         showTime={d.time ? { format: 'HH:mm' } : false}
         format={d.time ? 'D MMMM YYYY HH:mm' : 'D MMMM YYYY'}
-        open={false}
-        inputReadOnly
-        allowClear={false}
         aria-label={label}
         className="w-full"
       />
     )
   if (value.length > 60)
-    return <Input.TextArea id={id} readOnly value={value} rows={2} className={AREA} />
-  return <Input id={id} readOnly value={value} />
+    return <Input.TextArea id={id} defaultValue={value} rows={2} className={AREA} />
+  return <Input id={id} defaultValue={value} />
 }
 
-/** Uzun metin: salt okunur çok satırlı alan; başlığı bölümde yazıyorsa etiket yok (`hideLabel`). */
+/** Uzun metin: çok satırlı alan; başlığı bölümde yazıyorsa etiket yok (`hideLabel`). */
 export function LongField({
   label,
   value,
@@ -129,8 +129,7 @@ export function LongField({
   const area = (
     <Input.TextArea
       id={id}
-      readOnly
-      value={value}
+      defaultValue={value}
       rows={rows}
       aria-label={hideLabel ? label : undefined}
       // En az `rows` satır (sayı dinamik: satır içi stil), üst sınır yok

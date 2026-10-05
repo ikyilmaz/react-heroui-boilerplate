@@ -12,8 +12,6 @@ import {
   CloudSnow,
   CloudSun,
   Droplets,
-  Gauge,
-  Layers,
   Moon,
   Palette,
   SendHorizontal,
@@ -27,9 +25,9 @@ import { Button, Card, Flex, Input, Spin, Typography } from 'antd'
 import { useBoxCounts } from '@/synergy/shared/decisions'
 import { readJson, writeJson } from '@/synergy/shared/grid'
 import { setColorMode, useIsDark, useSettingsControl } from '@/synergy/shared/themeSettings'
-import { card, tone } from '@/synergy/shared/tokens'
+import { tone } from '@/synergy/shared/tokens'
 import { CURRENT_USER, mainBoxes, type BoxId } from '@/synergy/shared/workflowData'
-import { IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { CARD, IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { boxLink } from '@/synergy/paths'
 import type { WidgetSize } from '@/synergy/dashboard/model'
 
@@ -54,7 +52,7 @@ function Text({
 export function WidgetCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <Card
-      className={cn(card, 'flex h-full min-h-0 flex-col overflow-hidden')}
+      className={cn(CARD, 'flex h-full min-h-0 flex-col overflow-hidden')}
       classNames={{ body: cn('flex min-h-0 flex-1 flex-col gap-3 p-4', className) }}
     >
       {children}
@@ -126,7 +124,7 @@ export function ClockWidget({ size }: { size: WidgetSize }) {
       <Flex className="flex flex-col gap-1">
         <Text className="flex items-baseline gap-1 font-display leading-none font-bold text-current tabular-nums">
           <Text className={cn('text-current', small ? 'text-4xl' : 'text-5xl')}>{hm}</Text>
-          {!small && <Text className="font-mono text-base text-muted">{sec}</Text>}
+          {!small && <Text className="text-base text-muted">{sec}</Text>}
         </Text>
         <Text className="text-sm text-muted capitalize">{small ? day : `${day}, ${date}`}</Text>
       </Flex>
@@ -135,7 +133,7 @@ export function ClockWidget({ size }: { size: WidgetSize }) {
           {WORLD.map((w) => (
             <Flex key={w.zone} className="flex items-center justify-between text-sm">
               <Text tone="secondary">{w.city}</Text>
-              <Text className="font-mono text-current tabular-nums">
+              <Text className="text-current tabular-nums">
                 {now.toLocaleTimeString('tr-TR', {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -255,7 +253,7 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
             <Text tone="muted" className="min-w-0 flex-1 truncate text-xs">
               {w.label}
             </Text>
-            <Text className="font-mono text-current tabular-nums">
+            <Text className="text-current tabular-nums">
               {d.max}° <Text tone="muted">{d.min}°</Text>
             </Text>
           </Flex>
@@ -265,7 +263,7 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
               {dayName(d.date, i)}
             </Text>
             <w.icon {...IC} size={18} className="text-foreground/70" />
-            <Text className="font-mono text-current tabular-nums">{d.max}°</Text>
+            <Text className="text-current tabular-nums">{d.max}°</Text>
           </Flex>
         )
       })}
@@ -555,26 +553,12 @@ export function ControlsWidget({ size }: { size: WidgetSize }) {
       on: settings.motion !== 'off',
       flip: () => update({ ...settings, motion: settings.motion === 'off' ? 'full' : 'off' }),
     },
-    {
-      id: 'shadow',
-      label: 'Kaydırma gölgesi',
-      icon: Layers,
-      on: settings.scrollShadow,
-      flip: () => update({ ...settings, scrollShadow: !settings.scrollShadow }),
-    },
-    {
-      id: 'fps',
-      label: "FPS'i göster",
-      icon: Gauge,
-      on: settings.showFps,
-      flip: () => update({ ...settings, showFps: !settings.showFps }),
-    },
   ]
   const square = size.id === 'square'
   const iconsOnly = size.id === 'compact'
   return (
     <WidgetCard className="justify-center p-3">
-      <Flex className={cn('grid gap-2', square ? 'grid-cols-2' : 'grid-cols-4')}>
+      <Flex className="grid grid-cols-2 gap-2">
         {toggles.map((t) => (
           <Tip key={t.id} label={t.label}>
             <Button
@@ -583,7 +567,7 @@ export function ControlsWidget({ size }: { size: WidgetSize }) {
               type="text"
               onClick={t.flip}
               className={cn(
-                // Karo sütununu doldurur; yarıçap temanın düğme şeklinden (hap) bağımsız
+                // Karo sütununu doldurur
                 'h-auto w-full min-w-0 flex-col gap-1.5 rounded-2xl! px-1 py-3 font-normal transition-colors',
                 t.on
                   ? 'bg-accent text-accent-foreground hover:bg-accent/90 hover:text-accent-foreground'

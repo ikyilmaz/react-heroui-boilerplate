@@ -4,7 +4,7 @@ import { StyleProvider } from '@ant-design/cssinjs'
 import trTR from 'antd/locale/tr_TR'
 import dayjs from 'dayjs'
 import 'dayjs/locale/tr'
-import { useIsDark, useLook, useSettingsControl } from '@/synergy/shared/themeSettings'
+import { useIsDark, useLook } from '@/synergy/shared/themeSettings'
 
 dayjs.locale('tr')
 
@@ -16,8 +16,9 @@ dayjs.locale('tr')
  * çözülüp antd tokenlarına çevrilir. Böylece tema paneli antd sayfalarını da yönetir, ikinci bir
  * tema kaynağı yok.
  *
- * Düz dil: gölge yok (açılır katmanlar yalnızca ince bir çizgiyle ayrılır), dalga efekti yok,
- * alanlar dolgulu (`filled`), kartlar çerçevesiz ve yüzey renginde, odak halkası yerine çerçeve rengi.
+ * Düz dil: açılır katmanlarda gölge yok (yalnızca ince bir çizgi), dalga efekti yok, odak halkası
+ * yerine çerçeve rengi. Form alanları ve çerçeveli düğmeler kartlar gibi tema paneli › kart stili /
+ * gölge / kontura uyar (`--field-*`): konturlu temada çerçeveli, konturu yoksa dolgulu alanlar.
  *
  * Stiller `@layer antd` içine basılır (`src/index.css` katman sırası: base < antd < components <
  * utilities); Tailwind sınıfları antd'nin varsayılanlarını her zaman ezer.
@@ -38,6 +39,13 @@ export interface Resolved {
   overlay: string
   border: string
   fieldBorder: string
+  /** Form alanının dolgusu ve üzerine gelince dolgusu (kart stili). */
+  fieldFill: string
+  fieldHover: string
+  /** Form alanının çerçeve kalınlığı (px; kart konturu, 0: çerçevesiz dolgulu alan). */
+  fieldBorderWidth: number
+  /** Form alanının gölgesi (`box-shadow` metni ya da `none`). */
+  fieldShadow: string
   radius: number
   font: string
   display: string
@@ -108,6 +116,11 @@ export function resolve(host: HTMLElement = document.body): Resolved {
   const font = getComputedStyle(probe).fontFamily
   probe.style.fontFamily = 'var(--font-display)'
   const display = getComputedStyle(probe).fontFamily
+  // Kalınlık iç boşlukla okunur (kenarlık genişliği aygıt pikseline yuvarlanır); tanımsızsa 0
+  probe.style.paddingLeft = 'var(--field-border-width, 0px)'
+  const fieldBorderWidth = parseFloat(getComputedStyle(probe).paddingLeft) || 0
+  probe.style.boxShadow = 'var(--field-shadow, none)'
+  const fieldShadow = getComputedStyle(probe).boxShadow
   const out: Resolved = {
     accent: color('--accent'),
     link: color('--link'),
@@ -123,6 +136,10 @@ export function resolve(host: HTMLElement = document.body): Resolved {
     overlay: color('--overlay'),
     border: color('--border'),
     fieldBorder: color('--field-border'),
+    fieldFill: color('--field-fill, var(--surface-secondary)'),
+    fieldHover: color('--field-hover, var(--surface-tertiary)'),
+    fieldBorderWidth,
+    fieldShadow,
     radius,
     font,
     display,
@@ -154,19 +171,18 @@ function useResolved() {
 
 /* --- Tokenlar ---------------------------------------------------------------------------------- */
 
-export function tokensOf(
-  v: Resolved,
-  dark: boolean,
-  motion: boolean,
-  speed: number,
-  square: boolean,
-): ThemeConfig {
+export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: number): ThemeConfig {
   const px = v.rootPx
   const r = v.radius
   // Alanlar ve düğmeler: temel yarıçapın 1.5 katı, en çok 14px (yuvarlak temada alanlar hap olmasın)
-  const control = square ? Math.min(4, r) : Math.min(14, Math.round(r * 1.5))
+  const control = Math.min(14, Math.round(r * 1.5))
   // Açılır katmanlar gölge yerine ince bir çizgiyle ayrılır
   const ring = `0 0 0 1px ${v.border}`
+  // Form alanları kartın stiline uyar (tema paneli › kart stili / gölge / kontur): konturlu temada
+  // çerçeveli (`outlined`, kalınlık kontur), konturu yoksa dolgulu (çerçeve odakta görünür)
+  const bw = v.fieldBorderWidth
+  const field = fieldTokens(v)
+
   const dur = (s: number) => `${+(s / speed).toFixed(3)}s`
   return {
     algorithm: dark ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
@@ -192,6 +208,8 @@ export function tokensOf(
       colorBorderSecondary: v.border,
       colorSplit: v.border,
       fontFamily: v.font,
+      // Eşaralıklı yazı tipi yok: kod / sayı metinleri de seçili yazı tipinde
+      fontFamilyCode: v.font,
       fontSize: Math.round(px * 0.875),
       controlHeight: Math.round(px * 2.25),
       controlHeightLG: Math.round(px * 2.75),
@@ -215,10 +233,12 @@ export function tokensOf(
     components: {
       Button: {
         primaryShadow: 'none',
-        defaultShadow: 'none',
         dangerShadow: 'none',
         fontWeight: 500,
         paddingInline: Math.round(px),
+        // Varsayılan (çerçeveli) düğme de alanlar gibi: gölge, çerçeve rengi; kalınlığı `BUTTON`
+        defaultShadow: v.fieldShadow,
+        defaultBorderColor: bw > 0 ? v.fieldBorder : 'transparent',
       },
       Card: {
         // Kabuğun kart köşesiyle aynı (en çok 32px)
@@ -226,10 +246,28 @@ export function tokensOf(
         bodyPadding: Math.round(px * 1.5),
         colorBorderSecondary: 'transparent',
       },
-      Input: { activeShadow: 'none', errorActiveShadow: 'none', warningActiveShadow: 'none' },
-      InputNumber: { activeShadow: 'none', errorActiveShadow: 'none', warningActiveShadow: 'none' },
-      Select: { activeOutlineColor: 'transparent', optionSelectedBg: v.tertiary },
-      DatePicker: { activeShadow: 'none', errorActiveShadow: 'none' },
+      Input: {
+        activeShadow: 'none',
+        errorActiveShadow: 'none',
+        warningActiveShadow: 'none',
+        ...field,
+      },
+      InputNumber: {
+        activeShadow: 'none',
+        errorActiveShadow: 'none',
+        warningActiveShadow: 'none',
+        ...field,
+      },
+      Select: {
+        activeOutlineColor: 'transparent',
+        optionSelectedBg: v.tertiary,
+        ...field,
+        ...(bw > 0 && { selectorBg: v.fieldFill }),
+      },
+      DatePicker: { activeShadow: 'none', errorActiveShadow: 'none', ...field },
+      Cascader: field,
+      TreeSelect: field,
+      Mentions: field,
       Form: { labelColor: v.muted, verticalLabelPadding: '0 0 6px', itemMarginBottom: 0 },
       Menu: {
         itemBg: 'transparent',
@@ -263,28 +301,67 @@ export function tokensOf(
 }
 
 /**
- * Kabukta: antd bileşenlerine tema, Türkçe yerelleştirme ve düz varsayılanlar (dolgulu alanlar,
- * dalga yok). Tema değişkenleri çözülmeden (ilk kare) antd'nin kendi varsayılanlarıyla çizmek
+ * Form alanlarının tokenları. Çerçeveli: dolgu kabın zemini (`colorBgContainer`), çerçeve kontur
+ * kalınlığında, odakta birincil renk ve kart yüzeyi. Dolgulu: dolgu ve üzerine gelince dolgu
+ * (`colorFill*`), çerçeve saydam (odakta birincil renk).
+ */
+function fieldTokens(v: Resolved) {
+  return v.fieldBorderWidth > 0
+    ? {
+        colorBgContainer: v.fieldFill,
+        hoverBg: v.fieldHover,
+        activeBg: v.surface,
+        colorBorder: v.fieldBorder,
+        hoverBorderColor: v.fieldBorder,
+        lineWidth: v.fieldBorderWidth,
+      }
+    : { colorFillTertiary: v.fieldFill, colorFillSecondary: v.fieldHover }
+}
+
+/**
+ * Form alanlarının gölgesi (`--field-shadow`); çerçevesiz (`borderless`) alanlarda yok. Sınıf
+ * seçicisiyle dışlanır (`[class*=…]` bu sınıfın kendi adına da uyardı).
+ */
+const FIELD = {
+  className:
+    '[&:not(.ant-input-borderless,.ant-input-number-borderless,.ant-select-borderless,.ant-picker-borderless,.ant-mentions-borderless)]:shadow-(--field-shadow)',
+}
+
+/**
+ * Çerçeveli düğmenin çerçevesi kontur kalınlığında (yalnızca o; `lineWidth` tokenı metin ve ikon
+ * düğmelerinin saydam çerçevesini de kalınlaştırırdı).
+ */
+const BUTTON = { className: '[&.ant-btn-variant-outlined]:border-(length:--field-border-width)' }
+
+/**
+ * Kabukta: antd bileşenlerine tema, Türkçe yerelleştirme ve düz varsayılanlar (alanlar kart
+ * stiline göre dolgulu ya da çerçeveli, dalga yok). Tema değişkenleri çözülmeden (ilk kare) antd'nin kendi varsayılanlarıyla çizmek
  * yerine çocuklar yine çizilir; bir sonraki karede tokenlar oturur.
  */
 export function AntTheme({ children }: { children: ReactNode }) {
   const vars = useResolved()
   const dark = useIsDark()
   const { motion, speed } = useLook()
-  // Tema paneli › Düğme biçimi: hap → yuvarlak düğmeler, köşeli → küçük yarıçap
-  const shape = useSettingsControl()?.settings.buttonShape ?? 'default'
-  const config = vars
-    ? tokensOf(vars, dark, motion !== 'off', speed, shape === 'square')
-    : undefined
+  const config = vars ? tokensOf(vars, dark, motion !== 'off', speed) : undefined
   return (
     <StyleProvider layer>
       <ConfigProvider
         locale={trTR}
         theme={config}
-        variant="filled"
+        variant={vars && vars.fieldBorderWidth > 0 ? 'outlined' : 'filled'}
         wave={{ disabled: true }}
-        button={shape === 'pill' ? { shape: 'round' } : undefined}
         card={{ variant: 'borderless' }}
+        input={FIELD}
+        textArea={FIELD}
+        inputNumber={FIELD}
+        select={FIELD}
+        datePicker={FIELD}
+        rangePicker={FIELD}
+        timePicker={FIELD}
+        cascader={FIELD}
+        treeSelect={FIELD}
+        mentions={FIELD}
+        button={BUTTON}
       >
         <App component={false}>{children}</App>
       </ConfigProvider>

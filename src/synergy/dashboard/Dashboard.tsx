@@ -319,7 +319,7 @@ function CellContent({
                       // Ölçü ve seçili boyutun onay işareti sağda
                       extra: (
                         <Flex align="center" gap={6} className="ms-4">
-                          <Typography.Text className="font-mono text-xs text-muted">
+                          <Typography.Text className="text-xs text-muted">
                             {s.w}×{s.h}
                           </Typography.Text>
                           <Check
@@ -339,7 +339,7 @@ function CellContent({
                     className={cn(NO_DRAG, CHIP, 'h-7 gap-1 px-2.5 text-xs hover:bg-surface')}
                   >
                     {current.label}
-                    <Typography.Text className="font-mono text-[0.625rem] text-muted">
+                    <Typography.Text className="text-[0.625rem] text-muted">
                       {current.w}×{current.h}
                     </Typography.Text>
                   </Button>

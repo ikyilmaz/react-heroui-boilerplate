@@ -279,7 +279,7 @@ export function GridFooter({
           options={sizes.map((n) => ({ value: n, label: `${n} satır` }))}
           className="w-28"
         />
-        <Typography.Text type="secondary" className="font-mono text-xs tabular-nums">
+        <Typography.Text type="secondary" className="text-xs tabular-nums">
           {from + 1}–{from + shown} / {total}
         </Typography.Text>
       </Flex>
@@ -290,7 +290,6 @@ export function GridFooter({
         pageSize={pageSize}
         showSizeChanger={false}
         onChange={onPage}
-        className="font-mono"
       />
     </Flex>
   )

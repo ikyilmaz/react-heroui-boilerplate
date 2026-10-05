@@ -18,7 +18,6 @@ import {
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import { RANGE_LABELS } from '@/synergy/shared/range'
-import { useLook } from '@/synergy/shared/themeSettings'
 import { IC, StatusTag, TintIcon, Tip, cn } from '@/synergy/ant/ui'
 
 /* antd sayfalarının ortak parçaları: arama, sıralama menüsü, tarih aralığı, boş durum, hücre değeri */
@@ -131,7 +130,7 @@ export function CellValue({ r, col }: { r: WorkRequest; col: Column }) {
       </Text>
     )
   if (col.key === 'ProcessId')
-    return <Text className="font-mono text-sm font-medium text-current">{String(v)}</Text>
+    return <Text className="text-sm font-medium text-current">{String(v)}</Text>
   return <Text className="text-current [font:inherit]">{String(v)}</Text>
 }
 
@@ -164,7 +163,7 @@ export function GroupLabel({ label, count }: { label: string; count: number }) {
       </Text>
       <Tag
         variant="filled"
-        className="me-0 min-w-5 rounded-full border-0 bg-accent/12 px-1.5 text-center font-mono text-[0.6875rem] leading-5 text-accent-soft-foreground"
+        className="me-0 min-w-5 rounded-full border-0 bg-accent/12 px-1.5 text-center text-[0.6875rem] leading-5 text-accent-soft-foreground"
       >
         {count}
       </Tag>
@@ -256,9 +255,6 @@ export function compareBy(a: WorkRequest, b: WorkRequest, key: string) {
   return String(x).localeCompare(String(y), 'tr', { numeric: true })
 }
 
-/** Hafif vurgulu bant: yüzeyle karışmış açık birincil ton (opak), koyu metin (tema paneli › Vurgu gücü). */
-const SOFT_BAND = 'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] text-foreground'
-
 export interface BandStyle {
   /** Bandın zemini ve yazı rengi. */
   band: string
@@ -268,39 +264,23 @@ export interface BandStyle {
   light: boolean
 }
 
-/** Vurgu gücüne göre bandlar (tema paneli › Vurgu gücü). */
-const BANDS: Record<string, BandStyle> = {
+const BANDS = {
   accent: {
     band: 'bg-accent text-accent-foreground',
     on: 'bg-accent-foreground text-accent',
     light: false,
   },
-  soft: { band: SOFT_BAND, on: 'bg-surface text-foreground', light: true },
-  medium: {
-    band: 'bg-[color-mix(in_oklab,var(--accent)_24%,var(--surface))] text-foreground',
-    on: 'bg-surface text-foreground',
-    light: true,
-  },
-  outline: {
-    band: 'border-2 border-accent bg-surface text-foreground',
-    on: 'bg-accent text-accent-foreground',
-    light: true,
-  },
-  ink: { band: 'bg-foreground text-background', on: 'bg-background text-foreground', light: false },
   white: {
     band: 'bg-surface text-foreground',
     on: 'bg-accent text-accent-foreground',
     light: true,
   },
-}
+} satisfies Record<string, BandStyle>
 
 /**
- * Bandın görünüşü. `hero` (karşılama, kutu bandı, İK bandı): varsayılanda dolu birincil renk;
- * `record` (talep başlığı): varsayılanda beyaz.
+ * Bandın görünüşü. `hero` (karşılama, kutu bandı, İK bandı): dolu birincil renk; `record` (talep
+ * başlığı): beyaz.
  */
 export function useBand(kind: 'hero' | 'record' = 'hero'): BandStyle {
-  const a = useLook().accent
-  if (a === 'default') return kind === 'record' ? BANDS.white! : BANDS.accent!
-  if (a === 'solid') return BANDS.accent!
-  return BANDS[a] ?? BANDS.accent!
+  return kind === 'record' ? BANDS.white : BANDS.accent
 }

@@ -89,7 +89,7 @@ function DocTitle({ doc }: { doc: FlowDocument }) {
       <Title level={2} className={TITLE}>
         {doc.name}
       </Title>
-      <Text type="secondary" className="font-mono text-xs font-medium">
+      <Text type="secondary" className="text-xs font-medium">
         {DOCUMENT_LABELS.no}: {doc.id}
       </Text>
     </>
@@ -193,11 +193,11 @@ export function FormBody({
     <Form layout="vertical" component={false}>
       <Flex vertical gap={32}>
         <Section title="Konu">
-          <Input id={subject} aria-label="Konu" readOnly value={t.title} />
+          <Input id={subject} aria-label="Konu" defaultValue={t.title} />
         </Section>
         {fields.length > 0 && (
           <Section title="Form bilgileri">
-            {/* Salt okunur alanlar (FormFields.tsx); sütun sayısı kabın (bölmenin) genişliğine göre */}
+            {/* Düzenlenebilir alanlar (FormFields.tsx, kaydedilmez); sütun sayısı bölmenin genişliğine göre */}
             <Flex className="grid grid-cols-1 gap-x-6 gap-y-4 @xl:grid-cols-2">
               {fields.map(([label, value]) => {
                 const links = open ? (t.children ?? []).filter((c) => c.after === label) : []
@@ -378,11 +378,7 @@ export function PropertiesList({ items }: { items: FlowProperty[] }) {
       items={items.map((it) => ({
         key: it.name,
         label: it.name,
-        children: (
-          <Text className={cn(['Süreç No', 'Form No'].includes(it.name) && 'font-mono')}>
-            {it.value ?? '-'}
-          </Text>
-        ),
+        children: <Text>{it.value ?? '-'}</Text>,
       }))}
     />
   )
@@ -419,7 +415,7 @@ export function DocumentsList({
           <Text ellipsis className="text-current">
             {d.name}
           </Text>
-          <Text className="font-mono text-xs text-current opacity-70">
+          <Text className="text-xs text-current opacity-70">
             {DOCUMENT_LABELS.no}: {d.id}
           </Text>
         </Flex>
@@ -553,7 +549,7 @@ export function HistoryTimeline({
         <Text strong>{FLOW_TEXT.mainFlow}</Text>
         <StatusTag status={r.status} />
         {!compact && <Text>{processCaption(processOf(r))}</Text>}
-        <Text type="secondary" className="ms-auto font-mono text-xs">
+        <Text type="secondary" className="ms-auto text-xs">
           {FLOW_TEXT.processNo}: {r.processNo}
         </Text>
       </Flex>

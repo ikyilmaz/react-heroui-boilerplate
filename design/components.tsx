@@ -109,7 +109,7 @@ export function Root({ width = 1440, height = 900, children, ...theme }: RootPro
   const [config, setConfig] = useState<ThemeConfig>()
   const key = JSON.stringify(t)
   useLayoutEffect(() => {
-    if (host.current) setConfig(tokensOf(resolve(host.current), t.dark, true, 1, false))
+    if (host.current) setConfig(tokensOf(resolve(host.current), t.dark, true, 1))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
   // Katman sarmalayıcısı en dışta: antd stilleri (kökün kendi Flex'leri dahil) `@layer antd` içinde
@@ -520,7 +520,7 @@ function StartPanel({ top, closeHref }: { top: boolean; closeHref?: string }) {
               <Icon name={a.icon} />
               <Text className="flex-1 text-current">{a.label}</Text>
               {a.count != null && (
-                <Tag className="me-0 rounded-full border-0 bg-accent font-mono text-[11px] text-accent-foreground">
+                <Tag className="me-0 rounded-full border-0 bg-accent text-[11px] text-accent-foreground">
                   {a.count}
                 </Tag>
               )}
@@ -867,7 +867,7 @@ export function DataGrid({
     const v = r[c.key]
     if (c.kind === 'status') return <StatusTag status={v as RequestStatus} />
     if (c.kind === 'mono')
-      return <Text className="font-mono text-sm font-medium text-current">{String(v ?? '')}</Text>
+      return <Text className="text-sm font-medium text-current">{String(v ?? '')}</Text>
     if (c.kind === 'person') {
       const name = String(v ?? '')
       const initials = name
@@ -886,7 +886,7 @@ export function DataGrid({
           <Flex vertical className="leading-[18px]">
             <Text className="font-medium">{name}</Text>
             {r.login ? (
-              <Text type="secondary" className="font-mono text-[11px]">
+              <Text type="secondary" className="text-[11px]">
                 {String(r.login)}
               </Text>
             ) : null}
@@ -1141,7 +1141,7 @@ export function HeaderBand({
         </Flex>
         {position && (
           <Flex align="center" gap={8}>
-            <Text className="font-mono text-sm text-current opacity-75">{position}</Text>
+            <Text className="text-sm text-current opacity-75">{position}</Text>
             <Button
               aria-label="Önceki"
               disabled
@@ -1325,7 +1325,7 @@ export function SidePanel({
         <Text strong>Ana Akış</Text>
         <StatusTag status={status as RequestStatus} />
         {processNo && (
-          <Text type="secondary" className="ms-auto font-mono text-xs">
+          <Text type="secondary" className="ms-auto text-xs">
             Süreç No: {processNo}
           </Text>
         )}
@@ -1414,7 +1414,7 @@ export function SidePanel({
             <Text ellipsis className="text-current">
               {d.name}
             </Text>
-            <Text className="font-mono text-xs text-current opacity-70">Doküman No: {d.no}</Text>
+            <Text className="text-xs text-current opacity-70">Doküman No: {d.no}</Text>
           </Flex>
         </Flex>
       ))}
@@ -1679,9 +1679,7 @@ export function ModuleNav({
             <Icon name={m.icon} />
             <Text className="flex-1 text-sm text-current">{m.label}</Text>
             {m.count != null && (
-              <Text
-                className={cn('font-mono text-xs text-current', i !== selected && 'opacity-60')}
-              >
+              <Text className={cn('text-xs text-current', i !== selected && 'opacity-60')}>
                 {m.count}
               </Text>
             )}
@@ -1733,7 +1731,7 @@ export function StatusTabs({
             <Flex align="center" gap={6} className="px-1">
               {it.dot && <Flex className={cn('block size-1.5 rounded-full', dot[it.dot])} />}
               {it.label}
-              <Text type="secondary" className="font-mono text-xs">
+              <Text type="secondary" className="text-xs">
                 {it.count}
               </Text>
             </Flex>
@@ -1790,7 +1788,7 @@ export function EditCard({
             <Flex className="block size-1.5 rounded-full bg-success" />
             {status}
             {subtitle && (
-              <Text type="secondary" className="font-mono text-xs">
+              <Text type="secondary" className="text-xs">
                 {subtitle}
               </Text>
             )}

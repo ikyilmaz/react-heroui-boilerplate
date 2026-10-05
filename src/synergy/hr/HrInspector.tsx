@@ -141,7 +141,7 @@ export function HrInspector({
 
   return (
     <Card
-      className={cn(CARD, 'flex max-h-[80dvh] flex-col overflow-hidden xl:h-full xl:max-h-none')}
+      className={cn(CARD, 'flex max-h-[80dvh] flex-col xl:h-full xl:max-h-none')}
       classNames={{ body: 'flex min-h-0 flex-1 flex-col p-0' }}
     >
       {/* Başlık: kaydın simgesi (kullanıcıda avatar), adı, durumu; kapat */}
@@ -170,7 +170,7 @@ export function HrInspector({
               <StatusBadge status={draft.status as HrStatus} />
             )}
             {def.id === 'kullanicilar' && !isNew && (
-              <Typography.Text type="secondary" className="ms-3 font-mono text-xs">
+              <Typography.Text type="secondary" className="ms-3 text-xs">
                 {draft.username as string}
               </Typography.Text>
             )}

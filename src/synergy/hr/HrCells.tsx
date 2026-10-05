@@ -83,13 +83,10 @@ function TimeRange({ start, end }: { start: string; end: string }) {
         ]
   return (
     <Flex align="center" gap={12}>
-      <Text className="w-28 shrink-0 font-mono text-sm text-current">
+      <Text className="w-28 shrink-0 text-sm text-current">
         {start} – {end}
       </Text>
-      <Flex
-        aria-hidden
-        className="relative block h-1.5 w-32 overflow-hidden rounded-full bg-surface-tertiary"
-      >
+      <Flex aria-hidden className="relative block h-1.5 w-32 rounded-full bg-surface-tertiary">
         {parts.map(([s, e], i) => (
           <Flex
             key={i}
@@ -132,7 +129,7 @@ export function Cell({ r, col }: { r: HrRecord; col: Column }) {
             <Text ellipsis className="block font-medium text-current">
               {fullName(u)}
             </Text>
-            <Text type="secondary" ellipsis className="block font-mono text-xs">
+            <Text type="secondary" ellipsis className="block text-xs">
               {u?.username as string}
             </Text>
           </Flex>
@@ -161,7 +158,7 @@ export function Cell({ r, col }: { r: HrRecord; col: Column }) {
       return (
         <Tag
           variant="filled"
-          className="me-0 rounded-full border-0 bg-accent-soft font-mono text-accent-soft-foreground"
+          className="me-0 rounded-full border-0 bg-accent-soft text-accent-soft-foreground"
         >
           ×{String(v)}
         </Tag>
@@ -169,7 +166,7 @@ export function Cell({ r, col }: { r: HrRecord; col: Column }) {
     case 'count':
       return <Members ids={(v as string[]) ?? []} />
     case 'mono':
-      return v ? <Text className="font-mono text-sm text-current">{String(v)}</Text> : <Dash />
+      return v ? <Text className="text-sm text-current">{String(v)}</Text> : <Dash />
     default:
       return v != null && v !== '' ? <>{String(v)}</> : <Dash />
   }

@@ -115,7 +115,7 @@ export function CompanyAdmins({
           <UserAvatar user={u} />
           <Flex vertical className="min-w-0">
             <Text className="block font-medium text-current">{fullName(u)}</Text>
-            <Text type="secondary" className="block font-mono text-xs">
+            <Text type="secondary" className="block text-xs">
               {u.username as string}
             </Text>
           </Flex>
@@ -166,7 +166,7 @@ export function CompanyAdmins({
                     lead={<UserAvatar user={u} />}
                     title={fullName(u)}
                     eyebrow={
-                      <Text type="secondary" className="font-mono text-xs">
+                      <Text type="secondary" className="text-xs">
                         {u.username as string}
                       </Text>
                     }
@@ -317,7 +317,7 @@ function PropertyText({ id }: { id: string }) {
         <Text ellipsis className="block font-medium text-current">
           {p?.caption as string}
         </Text>
-        <Text type="secondary" ellipsis className="block font-mono text-xs">
+        <Text type="secondary" ellipsis className="block text-xs">
           {p?.propertyName as string}
         </Text>
       </Flex>

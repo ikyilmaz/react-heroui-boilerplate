@@ -273,7 +273,7 @@ function Viewer({
     if (target !== 'docs') setSideTab(target)
     side.setOpen(true)
   }
-  // Vurgu gücü (tema paneli): varsayılanda beyaz bant; koyu zeminli bantlarda öğeler şerit gibi ters renkte
+  // Beyaz bant; koyu zeminli bantta öğeler şerit gibi ters renkte olurdu
   const bandStyle = useBand('record')
   const solid = !bandStyle.light
   const band = cn(CARD, bandStyle.band)
@@ -765,7 +765,7 @@ function NavTrail({
           afterOpenChange={(v) => {
             if (v) grid.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus()
           }}
-          classNames={{ container: 'p-0 overflow-hidden' }}
+          classNames={{ container: 'p-0' }}
           content={
             <NavGrid
               rootRef={grid}
@@ -823,7 +823,7 @@ function NavTrail({
             {/* Sıra: listedeki yeri (ör. 2 / 8); ekran okuyucu düğmenin adından okur */}
             <Typography.Text
               aria-hidden
-              className="font-mono text-[0.6875rem] leading-none text-current tabular-nums opacity-60"
+              className="text-[0.6875rem] leading-none text-current tabular-nums opacity-60"
             >
               {index + 1} / {ids.length}
             </Typography.Text>
@@ -940,7 +940,7 @@ function NavGrid({
             {caption}
           </Typography.Title>
         </Flex>
-        <Typography.Text type="secondary" className="font-mono text-xs tabular-nums">
+        <Typography.Text type="secondary" className="text-xs tabular-nums">
           {position} / {ids.length}
         </Typography.Text>
         <SearchField

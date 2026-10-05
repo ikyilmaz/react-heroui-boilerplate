@@ -11,7 +11,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   - `src/index.css`: the layer order `@layer theme, base, antd, components, utilities;` (antd's
     CSS-in-JS goes into `@layer antd`, so Tailwind utilities always beat it), `@import 'tailwindcss'`,
     the theme import, Tailwind `@theme` keys mapping the theme variables to colours / radii / shadows
-    (`bg-accent`, `text-muted`, `ring-border`, `rounded-2xl`…) plus `font-display` / `font-mono`, the
+    (`bg-accent`, `text-muted`, `ring-border`, `rounded-2xl`…) plus `font-display` (`font-mono` removed: `--font-mono: initial`), the
     animation keys (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`) and base rules
     for border-colour inheritance (`var(--border)`) and the thin, track-less scrollbars.
   - `src/themes/synergy.css`: the theme, **variables only**, in `@layer base`, for
@@ -33,19 +33,28 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `success` / `warning` / `danger` only for status (status tags, decision results). No per-box colours.
 - **Theme.** Base theme changes go into `src/themes/synergy.css`; light / dark via `setColorMode` /
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`).
-  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults, 5 presets and nav
-  positions in `theme.ts`): primary colour, accent strength, radius, button shape, background, fonts,
-  scale, spacing (`--spacing`), nav position, trail style (Yumuşak / Dolu, `useLook().trail`), card
-  style, shadow, border, animation level / speed,
-  page transition effect (rise, fade, slide, zoom, blur, off; `useLook().pageTransition`), scroll
-  shadow and FPS. Only the variables of changed settings are written inline on `<html>` (button shape
-  as `[&_.ant-btn…]:…` / `[&_.ant-tag]:…` classes on `<html>`) while the shell is mounted; all are
-  removed on unmount. Accent strength and nav position reach pages through `LookContext` /
-  `useLook()`. No other runtime theming.
+  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo) and nav
+  positions in `theme.ts`, no presets): primary colour (swatches only, `COLORS`), radius, background
+  (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
+  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default = theme file's Bricolage + Inter pair), density
+  (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
+  `useLook().trail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
+  Gri), card shadow (`--surface-shadow`, 5 levels, never `none`: it shares one `box-shadow` list with
+  the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation level /
+  speed. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
+  fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
+  `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
+  contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
+  The Başlangıç selected category tab draws the card contour along its sides, top and concave
+  flares (two-layer radial-gradient rings) so the card's top line continues into the tab. Only the variables of changed settings are written
+  inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position, trail and
+  motion reach pages through `LookContext` / `useLook()`. Page transition is a fixed fade; the side
+  info scroll fade is always on. No other runtime theming.
 - Radius comes from `--radius` through Tailwind's scale (`rounded-xl` tiles, `rounded-2xl` cards,
   `rounded-3xl` blocks, `rounded-full` pills). Fonts: default sans (Inter), `font-display` (Bricolage
-  Grotesque, headings and big numbers), `font-mono` (JetBrains Mono, numbers). Font files load from
-  `index.html`.
+  Grotesque, headings and big numbers). **No monospace font anywhere** (no `font-mono`, no JetBrains
+  Mono; antd `fontFamilyCode` = the selected font); numbers use the selected font, `tabular-nums`
+  where columns must align. Font files load from `index.html`.
 
 ## Features mirror the original Synergy UI
 
@@ -67,12 +76,16 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 
 - `index.tsx` › `AppShell`: chrome as separate floating panels on one side, set by tema paneli ›
   Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
-  `StartMenu.tsx`, morphs into the start menu) and actions / profile; "Üstte" = three columns: logo +
-  back / forward | centered dock | actions / profile. The breadcrumb lives in the dock as nested pills
+  `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left; its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
+  back / forward | centered dock | actions / profile; "İkisi de" = the left column without back /
+  forward plus a slim 32px top bar (`CrumbBar`, aligned with the logo, blurred page-colour strip
+  behind) holding back / forward and the animated `Crumbs` (earlier levels icon-only, current level
+  named); the dock then shows only the active app's pill (`DockPath appOnly`, links to the app when
+  deeper); content starts 56px down (`CHROME_SPACE.both`, `--chrome-top: 56px`). The breadcrumb lives in the dock as nested pills
   growing out of the Başlangıç circle (`DockPath`: Başlangıç › active app › sub-levels, each pill tucked
   under the previous one, the other apps after the path) and in full in the start menu ("Buradasınız"); the chrome height
   reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +
-  `Drawer`. `PerfOverlay.tsx` is the FPS meter.
+  `Drawer`.
 - `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
   (5 category blocks + process groups ↔ "Süreç Talepleri").
 - `dashboard/`: `model.ts` (widget kinds with supported sizes, presets, per-preset layout saved in the
@@ -89,14 +102,15 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
   taleplerini görmek için bir proje/süreç seçin", 104054 / drafts 104146);
   `DetailPage.tsx` + `DetailSide.tsx` + `DetailTiles.tsx` + `FormTabs.tsx` + `FormFields.tsx` (Flow
-  Viewer, read-only form fields — long ones size with CSS `field-sizing: content` (no antd
+  Viewer, editable form fields (uncontrolled `defaultValue`, nothing is saved; never `readOnly` /
+  `disabled`) — long ones size with CSS `field-sizing: content` (no antd
   `autoSize`: its layout-effect measuring looped into "Maximum update depth"); the breadcrumb ends
   with the form's name (`process.form`), not the code; the header band shows the process icon and
   name only (no project name, no status tag); the floating strip after scrolling has the events
   at the far left and only the form's name at the far right; the form row reaches the bottom of
   its container (`useFillHeight` against the page or the form tab's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
   card, each half of the side column / drawer with its own scrolling (`FadeScroll`: edges fade
-  through a CSS mask driven by `useScroll`, off when tema paneli › scroll shadow is off), laid out
+  through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
   folds to an icon rail (remembered), narrower (e.g. `panelSize` 1) the rail with the cards in a
   drawer over the dimmed form (closes on outside click / Esc / showing a document), phones below
@@ -120,7 +134,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `--split` straight onto the container (no React render, no Motion); child forms are built once
   per id (`renderTab` must be a stable function). Layout changes use Motion's own layout animation
   (FLIP, transform only, the form is laid out once at its final size): in tabs mode each form is a
-  sheet (`bg-background`, radius passed as px through `style` so Motion corrects the corners) with
+  sheet (transparent, so the tab container's `--tab-bg` shows between the cards; radius passed as px through `style` so Motion corrects the corners) with
   `layout` + `layoutScroll`, its content `layout="position"` (scale undone, no stretched text). Both
   re-measure only through `layoutDependency` when the pane was visible before and after the change,
   so a `display: none` pane never animates from an empty box. A side pane opened in the same tab (1 /
@@ -129,7 +143,11 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   (`frame.update`) so their edges move together. A form shown alone fades in place when closed; tab
   switches slide in from the tab's direction; swap / shift / ungroup / ratio (Home / End / Enter /
   double click, arrows) are plain layout animations. The container clips with `overflow-clip` (not a
-  scroll container, so the page-mode sticky header still works). Every form that enters (root, child,
+  scroll container, so the page-mode sticky header still works) only in tabs mode and while the last
+  child leaves; a lone form (page mode) is not clipped, so edge cards keep their contour / shadow.
+  Clip only where needed: a clip box cuts the 1px card ring (drawn outside the card) and the card
+  shadow of anything at its edge (e.g. the İK edit card's slide wrapper clips only while its width
+  animates, via a motion value). Every form that enters (root, child,
   Geri / İleri) shows `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay),
   then crossfades in;
   `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
@@ -143,7 +161,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - Brand (Bimser Synergy): `assets/brand/` — `icon.svg` / `icon-dark.svg` (four-colour mark; dark
   theme has a white centre) and `wordmark.svg` / `wordmark-light.svg` ("bimser synergy"), cut from
   the official logo SVGs; the shell logo is the mark (+ wordmark in the top nav and the phone bar),
-  `public/favicon.svg` is the mark. Default page transition: fade.
+  `public/favicon.svg` is the mark. Page transition: fade.
 - `ant/`: shared antd pieces — `theme.tsx` (`AntTheme`), `modal.tsx` (`SoftModal`: every dialog;
   antd's zoom off, the panel springs in from 96 % via `modalRender` + Motion and fades out before
   antd closes it, also when a parent unmounts it inside `AnimatePresence` (`usePresence`; a closed

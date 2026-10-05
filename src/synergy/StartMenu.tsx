@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router'
 import { AnimatePresence, type Transition } from 'framer-motion'
 import {
   AppWindow,
-  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   ChevronRight,
@@ -18,7 +17,7 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react'
-import { Avatar, Button, Flex, Typography } from 'antd'
+import { Button, Flex, Typography } from 'antd'
 import { useBoxCounts, useMenuApps } from '@/synergy/shared/decisions'
 import { MENU_LABELS } from '@/synergy/shared/menuTree'
 import { setColorMode, useIsDark } from '@/synergy/shared/themeSettings'
@@ -27,7 +26,6 @@ import {
   HISTORY_GROUP_LABEL,
   greetingOf,
   historyBoxes,
-  initials,
   mainBoxes,
   pendingSentence,
 } from '@/synergy/shared/workflowData'
@@ -78,7 +76,6 @@ const START_LABELS = {
   themeSettings: 'Tema ayarları', // 102942
   light: 'Açık tema', // 100192
   dark: 'Koyu tema',
-  home: 'Ana sayfaya dön', // 103030
   noFavorites: 'Sabitlenmiş Uygulama Yok', // 102028
 } as const
 
@@ -112,17 +109,23 @@ export const CHROME_PANEL = cn('pointer-events-auto rounded-[28px]', SHELL)
 /** Rafın içi ve açılan kutunun konumu. */
 const PLACE: Record<ChromePlace, { shell: string; panel: string }> = {
   // Pay ve düğme boyu piksel: temanın boşluk ölçeği (kompakt / geniş) rafın oranını bozmasın
-  // Solda kutu dikeyde tam ortada (raf gibi); dönüşüm transform kullandığı için `my-auto` ile
-  left: { shell: 'flex-col items-center p-[6px]', panel: 'start-3 inset-y-0 my-auto' },
+  // Solda kutu dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
+  // ekranın %85'i boyunda
+  left: { shell: 'flex-col items-center p-[6px]', panel: 'start-3 inset-y-0 my-auto h-[85dvh]' },
   // Üstte raf ortada; kutu da ortadan açılır (dönüşüm transform kullandığı için ortalama `mx-auto` ile)
-  top: { shell: 'h-[52px] flex-row items-center p-[6px]', panel: 'inset-x-0 top-3 mx-auto' },
+  top: {
+    shell: 'h-[52px] flex-row items-center p-[6px]',
+    panel: 'inset-x-0 top-3 mx-auto h-[clamp(30rem,70dvh,42rem)]',
+  },
 }
 
 /** Kabuğun yanına düşen alan (px; içerik bu kadar içeriden başlar). */
-export const CHROME_SPACE: Record<ChromePlace, string> = {
+export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
   // Kabuk 12px içeride, 52px; aradaki boşluk 12px
   left: 'sm:ps-[76px] sm:pt-3',
   top: 'sm:pt-[76px]',
+  // Solda kolon, üstte 32px konum çubuğu (12px içeride; altında 12px)
+  both: 'sm:ps-[76px] sm:pt-14',
 }
 
 /**
@@ -259,8 +262,8 @@ export function StartDock({
                 if (next && !e.currentTarget.contains(next)) setOpen(false)
               }}
               className={cn(
-                // Sabit boy: bölüm değişince kutu zıplamaz; küçük ekranda sıkışmaz, büyükte tam sayfaya dönmez
-                'fixed z-50 flex h-[clamp(30rem,70dvh,42rem)] max-h-[calc(100dvh-1.5rem)] w-[min(44rem,calc(100vw-1.5rem))] flex-col overflow-hidden',
+                // Sabit boy (`PLACE`): bölüm değişince kutu zıplamaz
+                'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(44rem,calc(100vw-1.5rem))] flex-col overflow-hidden',
                 p.panel,
                 CHROME_PANEL,
               )}
@@ -343,7 +346,7 @@ function AppRow({
 /** Sayı notu (satırın sağında). */
 function CountHint({ value }: { value: number | undefined }) {
   if (!value) return null
-  return <Text className="font-mono text-xs text-muted tabular-nums">{value}</Text>
+  return <Text className="text-xs text-muted tabular-nums">{value}</Text>
 }
 
 function StartPanel({
@@ -668,26 +671,30 @@ function StartPanel({
       {location && <Flex className="block shrink-0 px-4 pb-3">{location}</Flex>}
 
       <Flex className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
-        {/* Sol: bölümler ve altta kullanıcı; aramada bölüm seçimi geri planda */}
-        <Flex className="flex w-56 shrink-0 flex-col justify-between rounded-3xl bg-surface-secondary/60 p-2">
-          <Flex role="group" aria-label={START_LABELS.start} className="flex flex-col gap-0.5">
-            {SECTIONS.map((sct) => {
-              const on = !searching && sct.id === section
-              const Icon = sct.icon
-              return (
+        {/* Sol: bölümler, yalnızca ikon (ad ipucunda); aramada bölüm seçimi geri planda */}
+        <Flex
+          role="group"
+          aria-label={START_LABELS.start}
+          className="flex shrink-0 flex-col gap-1 rounded-3xl bg-surface-secondary/60 p-1.5"
+        >
+          {SECTIONS.map((sct) => {
+            const on = !searching && sct.id === section
+            const Icon = sct.icon
+            return (
+              <Tip key={sct.id} label={sct.label} placement="right">
                 <Button
-                  key={sct.id}
                   aria-pressed={on}
+                  aria-label={sct.label}
                   type="text"
                   onClick={() => {
                     tree.setQuery('')
                     setSection(sct.id)
                   }}
                   className={cn(
-                    'relative h-10 w-full justify-start gap-2.5 rounded-2xl! px-3 text-start text-sm',
+                    'relative size-11 min-w-11 rounded-2xl! p-0',
                     on
-                      ? 'font-semibold text-foreground hover:bg-transparent! hover:text-foreground!'
-                      : 'font-normal text-foreground/65 hover:text-foreground!',
+                      ? 'text-accent hover:bg-transparent! hover:text-accent!'
+                      : 'text-foreground/65 hover:text-foreground!',
                   )}
                 >
                   {on && (
@@ -696,42 +703,11 @@ function StartPanel({
                       className="bg-surface shadow-[0_1px_3px_color-mix(in_oklab,var(--foreground)_12%,transparent)]"
                     />
                   )}
-                  <Icon
-                    {...IC}
-                    size={17}
-                    className={cn('relative shrink-0', on && 'text-accent')}
-                  />
-                  <Text className="relative min-w-0 flex-1 truncate text-current">{sct.label}</Text>
+                  <Icon {...IC} size={18} className="relative shrink-0" />
                 </Button>
-              )
-            })}
-          </Flex>
-
-          <Flex className="flex flex-col gap-1">
-            <Flex className="flex items-center gap-2.5 rounded-2xl bg-surface p-2">
-              <Avatar
-                size={32}
-                aria-hidden
-                className="shrink-0 bg-accent text-xs font-semibold text-accent-foreground"
-              >
-                {initials(CURRENT_USER.name)}
-              </Avatar>
-              <Flex vertical className="min-w-0 flex-1">
-                <Text className="block truncate text-sm font-medium text-current">
-                  {CURRENT_USER.name}
-                </Text>
-                <Text className="block truncate text-xs text-muted">{CURRENT_USER.department}</Text>
-              </Flex>
-            </Flex>
-            <Button
-              type="text"
-              onClick={() => go('/')}
-              icon={<ArrowLeft {...IC} size={16} />}
-              className="h-8 w-full justify-start gap-2 rounded-xl px-2.5 text-muted hover:text-foreground!"
-            >
-              {START_LABELS.home}
-            </Button>
-          </Flex>
+              </Tip>
+            )
+          })}
         </Flex>
 
         {/* Sağ: seçili bölüm (ya da arama sonuçları); değişince hafifçe solarak gelir */}

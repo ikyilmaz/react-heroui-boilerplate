@@ -56,7 +56,6 @@ import { APP_THEME } from '@/synergy/theme'
 import { PARENTS, findModule } from '@/synergy/hr/modules'
 import { MotionScope, PageTransition, useTransition } from '@/synergy/motion'
 import { AnimatePresence } from 'framer-motion'
-import { PerfOverlay } from '@/synergy/PerfOverlay'
 import { AllAppsButton, AllAppsPanel } from '@/synergy/AllApps'
 import {
   CHROME_SPACE,
@@ -111,7 +110,7 @@ const dockEntries: DockEntry[] = [
 
 const fold = (v: string) => v.toLocaleLowerCase('tr')
 
-/** İnce kart çizgisi (tema paneli › Kenarlık kalınlığı). */
+/** İnce kart çizgisi, gölgesiz (küçük haplar; tema paneli › Kontur). */
 const card = 'ring-(length:--border-width) ring-border'
 
 /** Baş harfli uygulama rozetinin tonu (`avatarColor`, isme göre sabit). */
@@ -440,6 +439,27 @@ function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
 }
 
 const NO_CRUMBS: Crumb[] = []
+
+/**
+ * Üstteki ince konum çubuğu (Gezinme › İkisi de): sol kolonun yanından başlar, logoyla aynı hizada;
+ * geri / ileri ve konum (`Crumbs`: önceki seviyeler ikon, bulunulan yer adıyla, girip çıkan
+ * seviyeler animasyonlu). Arkasında sayfa renginde bulanık şerit: kaydırılan içerik altında
+ * karışmasın. Yalnızca 32px boy; içerik 44px aşağıdan başlar (`CHROME_SPACE.both`). Sol kolonun
+ * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
+ * yapışkan öğeleri (`z-30`) çubuğun altında.
+ */
+function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
+  return (
+    <Flex
+      align="center"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-8 min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background/85 before:backdrop-blur-md before:content-[''] sm:flex"
+    >
+      <Flex className="pointer-events-auto min-w-0">
+        <Crumbs crumbs={crumbs} />
+      </Flex>
+    </Flex>
+  )
+}
 
 function TopBar({
   crumbs,
@@ -823,11 +843,17 @@ function DockPath({
   crumbs,
   current,
   left,
+  appOnly = false,
 }: {
   crumbs: Crumb[]
   /** Raftaki aktif uygulama (yolun ilk seviyesi); rafta öğesi olmayan uygulamada yok. */
   current: string | undefined
   left: boolean
+  /**
+   * Yalnızca aktif uygulamanın hapı (alt seviyeler üstteki konum çubuğunda; Gezinme › İkisi de).
+   * Daha derindeyken hap uygulamanın kendisine götürür.
+   */
+  appOnly?: boolean
 }) {
   const spring = useTransition(DOCK_SPRING)
   const style = TRAIL_STYLE[useLook().trail]
@@ -836,7 +862,9 @@ function DockPath({
   // Seviyenin saklı konumu: bir öncekinin altında (solda yukarıda, üstte solda)
   const hidden = left ? { y: -24 } : { x: -24 }
   // Yol: Başlangıç'tan sonraki seviyeler; Başlangıç'ın kendisinde boş
-  const trail = crumbs.length > 1 ? crumbs.slice(1) : NO_TRAIL
+  const trail = crumbs.length > 1 ? crumbs.slice(1, appOnly ? 2 : undefined) : NO_TRAIL
+  // Uygulamanın içinde daha derin bir yerde (yalnızca uygulama hapı gösterilirken)
+  const deeper = appOnly && crumbs.length > 2
   const home = dockEntries.find((e) => e.id === 'baslangic')!
   const others = dockEntries.filter(
     (e) => e.id !== 'geri' && e.id !== 'baslangic' && e.id !== current,
@@ -884,7 +912,7 @@ function DockPath({
         className={cn('relative flex shrink-0', first ? pill.wrapFirst : pill.wrap)}
       >
         <Tip label={c.label} placement={tip}>
-          {isCurrent || !c.href ? (
+          {(isCurrent && !deeper) || !c.href ? (
             <Flex
               aria-current={isCurrent ? 'page' : undefined}
               aria-label={c.label}
@@ -1057,14 +1085,17 @@ function PanelLocation({ crumbs }: { crumbs: Crumb[] }) {
 }
 
 /**
- * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller aynı tarafta.
+ * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller.
  * - Solda: sol kenarda alt alta: üstte logo ve yan yana geri / ileri (konum yok), ortada raf
  *   (StartMenu: başlat ve uygulamalar), altta sohbet / duyurular, tema, kullanıcı.
  * - Üstte: solda yatay raf, yanında header (logo, geri / ileri, konum, eylemler, kullanıcı).
+ * - İkisi de: solda aynı kolon (geri / ileri olmadan; rafta yalnızca aktif uygulamanın hapı),
+ *   üstte ince konum çubuğu (`CrumbBar`: geri / ileri ve konumun tamamı).
  * Zemini olan panel yalnızca raf; diğerleri zeminsiz.
  */
 function Chrome({
   place,
+  both = false,
   actions,
   crumbs,
   current,
@@ -1073,6 +1104,8 @@ function Chrome({
   onTheme,
 }: {
   place: ChromePlace
+  /** Gezinme › İkisi de (`place` sol). */
+  both?: boolean
   actions: StartActions
   crumbs: Crumb[]
   current: string | undefined
@@ -1106,7 +1139,7 @@ function Chrome({
             orientation={left ? 'horizontal' : 'vertical'}
             className={left ? 'my-1 w-6 min-w-0' : 'top-0 mx-1 h-6'}
           />
-          <DockPath crumbs={crumbs} current={current} left={left} />
+          <DockPath crumbs={crumbs} current={current} left={left} appOnly={both} />
         </>
       )}
     </StartDock>
@@ -1155,23 +1188,31 @@ function Chrome({
 
   if (left)
     return (
-      <Flex
-        vertical
-        align="center"
-        justify="space-between"
-        className="pointer-events-none fixed inset-y-3 start-3 z-50 hidden w-[52px] gap-3 sm:flex"
-      >
-        {/* Üst: logo ve yan yana geri / ileri (zeminsiz; konum solda gösterilmez) */}
-        <Flex vertical align="center" className="pointer-events-auto gap-2 pt-1.5">
-          {logo}
-          <HistoryButtons className="me-0" />
+      <>
+        <Flex
+          vertical
+          align="center"
+          justify="space-between"
+          className="pointer-events-none fixed inset-y-3 start-3 z-50 hidden w-[52px] gap-3 sm:flex"
+        >
+          {/* Üst: logo ve yan yana geri / ileri (zeminsiz; konum solda gösterilmez). İkisi de:
+              yalnızca logo, üstteki konum çubuğuyla aynı hizada */}
+          <Flex
+            vertical
+            align="center"
+            className={cn('pointer-events-auto gap-2', !both && 'pt-1.5')}
+          >
+            {logo}
+            {!both && <HistoryButtons className="me-0" />}
+          </Flex>
+          {dock}
+          {/* Alt: eylemler ve kullanıcı (zeminsiz) */}
+          <Flex vertical align="center" className="pointer-events-auto shrink-0 pb-1.5">
+            {actionsGroup}
+          </Flex>
         </Flex>
-        {dock}
-        {/* Alt: eylemler ve kullanıcı (zeminsiz) */}
-        <Flex vertical align="center" className="pointer-events-auto shrink-0 pb-1.5">
-          {actionsGroup}
-        </Flex>
-      </Flex>
+        {both && <CrumbBar crumbs={crumbs} />}
+      </>
     )
   return (
     // Üç sütun: solda logo + geri / ileri + konum, ortada raf (hep tam ortada), sağda eylemler
@@ -1225,8 +1266,10 @@ function Shell() {
   const setDrawer = (open: boolean) => setDrawerAt(open ? pathname : null)
   // Tema paneli: ayarlar <html>'e uygulanır, kabuktan çıkınca temizlenir (shared/themeSettings.ts)
   const [theme, setTheme, look] = useThemeSettings(APP_THEME)
-  // Tek kabuk: sol ray ya da üst çubuk (tema paneli › Gezinme); 640px altında üst çubuk + çekmece
+  // Tek kabuk: sol ray, üst çubuk ya da ikisi (sol ray + üstte konum çubuğu; tema paneli ›
+  // Gezinme); 640px altında üst çubuk + çekmece
   const place: ChromePlace = look.nav === 'top' ? 'top' : 'left'
+  const both = look.nav === 'both'
   const wide = useMediaQuery('(min-width: 640px)')
   const [themeOpen, setThemeOpen] = useState(false)
   const [appsOpen, setAppsOpen] = useState(false)
@@ -1247,6 +1290,7 @@ function Shell() {
                 {wide ? (
                   <Chrome
                     place={place}
+                    both={both}
                     actions={{ onTheme: () => setThemeOpen(true), onPanel: setPanel }}
                     crumbs={frame?.crumbs ?? []}
                     current={dockCurrent}
@@ -1269,9 +1313,15 @@ function Shell() {
                     // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride)
                     'min-w-0 flex-1 gap-3 px-4 pb-6 sm:pe-3',
                     // Kabuk içeriğin üstünde yüzer; yanına düşen alan kadar boşluk
-                    wide && CHROME_SPACE[place],
+                    wide && CHROME_SPACE[both ? 'both' : place],
                     // Yapışkan öğeler (ör. talep şeridi) kabuğun altına yapışsın
-                    wide && place === 'top' ? '[--chrome-top:76px]' : '[--chrome-top:0px]',
+                    !wide
+                      ? '[--chrome-top:0px]'
+                      : place === 'top'
+                        ? '[--chrome-top:76px]'
+                        : both
+                          ? '[--chrome-top:56px]'
+                          : '[--chrome-top:0px]',
                     wide && place === 'top' && 'sm:ps-3',
                   )}
                 >
@@ -1329,8 +1379,6 @@ function Shell() {
 
                 <AllAppsPanel isOpen={appsOpen} onOpenChange={setAppsOpen} />
 
-                {/* Tema paneli › Performans › FPS'i göster */}
-                {look.showFps && <PerfOverlay />}
                 <ThemePanel
                   kit={APP_THEME}
                   isOpen={themeOpen}

@@ -169,6 +169,13 @@ export function FormTabs({
 }) {
   const [st, dispatch] = useReducer(tabsReducer, rootId, initTabs)
   const hasTabs = st.entries.length > 0
+  // Son child kapanırken sekme kipinden çıkılır ama çıkan bölme hâlâ kayıyor: bitene kadar kırpılır
+  const [hadTabs, setHadTabs] = useState(hasTabs)
+  const [leaving, setLeaving] = useState(false)
+  if (hadTabs !== hasTabs) {
+    setHadTabs(hasTabs)
+    setLeaving(!hasTabs)
+  }
   // Yan yana yalnızca geniş ekranda; daralınca bölünmüş sekmenin odaktaki formu tek başına kalır
   const wide = useMediaQuery('(min-width: 1024px)')
   const roomy = useMediaQuery('(min-width: 1200px)')
@@ -366,18 +373,24 @@ export function FormTabs({
         {/*
          * Formların kabı: sekmeler açıkken ekranın kalanını doldurur, formlar içinde kayar. Tüm
          * formlar burada takılı; görünenler `order` ile sıralanır (sol 0, bölücü 1, sağ 2).
-         * `relative`: kapanan form (`popLayout`) burada mutlak konumlanır. Kenardan giren / çıkan
-         * form kabın kenarında kırpılır (`overflow-clip`: kaydırma kabı değil, sayfa kipinde yapışkan
-         * başlık sayfaya yapışmaya devam eder).
+         * `relative`: kapanan form (`popLayout`) burada mutlak konumlanır. Sekme alanında kenardan
+         * giren / çıkan form kabın kenarında kırpılır (`overflow-clip`: kaydırma kabı değil). Tek
+         * formda (sayfa kipi) kırpılmaz, kenardaki kartların konturu / gölgesi kesilmez; yalnızca
+         * son child çıkarken.
          */}
         <Flex
           className={cn(
-            'relative flex min-w-0 overflow-clip',
+            'relative flex min-w-0',
+            (hasTabs || leaving) && 'overflow-clip',
             hasTabs ? cn('min-h-0 flex-1 rounded-3xl bg-(--tab-bg) p-3', CUE) : 'p-0',
             resizing && 'cursor-col-resize select-none',
           )}
         >
-          <AnimatePresence initial={false} mode="popLayout">
+          <AnimatePresence
+            initial={false}
+            mode="popLayout"
+            onExitComplete={() => setLeaving(false)}
+          >
             {[{ id: rootId, node: root }, ...children].map(({ id, node }) => {
               const slot = shown.indexOf(id) as -1 | 0 | 1
               return (
@@ -741,7 +754,7 @@ function TabLabel({
 
 /**
  * Bir formun bölmesi. Her zaman aynı yerde takılı; `slot` -1 gizli, 0 sol (ya da tek), 1 sağ.
- * Sekmeler açıkken bir yaprak (zemin + köşe) ve kendi kaydırma kabıdır: gizlenince tarayıcı
+ * Sekmeler açıkken bir yaprak (şeffaf, köşeli) ve kendi kaydırma kabıdır: gizlenince tarayıcı
  * kaydırmayı sıfırlar; son kaydırma yeri tutulur, görününce oraya dönülür.
  *
  * Hareket: yaprak Motion `layout` ile eski yerinden yenisine gider (yalnızca dönüşüm); içi
@@ -898,9 +911,9 @@ function Pane({
         visible ? 'block' : 'hidden',
         slot === 1 ? 'order-2' : 'order-0',
         // Yaprak kendi içinde kayar (yan kaydırma yok: hareket boyunca içerik yaprağı taşar);
-        // yapışkan öğeler kabuğun değil yaprağın tepesine yapışsın
-        sheet &&
-          'min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-background [--chrome-top:0px]',
+        // yapışkan öğeler kabuğun değil yaprağın tepesine yapışsın. Zemini şeffaf: kartların
+        // arasında sayfa kabının rengi görünür
+        sheet && 'min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [--chrome-top:0px]',
         className,
       )}
     >

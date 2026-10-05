@@ -81,7 +81,7 @@ function TreeNode({ n, ...p }: TreeProps & { n: MenuNode }) {
           <Tag
             variant="filled"
             className={cn(
-              'me-0 h-5 min-w-5 rounded-full border-0 px-1.5 text-center font-mono text-[0.6875rem] leading-5',
+              'me-0 h-5 min-w-5 rounded-full border-0 px-1.5 text-center text-[0.6875rem] leading-5',
               active ? 'bg-accent-foreground text-accent' : 'bg-accent text-accent-foreground',
             )}
           >
@@ -209,7 +209,7 @@ export function useAppTree(onPicked: () => void) {
       <Flex vertical className="gap-3">
         {groupByLetter(nodes).map((g) => (
           <Flex vertical key={g.letter} className="gap-1">
-            <Typography.Text type="secondary" className="px-2.5 font-mono text-xs font-semibold">
+            <Typography.Text type="secondary" className="px-2.5 text-xs font-semibold">
               {g.letter}
             </Typography.Text>
             <TreeList nodes={g.nodes} label={g.letter} {...tree} />
