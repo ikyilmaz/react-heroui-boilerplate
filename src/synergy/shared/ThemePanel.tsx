@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
 import { Button, Divider, Drawer, Flex, Radio, Segmented, Select, Slider, Typography } from 'antd'
 import { cn } from '@/synergy/ant/ui'
@@ -7,6 +7,8 @@ import {
   DENSITIES,
   FONTS,
   backgroundSwatch,
+  lookVars,
+  presetOf,
   same,
   useIsDark,
   type Background,
@@ -60,6 +62,7 @@ const SHADOWS: { id: Shadow; label: string }[] = [
   { id: 'soft', label: 'Hafif' },
   { id: 'strong', label: 'Belirgin' },
   { id: 'deep', label: 'Derin' },
+  { id: 'glow', label: 'Renkli' },
 ]
 
 const BORDERS: { id: number; label: string }[] = [
@@ -211,6 +214,44 @@ function Range({
   )
 }
 
+/**
+ * Hazır temanın küçük önizlemesi: temanın bütün değişkenleri bu kaba yazılır (`lookVars`), içi o
+ * temayla çizilir: zemin, kart (dolgu, kontur, gölge, köşe), başlık yazı tipi, birincil renk.
+ */
+function PresetPreview({ look, dark }: { look: ThemeSettings; dark: boolean }) {
+  return (
+    <Flex
+      aria-hidden
+      vertical
+      // Değişkenler çalışma anında hesaplanır (temanın ayarları, açık / koyu)
+      style={lookVars(look, dark) as CSSProperties}
+      className="h-24 w-full gap-1.5 rounded-xl bg-background p-2 font-sans text-foreground ring-1 ring-border"
+    >
+      {/* Üstte ince bir şerit: birincil renkli nokta ve iki çizgi */}
+      <Flex align="center" gap={4} className="px-0.5">
+        <Flex className="block size-2 rounded-full bg-accent" />
+        <Flex className="block h-1 w-8 rounded-full bg-foreground/15" />
+        <Flex className="block h-1 w-5 rounded-full bg-foreground/10" />
+      </Flex>
+      <Flex
+        vertical
+        gap={6}
+        className="min-h-0 flex-1 rounded-lg bg-surface p-2 shadow-(--surface-shadow) ring-(length:--border-width) ring-border"
+      >
+        <Typography.Text className="font-display text-base leading-none font-bold text-current">
+          Aa
+        </Typography.Text>
+        <Flex className="block h-1.5 w-3/4 rounded-full bg-surface-tertiary" />
+        <Flex align="center" gap={4} className="mt-auto">
+          <Flex className="block h-3.5 w-10 rounded-full bg-accent" />
+          {/* Birincil rengin açık tonu (kabın kendi rengiyle; `--accent-soft` kökte çözülür) */}
+          <Flex className="block h-3.5 w-7 rounded-full bg-[color-mix(in_oklab,var(--accent)_18%,transparent)]" />
+        </Flex>
+      </Flex>
+    </Flex>
+  )
+}
+
 /** Bölüm ayracı. */
 const Separator = () => <Divider className="my-0" />
 
@@ -232,6 +273,8 @@ export function ThemePanel({
 }) {
   const set = (patch: Partial<ThemeSettings>) => onChange({ ...settings, ...patch })
   const dark = useIsDark()
+  const preset = presetOf(kit, settings)
+  const atDefault = same(settings, kit.defaults)
   const color = COLORS.find((c) => c.id === settings.color)
   const outlined = settings.cardStyle === 'outlined'
   return (
@@ -244,6 +287,46 @@ export function ThemePanel({
       title={<Text className="font-display text-lg font-semibold">Tema</Text>}
       classNames={{ wrapper: 'max-w-full', body: 'flex flex-col gap-6 pb-6' }}
     >
+      {kit.presets?.length ? (
+        <>
+          <Section
+            title="Hazır temalar"
+            value={preset ? undefined : atDefault ? 'Varsayılan' : 'Özel'}
+          >
+            <Flex className="grid grid-cols-2 gap-2" role="group" aria-label="Hazır temalar">
+              {kit.presets.map((p) => {
+                const on = preset === p.id
+                return (
+                  <Button
+                    key={p.id}
+                    type="text"
+                    aria-pressed={on}
+                    // Görünüş temadan; gezinme ve animasyon tercihleri olduğu gibi kalır
+                    onClick={() => set(p.look)}
+                    className={cn(
+                      'relative h-auto flex-col items-stretch gap-2 rounded-2xl p-2 text-start font-normal ring-1 ring-border',
+                      on && 'bg-accent-soft! ring-2 ring-accent',
+                    )}
+                  >
+                    <PresetPreview look={{ ...settings, ...p.look }} dark={dark} />
+                    <Flex vertical className="min-w-0 px-0.5 pb-0.5">
+                      <Flex align="center" gap={6}>
+                        <Text className="text-sm font-semibold text-current">{p.label}</Text>
+                        {on && <Check {...IC} size={14} className="text-accent" />}
+                      </Flex>
+                      <Text type="secondary" className="line-clamp-2 text-xs whitespace-normal">
+                        {p.description}
+                      </Text>
+                    </Flex>
+                  </Button>
+                )
+              })}
+            </Flex>
+          </Section>
+          <Separator />
+        </>
+      ) : null}
+
       <Section title="Birincil renk" value={color?.label}>
         <Flex wrap gap={8} role="group" aria-label="Renk örnekleri">
           {COLORS.map((c) => (
@@ -362,6 +445,7 @@ export function ThemePanel({
           value={settings.shadow}
           options={SHADOWS}
           onChange={(shadow) => set({ shadow })}
+          grid={3}
         />
       </Section>
 

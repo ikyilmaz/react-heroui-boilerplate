@@ -11,12 +11,22 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore } 
  * ------------------------------------------------------------------------------------------------- */
 
 export type ColorId =
-  'blue' | 'indigo' | 'purple' | 'rose' | 'orange' | 'green' | 'teal' | 'petrol' | 'graphite'
+  | 'blue'
+  | 'indigo'
+  | 'purple'
+  | 'rose'
+  | 'coral'
+  | 'orange'
+  | 'green'
+  | 'emerald'
+  | 'teal'
+  | 'petrol'
+  | 'graphite'
 /** Zemin: nötr / serin / sıcak / beyaz ve birincil renge göre dört uyumlu ton (`HARMONY`). */
 export type Background =
   'neutral' | 'cool' | 'warm' | 'white' | 'analogous' | 'square' | 'triadic' | 'complement'
 /** `synergy`: tema dosyasının eşi (başlıklar Bricolage Grotesque, metin Inter); diğerleri her yerde. */
-export type FontId = 'synergy' | 'inter' | 'bricolage' | 'jakarta' | 'figtree' | 'geist'
+export type FontId = 'synergy' | 'inter' | 'bricolage' | 'jakarta' | 'figtree' | 'geist' | 'outfit'
 /** Yoğunluk: kök yazı boyutu ve boşluk birimi birlikte. */
 export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
 /**
@@ -24,7 +34,8 @@ export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
  * kenar), tonlu (birincil rengin çok açık tonu), gri (zeminden koyu, gömme).
  */
 export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
-export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
+/** `glow`: birincil renkle tonlanmış yumuşak gölge (kart rengini zemine yayar). */
+export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep' | 'glow'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
 /** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
@@ -66,6 +77,20 @@ export interface ThemeKit {
   navOptions: { id: string; label: string }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
+  /** Hazır temalar (tema panelinin başında). */
+  presets?: ThemePreset[]
+}
+
+/**
+ * Hazır tema: görünüşü belirleyen ayarların bir bileşimi (`look`). Gezinme konumu ve animasyon
+ * tercih sayılır, hazır tema onlara dokunmaz. Seçilince ayarlara yazılır; sonra her ayar panelden
+ * ayrıca değiştirilebilir (eşleşme bozulunca "Özel").
+ */
+export interface ThemePreset {
+  id: string
+  label: string
+  description: string
+  look: Partial<Omit<ThemeSettings, 'nav' | 'motion' | 'motionSpeed'>>
 }
 
 /** Birincil renkler (OKLCH); `cls` önizleme sınıfı (sabit metin; Tailwind görsün). */
@@ -81,8 +106,10 @@ export const COLORS: {
   { id: 'indigo', label: 'Çivit', h: 280, c: 0.17, l: 0.5, cls: 'bg-[oklch(0.5_0.17_280)]' },
   { id: 'purple', label: 'Mor', h: 305, c: 0.18, l: 0.5, cls: 'bg-[oklch(0.5_0.18_305)]' },
   { id: 'rose', label: 'Gül', h: 355, c: 0.16, l: 0.55, cls: 'bg-[oklch(0.55_0.16_355)]' },
+  { id: 'coral', label: 'Mercan', h: 30, c: 0.17, l: 0.58, cls: 'bg-[oklch(0.58_0.17_30)]' },
   { id: 'orange', label: 'Turuncu', h: 50, c: 0.15, l: 0.56, cls: 'bg-[oklch(0.56_0.15_50)]' },
   { id: 'green', label: 'Yeşil', h: 155, c: 0.11, l: 0.47, cls: 'bg-[oklch(0.47_0.11_155)]' },
+  { id: 'emerald', label: 'Zümrüt', h: 165, c: 0.13, l: 0.52, cls: 'bg-[oklch(0.52_0.13_165)]' },
   { id: 'teal', label: 'Turkuaz', h: 190, c: 0.1, l: 0.5, cls: 'bg-[oklch(0.5_0.1_190)]' },
   { id: 'petrol', label: 'Petrol', h: 210, c: 0.1, l: 0.5, cls: 'bg-[oklch(0.5_0.1_210)]' },
   { id: 'graphite', label: 'Grafit', h: 260, c: 0.02, l: 0.32, cls: 'bg-[oklch(0.32_0.02_260)]' },
@@ -97,6 +124,7 @@ export const FONTS: { id: FontId; label: string; stack?: string }[] = [
   { id: 'jakarta', label: 'Plus Jakarta Sans', stack: `'Plus Jakarta Sans', ${SANS}` },
   { id: 'figtree', label: 'Figtree', stack: `'Figtree', ${SANS}` },
   { id: 'geist', label: 'Geist', stack: `'Geist', ${SANS}` },
+  { id: 'outfit', label: 'Outfit', stack: `'Outfit', ${SANS}` },
 ]
 
 /** Yoğunluk: kök yazı boyutu (px) ve boşluk birimi (rem). */
@@ -143,6 +171,9 @@ export const same = (a: ThemeSettings, b: ThemeSettings) =>
 const ok = (l: number, c: number, h: number, a?: number) =>
   `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)}${a == null ? '' : ` / ${a}`})`
 
+/** Birincil rengin saydam tonu (yüzde); renkli gölgeler için. */
+const tint = (pct: number) => `color-mix(in oklab, var(--accent) ${pct}%, transparent)`
+
 /** Gölge katmanları; koyu zeminde gölge az görünür, opaklık artar. */
 const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
   // Boş gölge: `none` olmaz (halkayla aynı `box-shadow` listesinde geçersiz kalıp konturu da siler)
@@ -154,6 +185,8 @@ const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
     `0 2px 4px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 14px 36px -10px ${ok(0, 0, 0, d ? 0.6 : 0.22)}`,
   deep: (d) =>
     `0 4px 8px -2px ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 28px 60px -12px ${ok(0, 0, 0, d ? 0.7 : 0.3)}`,
+  // Renkli: kartın altına birincil rengin yumuşak ışıması (gri gölge yerine)
+  glow: (d) => `0 1px 2px 0 ${tint(d ? 25 : 12)}, 0 12px 32px -12px ${tint(d ? 55 : 38)}`,
 }
 
 /** Yükseltilmiş kartın kabarık kenarı: üstte ışık, altta koyu bir dudak. */
@@ -174,6 +207,7 @@ const FIELD_SHADOWS: Record<Shadow, (dark: boolean) => string> = {
     `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 3px 8px -3px ${ok(0, 0, 0, d ? 0.45 : 0.14)}`,
   deep: (d) =>
     `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 6px 14px -6px ${ok(0, 0, 0, d ? 0.55 : 0.2)}`,
+  glow: (d) => `0 1px 2px 0 ${tint(d ? 30 : 16)}, 0 4px 10px -5px ${tint(d ? 45 : 26)}`,
 }
 
 /** Yükseltilmiş kart stilinde alanların kabarık alt kenarı. */
@@ -352,6 +386,42 @@ function variables(
   else if (s.motionSpeed !== 1)
     out['--motion-time'] = String(Math.round((1 / s.motionSpeed) * 1000) / 1000)
   return out
+}
+
+/** Her ayarın değişkenini yazdıran karşılaştırma tabanı (hiçbir değer buna eşit değil). */
+const NOTHING = {
+  color: '',
+  radius: -1,
+  background: '',
+  font: '',
+  density: '',
+  cardStyle: '',
+  shadow: '',
+  border: -1,
+  nav: '',
+  trail: '',
+  motion: 'full',
+  motionSpeed: 1,
+} as unknown as ThemeSettings
+
+/**
+ * Bir görünüşün bütün değişkenleri: bir kaba satır içi yazılınca o kabın içi o temayla çizilir
+ * (tema panelindeki hazır tema önizlemesi; kabuğun o anki ayarlarından bağımsız).
+ */
+export function lookVars(look: ThemeSettings, dark: boolean) {
+  const out: Record<string, string> = { ...variables(look, NOTHING, dark, 'full') }
+  if (look.font === 'synergy') {
+    out['--font-sans'] = `'Inter', ${SANS}`
+    out['--font-display'] = `'Bricolage Grotesque', ${SANS}`
+  }
+  return out
+}
+
+/** Ayarlar bir hazır temaya uyuyorsa onun kimliği (yalnızca temanın belirlediği ayarlar karşılaştırılır). */
+export function presetOf(kit: ThemeKit, s: ThemeSettings) {
+  const match = (look: ThemePreset['look']) =>
+    (Object.keys(look) as (keyof ThemePreset['look'])[]).every((k) => look[k] === s[k])
+  return kit.presets?.find((p) => match(p.look))?.id ?? null
 }
 
 function load(kit: ThemeKit): ThemeSettings {

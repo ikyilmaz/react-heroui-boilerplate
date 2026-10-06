@@ -33,13 +33,16 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `success` / `warning` / `danger` only for status (status tags, decision results). No per-box colours.
 - **Theme.** Base theme changes go into `src/themes/synergy.css`; light / dark via `setColorMode` /
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`).
-  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo) and nav
-  positions in `theme.ts`, no presets): primary colour (swatches only, `COLORS`), radius, background
+  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo), nav
+  positions and four presets in `theme.ts`): presets (Kâğıt, Bulut, Keskin, Gün Batımı; each sets
+  the look keys only, never nav / motion; cards with a live preview drawn by writing `lookVars()`
+  onto the preview box; "Özel" when nothing matches), primary colour (swatches only, `COLORS`,
+  incl. Mercan and Zümrüt), radius, background
   (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
-  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default = theme file's Bricolage + Inter pair), density
+  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default = theme file's Bricolage + Inter pair; also Inter, Bricolage, Jakarta, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
   `useLook().trail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
-  Gri), card shadow (`--surface-shadow`, 5 levels, never `none`: it shares one `box-shadow` list with
+  Gri), card shadow (`--surface-shadow`, 6 levels incl. Renkli = accent-tinted glow, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation level /
   speed. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
