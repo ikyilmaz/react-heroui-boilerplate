@@ -12,7 +12,9 @@ import {
 } from '@/synergy/shared/hrData'
 import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
 import { CARD, IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
-import { DirectionalPanels, useNotify } from '@/synergy/ant/hr'
+import { useNotify } from '@/synergy/ant/hr'
+import { ContentSwitch } from '@/synergy/tabs/ContentSwitch'
+import { useDirection } from '@/synergy/tabs/motion'
 import { HrField } from '@/synergy/hr/HrFields'
 import { StatusBadge, UserAvatar } from '@/synergy/hr/HrCells'
 import { refLabel, type ModuleDef } from '@/synergy/hr/modules'
@@ -59,6 +61,8 @@ export function HrInspector({
   )
   const [tried, setTried] = useState(false)
   const [tab, setTab] = useState(def.sections[0]?.title ?? '')
+  // Bölüm değişiminin yönü: sağdaki bölüme sağdan, soldakine soldan gelir
+  const tabDir = useDirection(def.sections.findIndex((x) => x.title === tab))
   const [saved, setSaved] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const notify = useNotify()
@@ -202,12 +206,11 @@ export function HrInspector({
                   className={TABS}
                 />
                 {/* İçerik sekmenin yönüyle gelir: sağdaki sekmeye sağdan, soldakine soldan */}
-                <DirectionalPanels
-                  ids={def.sections.map((s) => s.title)}
-                  active={tab}
-                  render={(title) => body(def.sections.find((s) => s.title === title)!)}
-                  className="mt-4"
-                />
+                <Flex vertical role="tabpanel" className="relative mt-4 overflow-clip">
+                  <ContentSwitch id={tab} dir={tabDir} vertical>
+                    {body(def.sections.find((x) => x.title === tab)!)}
+                  </ContentSwitch>
+                </Flex>
               </>
             ) : (
               body(def.sections[0]!)

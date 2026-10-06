@@ -1,0 +1,1878 @@
+{
+  "meta": {
+    "date": "2026-10-06T16:53:34.604Z",
+    "chrome": "Chrome/154.0.8037.98",
+    "viewport": "1512x945@2",
+    "motion": "full",
+    "url": "http://localhost:4174/is-akislari/bekleyen/satin-alma/bekleyen-satin-alma-0",
+    "commit": "95683d9",
+    "trace": true
+  },
+  "normal": {
+    "A": {
+      "title": "Grup geçişi (g1 → g0)",
+      "label": "A",
+      "clickTask": 78.2,
+      "frames": 87,
+      "interval": 16.7,
+      "maxGap": 67,
+      "maxGap500": 67,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 3,
+      "counts": {
+        "gbcr": 125,
+        "offset": 124,
+        "client": 35,
+        "gcs": 17,
+        "timers": 10,
+        "raf": 29
+      },
+      "loaf": [
+        {
+          "start": 18452,
+          "dur": 85,
+          "block": 32,
+          "scripts": [
+            {
+              "dur": 79,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 20
+            }
+          ]
+        },
+        {
+          "start": 28069,
+          "dur": 87,
+          "block": 32,
+          "scripts": [
+            {
+              "dur": 80,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 18
+            }
+          ]
+        },
+        {
+          "start": 37619,
+          "dur": 77,
+          "block": 24,
+          "scripts": [
+            {
+              "dur": 71,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 20
+            }
+          ]
+        }
+      ],
+      "styleWrites": 584,
+      "styledElements": 15,
+      "attrWrites": 297,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 174
+        },
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.shrink-0",
+          "writes": 165
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 42
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 40
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 40
+        },
+        {
+          "el": "div.pointer-events-none.absolute.inset-0",
+          "writes": 29
+        },
+        {
+          "el": "div.block.ant-flex.css-oc1rc0",
+          "writes": 28
+        },
+        {
+          "el": "div.block.h-full.w-full",
+          "writes": 25
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 153,
+          "styleWrites": 396,
+          "attrWrites": 17
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 57,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1402,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 78.5,
+        "forcedStyle": 4,
+        "forcedLayout": 15.4,
+        "forced": 19.4,
+        "script": 58,
+        "layouts": 3,
+        "longTasks": [
+          78.5,
+          78.5,
+          79.6,
+          79.5,
+          71.1,
+          71.1
+        ],
+        "maxTask": 78.5
+      },
+      "render": {
+        "FunctionCall": 115.5,
+        "UpdateLayoutTree": 26.8,
+        "Layout": 17.1,
+        "FireAnimationFrame": 10.3,
+        "RunMicrotasks": 3.8,
+        "PrePaint": 4.4,
+        "Paint": 21.5,
+        "Layerize": 6.8,
+        "Commit": 7.4,
+        "UpdateLayer": 0.5,
+        "HitTest": 0.9
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 606
+    },
+    "B": {
+      "title": "Sekme geçişi: yan yana sekmeye",
+      "label": "B",
+      "clickTask": 120.6,
+      "frames": 85,
+      "interval": 16.7,
+      "maxGap": 100,
+      "maxGap500": 100,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 5,
+      "counts": {
+        "gbcr": 116,
+        "offset": 118,
+        "client": 44,
+        "gcs": 14,
+        "timers": 9,
+        "raf": 37
+      },
+      "loaf": [
+        {
+          "start": 20837,
+          "dur": 127,
+          "block": 71,
+          "scripts": [
+            {
+              "dur": 117,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 24
+            }
+          ]
+        },
+        {
+          "start": 30435,
+          "dur": 94,
+          "block": 36,
+          "scripts": [
+            {
+              "dur": 83,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 20
+            }
+          ]
+        },
+        {
+          "start": 40002,
+          "dur": 126,
+          "block": 70,
+          "scripts": [
+            {
+              "dur": 116,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 23
+            }
+          ]
+        }
+      ],
+      "styleWrites": 1051,
+      "styledElements": 26,
+      "attrWrites": 267,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 162
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 157
+        },
+        {
+          "el": "div#form-pane-g0:child-tedarikci-teklif-0.@container.min-w-0.shrink-0",
+          "writes": 126
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 70
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 62
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 98,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 38,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 48,
+          "styleWrites": 318,
+          "attrWrites": 9
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 50,
+          "styleWrites": 37,
+          "attrWrites": 1
+        }
+      },
+      "dom": 1403,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 116.2,
+        "forcedStyle": 9.8,
+        "forcedLayout": 13.4,
+        "forced": 23.2,
+        "script": 83.3,
+        "layouts": 2,
+        "longTasks": [
+          117,
+          116.9,
+          82.9,
+          82.9,
+          116.2,
+          116.2
+        ],
+        "maxTask": 116.2
+      },
+      "render": {
+        "FunctionCall": 129.6,
+        "UpdateLayoutTree": 36.6,
+        "Layout": 15,
+        "FireAnimationFrame": 13.4,
+        "RunMicrotasks": 3.1,
+        "PrePaint": 4.4,
+        "Paint": 16.4,
+        "Layerize": 10.8,
+        "Commit": 6.6,
+        "UpdateLayer": 0.6,
+        "HitTest": 0.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 408
+    },
+    "C": {
+      "title": "Sekme geçişi: tek formlu sekmeye",
+      "label": "C",
+      "clickTask": 108.3,
+      "frames": 86,
+      "interval": 16.7,
+      "maxGap": 100,
+      "maxGap500": 100,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 5,
+      "counts": {
+        "gbcr": 131,
+        "offset": 127,
+        "client": 36,
+        "gcs": 19,
+        "timers": 9,
+        "raf": 36
+      },
+      "loaf": [
+        {
+          "start": 23253,
+          "dur": 120,
+          "block": 57,
+          "scripts": [
+            {
+              "dur": 103,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 22
+            }
+          ]
+        },
+        {
+          "start": 32820,
+          "dur": 128,
+          "block": 63,
+          "scripts": [
+            {
+              "dur": 109,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 24
+            }
+          ]
+        },
+        {
+          "start": 42401,
+          "dur": 106,
+          "block": 53,
+          "scripts": [
+            {
+              "dur": 99,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 23
+            }
+          ]
+        }
+      ],
+      "styleWrites": 1056,
+      "styledElements": 26,
+      "attrWrites": 277,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 169
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 163
+        },
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.shrink-0",
+          "writes": 142
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 70
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 62
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 62
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 62
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 40
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 98,
+          "styleWrites": 369,
+          "attrWrites": 17
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 38,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 48,
+          "styleWrites": 2,
+          "attrWrites": 1
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 50,
+          "styleWrites": 3,
+          "attrWrites": 1
+        }
+      },
+      "dom": 1402,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 103,
+        "forcedStyle": 8.2,
+        "forcedLayout": 14.5,
+        "forced": 22.7,
+        "script": 78.3,
+        "layouts": 3,
+        "longTasks": [
+          103.1,
+          103,
+          109.5,
+          109.5,
+          99.3,
+          99.3
+        ],
+        "maxTask": 103.1
+      },
+      "render": {
+        "FunctionCall": 117.4,
+        "UpdateLayoutTree": 36.3,
+        "Layout": 16.6,
+        "FireAnimationFrame": 13.4,
+        "RunMicrotasks": 6.1,
+        "PrePaint": 4.7,
+        "Paint": 20.8,
+        "Layerize": 9.5,
+        "Commit": 6.2,
+        "UpdateLayer": 0.6,
+        "HitTest": 0.4
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 408
+    },
+    "D": {
+      "title": "Grup geçişi (g0 → g1)",
+      "label": "D",
+      "clickTask": 82,
+      "frames": 87,
+      "interval": 16.7,
+      "maxGap": 83,
+      "maxGap500": 83,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 4,
+      "counts": {
+        "gbcr": 133,
+        "offset": 120,
+        "client": 35,
+        "gcs": 17,
+        "timers": 10,
+        "raf": 29
+      },
+      "loaf": [
+        {
+          "start": 25669,
+          "dur": 92,
+          "block": 33,
+          "scripts": [
+            {
+              "dur": 80,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 18
+            }
+          ]
+        },
+        {
+          "start": 35219,
+          "dur": 102,
+          "block": 36,
+          "scripts": [
+            {
+              "dur": 84,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 18
+            }
+          ]
+        },
+        {
+          "start": 44802,
+          "dur": 96,
+          "block": 35,
+          "scripts": [
+            {
+              "dur": 83,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 17
+            }
+          ]
+        }
+      ],
+      "styleWrites": 470,
+      "styledElements": 17,
+      "attrWrites": 289,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 174
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 44
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.shrink-0",
+          "writes": 42
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 42
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 42
+        },
+        {
+          "el": "div.pointer-events-none.absolute.inset-0",
+          "writes": 29
+        },
+        {
+          "el": "div.block.ant-flex.css-oc1rc0",
+          "writes": 28
+        },
+        {
+          "el": "div.block.h-full.w-full",
+          "writes": 26
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 147,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 63,
+          "styleWrites": 273,
+          "attrWrites": 9
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1388,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 83,
+        "forcedStyle": 4.5,
+        "forcedLayout": 13.1,
+        "forced": 17.6,
+        "script": 62.5,
+        "layouts": 2,
+        "longTasks": [
+          80.3,
+          80.3,
+          84,
+          84,
+          83,
+          83
+        ],
+        "maxTask": 83
+      },
+      "render": {
+        "FunctionCall": 122.4,
+        "UpdateLayoutTree": 24.9,
+        "Layout": 14,
+        "FireAnimationFrame": 9.3,
+        "RunMicrotasks": 3.3,
+        "PrePaint": 3.3,
+        "Paint": 13.5,
+        "Layerize": 6.2,
+        "Commit": 5.6,
+        "UpdateLayer": 0.5,
+        "HitTest": 0.2
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 336
+    },
+    "E": {
+      "title": "Child aç, panel boyutu 3 (yeni sekme)",
+      "label": "E",
+      "clickTask": 90.9,
+      "frames": 84,
+      "interval": 16.7,
+      "maxGap": 83,
+      "maxGap500": 83,
+      "over20": 3,
+      "over20in500": 1,
+      "dropped": 7,
+      "counts": {
+        "gbcr": 129,
+        "offset": 125,
+        "client": 33,
+        "gcs": 15,
+        "timers": 31,
+        "raf": 60
+      },
+      "loaf": [
+        {
+          "start": 54885,
+          "dur": 100,
+          "block": 44,
+          "scripts": [
+            {
+              "dur": 92,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 9
+            }
+          ]
+        },
+        {
+          "start": 55936,
+          "dur": 79,
+          "block": 13,
+          "scripts": [
+            {
+              "dur": 62,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 15
+            }
+          ]
+        },
+        {
+          "start": 62617,
+          "dur": 101,
+          "block": 35,
+          "scripts": [
+            {
+              "dur": 84,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 8
+            }
+          ]
+        },
+        {
+          "start": 70351,
+          "dur": 104,
+          "block": 46,
+          "scripts": [
+            {
+              "dur": 95,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 8
+            }
+          ]
+        },
+        {
+          "start": 71418,
+          "dur": 64,
+          "block": 10,
+          "scripts": [
+            {
+              "dur": 58,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 14
+            }
+          ]
+        }
+      ],
+      "styleWrites": 780,
+      "styledElements": 22,
+      "attrWrites": 327,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 168
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 68
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 64
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 52
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 46
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 98,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 38,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 48,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 50,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1580,
+      "inputs": 58,
+      "forms": 5,
+      "trace": {
+        "clickTask": 91.9,
+        "forcedStyle": 4.4,
+        "forcedLayout": 3.7,
+        "forced": 8.2,
+        "script": 76.2,
+        "layouts": 3,
+        "longTasks": [
+          91.9,
+          91.9,
+          61.7,
+          61.7,
+          83.8,
+          83.8,
+          94.7,
+          94.7,
+          58.5,
+          58.5
+        ],
+        "maxTask": 91.9
+      },
+      "render": {
+        "FunctionCall": 167.6,
+        "UpdateLayoutTree": 54.2,
+        "Layout": 8.5,
+        "FireAnimationFrame": 12.6,
+        "RunMicrotasks": 3.3,
+        "PrePaint": 6.2,
+        "Paint": 56.1,
+        "Layerize": 15.2,
+        "Commit": 5.9,
+        "UpdateLayer": 2,
+        "HitTest": 0.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        2,
+        1,
+        2
+      ],
+      "hiddenWrites": 588
+    },
+    "F": {
+      "title": "Sekme geçişi: g1 kökü",
+      "label": "F",
+      "clickTask": 102.3,
+      "frames": 85,
+      "interval": 16.7,
+      "maxGap": 100,
+      "maxGap500": 100,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 5,
+      "counts": {
+        "gbcr": 141,
+        "offset": 108,
+        "client": 32,
+        "gcs": 19,
+        "timers": 7,
+        "raf": 36
+      },
+      "loaf": [
+        {
+          "start": 57884,
+          "dur": 117,
+          "block": 51,
+          "scripts": [
+            {
+              "dur": 99,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 18
+            }
+          ]
+        },
+        {
+          "start": 65617,
+          "dur": 108,
+          "block": 43,
+          "scripts": [
+            {
+              "dur": 91,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 16
+            }
+          ]
+        },
+        {
+          "start": 73351,
+          "dur": 119,
+          "block": 59,
+          "scripts": [
+            {
+              "dur": 107,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 17
+            }
+          ]
+        }
+      ],
+      "styleWrites": 959,
+      "styledElements": 20,
+      "attrWrites": 265,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 175
+        },
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 169
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 70
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 64
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 64
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 64
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 42
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 42
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 98,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 38,
+          "styleWrites": 264,
+          "attrWrites": 9
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:child-bakim-sozlesmesi-0": {
+          "hidden": false,
+          "inputWrites": 48,
+          "styleWrites": 2,
+          "attrWrites": 1
+        }
+      },
+      "dom": 1584,
+      "inputs": 58,
+      "forms": 5,
+      "trace": {
+        "clickTask": 98.7,
+        "forcedStyle": 4.8,
+        "forcedLayout": 12.3,
+        "forced": 17.2,
+        "script": 75.8,
+        "layouts": 3,
+        "longTasks": [
+          98.7,
+          98.7,
+          91.3,
+          91.3,
+          107.3,
+          107.2
+        ],
+        "maxTask": 98.7
+      },
+      "render": {
+        "FunctionCall": 123.5,
+        "UpdateLayoutTree": 30.3,
+        "Layout": 14.4,
+        "FireAnimationFrame": 14.1,
+        "RunMicrotasks": 4.6,
+        "PrePaint": 4.5,
+        "Paint": 16.4,
+        "Layerize": 10.9,
+        "Commit": 6.9,
+        "UpdateLayer": 0.6,
+        "HitTest": 0.3
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 555
+    },
+    "G": {
+      "title": "Child sekmesini kapat",
+      "label": "G",
+      "clickTask": 25.7,
+      "frames": 89,
+      "interval": 16.7,
+      "maxGap": 33,
+      "maxGap500": 33,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 1,
+      "counts": {
+        "gbcr": 50,
+        "offset": 41,
+        "client": 3,
+        "gcs": 9,
+        "timers": 4,
+        "raf": 11
+      },
+      "loaf": [
+        {
+          "start": 68034,
+          "dur": 58,
+          "block": 3,
+          "scripts": [
+            {
+              "dur": 51,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 0
+            }
+          ]
+        }
+      ],
+      "styleWrites": 24,
+      "styledElements": 3,
+      "attrWrites": 123,
+      "topStyled": [
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 13
+        },
+        {
+          "el": "div#form-pane-g1:child-bakim-sozlesmesi-0.@container.min-w-0.shrink-0",
+          "writes": 10
+        },
+        {
+          "el": "div.pointer-events-none.absolute.inset-0",
+          "writes": 1
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 49,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:child-bakim-sozlesmesi-0": {
+          "hidden": true,
+          "inputWrites": 0,
+          "styleWrites": 10,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1388,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 25.9,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 25.9,
+        "layouts": 0,
+        "longTasks": [
+          50.6,
+          50.6
+        ],
+        "maxTask": 25.9
+      },
+      "render": {
+        "FunctionCall": 32.9,
+        "UpdateLayoutTree": 4.1,
+        "FireAnimationFrame": 5.7,
+        "RunMicrotasks": 1.1,
+        "Layout": 0.2,
+        "PrePaint": 1,
+        "Paint": 0.5,
+        "Layerize": 2,
+        "Commit": 7,
+        "UpdateLayer": 0.1,
+        "HitTest": 1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        1,
+        0
+      ],
+      "hiddenWrites": 294
+    },
+    "H": {
+      "title": "Boşta 1.5 s",
+      "label": "H",
+      "clickTask": 0,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 0,
+        "gcs": 0,
+        "timers": 0,
+        "raf": 0
+      },
+      "loaf": [],
+      "styleWrites": 0,
+      "styledElements": 0,
+      "attrWrites": 0,
+      "topStyled": [],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1388,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": null,
+        "longTasks": [],
+        "maxTask": 0.1
+      },
+      "render": {},
+      "rounds": 2,
+      "loafPerRound": [
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    }
+  },
+  "throttled": {
+    "A": {
+      "title": "Grup geçişi (g1 → g0)",
+      "label": "A",
+      "clickTask": 250.2,
+      "frames": 77,
+      "interval": 16.7,
+      "maxGap": 300,
+      "maxGap500": 300,
+      "over20": 3,
+      "over20in500": 3,
+      "dropped": 19,
+      "counts": {
+        "gbcr": 125,
+        "offset": 124,
+        "client": 35,
+        "gcs": 17,
+        "timers": 10,
+        "raf": 28
+      },
+      "loaf": [
+        {
+          "start": 92149,
+          "dur": 252,
+          "block": 192,
+          "scripts": [
+            {
+              "dur": 231,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 71
+            }
+          ]
+        },
+        {
+          "start": 101567,
+          "dur": 326,
+          "block": 270,
+          "scripts": [
+            {
+              "dur": 307,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 92
+            }
+          ]
+        },
+        {
+          "start": 110949,
+          "dur": 231,
+          "block": 168,
+          "scripts": [
+            {
+              "dur": 208,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 68
+            }
+          ]
+        }
+      ],
+      "styleWrites": 456,
+      "styledElements": 15,
+      "attrWrites": 297,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 168
+        },
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.shrink-0",
+          "writes": 70
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 36
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 34
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 34
+        },
+        {
+          "el": "div.block.ant-flex.css-oc1rc0",
+          "writes": 27
+        },
+        {
+          "el": "div.pointer-events-none.absolute.inset-0",
+          "writes": 26
+        },
+        {
+          "el": "div.block.h-full.w-full",
+          "writes": 22
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 153,
+          "styleWrites": 291,
+          "attrWrites": 17
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 57,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1402,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 230.9,
+        "forcedStyle": 14.3,
+        "forcedLayout": 57,
+        "forced": 71.3,
+        "script": 146.9,
+        "layouts": 3,
+        "longTasks": [
+          231,
+          230.9,
+          307.2,
+          307.2,
+          208.3,
+          208.2
+        ],
+        "maxTask": 231
+      },
+      "render": {
+        "FunctionCall": 370.9,
+        "UpdateLayoutTree": 86.7,
+        "Layout": 59.5,
+        "FireAnimationFrame": 17.9,
+        "RunMicrotasks": 8.1,
+        "PrePaint": 11.5,
+        "Paint": 57.2,
+        "Layerize": 17.9,
+        "Commit": 5.9,
+        "UpdateLayer": 0.8,
+        "HitTest": 1.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 606
+    },
+    "B": {
+      "title": "Sekme geçişi: yan yana sekmeye",
+      "label": "B",
+      "clickTask": 358.7,
+      "frames": 70,
+      "interval": 16.7,
+      "maxGap": 400,
+      "maxGap500": 400,
+      "over20": 2,
+      "over20in500": 2,
+      "dropped": 23,
+      "counts": {
+        "gbcr": 116,
+        "offset": 118,
+        "client": 44,
+        "gcs": 14,
+        "timers": 9,
+        "raf": 35
+      },
+      "loaf": [
+        {
+          "start": 94499,
+          "dur": 358,
+          "block": 299,
+          "scripts": [
+            {
+              "dur": 334,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 85
+            }
+          ]
+        },
+        {
+          "start": 103900,
+          "dur": 422,
+          "block": 356,
+          "scripts": [
+            {
+              "dur": 391,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 94
+            }
+          ]
+        },
+        {
+          "start": 113299,
+          "dur": 348,
+          "block": 283,
+          "scripts": [
+            {
+              "dur": 317,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 80
+            }
+          ]
+        }
+      ],
+      "styleWrites": 836,
+      "styledElements": 26,
+      "attrWrites": 267,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 151
+        },
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 150
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 66
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 54
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 54
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 54
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 36
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 98,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 38,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 48,
+          "styleWrites": 187,
+          "attrWrites": 9
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 50,
+          "styleWrites": 9,
+          "attrWrites": 1
+        }
+      },
+      "dom": 1403,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 333.7,
+        "forcedStyle": 39.1,
+        "forcedLayout": 46.2,
+        "forced": 85.3,
+        "script": 237.6,
+        "layouts": 2,
+        "longTasks": [
+          333.7,
+          333.7,
+          390.7,
+          390.7,
+          317.4,
+          317.4
+        ],
+        "maxTask": 333.7
+      },
+      "render": {
+        "FunctionCall": 345.7,
+        "UpdateLayoutTree": 120.1,
+        "Layout": 49.6,
+        "FireAnimationFrame": 15.9,
+        "RunMicrotasks": 3.8,
+        "PrePaint": 9.1,
+        "Paint": 45.8,
+        "Layerize": 30.6,
+        "Commit": 5.6,
+        "UpdateLayer": 1.9,
+        "HitTest": 0.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 408
+    },
+    "C": {
+      "title": "Sekme geçişi: tek formlu sekmeye",
+      "label": "C",
+      "clickTask": 395.4,
+      "frames": 68,
+      "interval": 16.7,
+      "maxGap": 417,
+      "maxGap500": 417,
+      "over20": 2,
+      "over20in500": 1,
+      "dropped": 25,
+      "counts": {
+        "gbcr": 131,
+        "offset": 127,
+        "client": 36,
+        "gcs": 19,
+        "timers": 9,
+        "raf": 35
+      },
+      "loaf": [
+        {
+          "start": 96866,
+          "dur": 428,
+          "block": 371,
+          "scripts": [
+            {
+              "dur": 404,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 100
+            }
+          ]
+        },
+        {
+          "start": 106249,
+          "dur": 406,
+          "block": 336,
+          "scripts": [
+            {
+              "dur": 371,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 94
+            }
+          ]
+        },
+        {
+          "start": 115648,
+          "dur": 329,
+          "block": 260,
+          "scripts": [
+            {
+              "dur": 296,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 78
+            }
+          ]
+        }
+      ],
+      "styleWrites": 881,
+      "styledElements": 25,
+      "attrWrites": 277,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 163
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 157
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 68
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 36
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 29
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": true,
+          "inputWrites": 98,
+          "styleWrites": 241,
+          "attrWrites": 17
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 38,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 48,
+          "styleWrites": 2,
+          "attrWrites": 1
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 50,
+          "styleWrites": 3,
+          "attrWrites": 1
+        }
+      },
+      "dom": 1402,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 371,
+        "forcedStyle": 32.3,
+        "forcedLayout": 61.1,
+        "forced": 93.4,
+        "script": 261.4,
+        "layouts": 3,
+        "longTasks": [
+          404.2,
+          404.2,
+          371.1,
+          371,
+          296.1,
+          296.1
+        ],
+        "maxTask": 371.1
+      },
+      "render": {
+        "FunctionCall": 340.6,
+        "UpdateLayoutTree": 114.3,
+        "Layout": 59.8,
+        "FireAnimationFrame": 20.7,
+        "RunMicrotasks": 15.7,
+        "PrePaint": 12.1,
+        "Paint": 55.6,
+        "Layerize": 25.4,
+        "Commit": 5,
+        "UpdateLayer": 1.2,
+        "HitTest": 0.9
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 408
+    },
+    "D": {
+      "title": "Grup geçişi (g0 → g1)",
+      "label": "D",
+      "clickTask": 220.5,
+      "frames": 79,
+      "interval": 16.7,
+      "maxGap": 250,
+      "maxGap500": 250,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 14,
+      "counts": {
+        "gbcr": 133,
+        "offset": 120,
+        "client": 35,
+        "gcs": 17,
+        "timers": 10,
+        "raf": 38
+      },
+      "loaf": [
+        {
+          "start": 99217,
+          "dur": 262,
+          "block": 196,
+          "scripts": [
+            {
+              "dur": 236,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 61
+            }
+          ]
+        },
+        {
+          "start": 108615,
+          "dur": 222,
+          "block": 164,
+          "scripts": [
+            {
+              "dur": 205,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 55
+            }
+          ]
+        },
+        {
+          "start": 118015,
+          "dur": 216,
+          "block": 156,
+          "scripts": [
+            {
+              "dur": 198,
+              "fn": "",
+              "inv": "TimerHandler:setTimeout",
+              "forced": 52
+            }
+          ]
+        }
+      ],
+      "styleWrites": 428,
+      "styledElements": 17,
+      "attrWrites": 289,
+      "topStyled": [
+        {
+          "el": "div.ant-card.ring-(length:--border-width).ring-border",
+          "writes": 168
+        },
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 40
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 36
+        },
+        {
+          "el": "div.relative.flex.h-10",
+          "writes": 36
+        },
+        {
+          "el": "div.pointer-events-none.absolute.inset-0",
+          "writes": 28
+        },
+        {
+          "el": "div.block.ant-flex.css-oc1rc0",
+          "writes": 27
+        },
+        {
+          "el": "div.block.h-full.w-full",
+          "writes": 24
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.shrink-0",
+          "writes": 22
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 147,
+          "styleWrites": 3,
+          "attrWrites": 1
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": true,
+          "inputWrites": 63,
+          "styleWrites": 244,
+          "attrWrites": 9
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": true,
+          "inputWrites": 24,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": true,
+          "inputWrites": 25,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1388,
+      "inputs": 48,
+      "forms": 4,
+      "trace": {
+        "clickTask": 205.5,
+        "forcedStyle": 13.5,
+        "forcedLayout": 41.4,
+        "forced": 54.9,
+        "script": 145.5,
+        "layouts": 2,
+        "longTasks": [
+          236.4,
+          235.7,
+          205.5,
+          205.5,
+          198,
+          197.7
+        ],
+        "maxTask": 205.5
+      },
+      "render": {
+        "FunctionCall": 347,
+        "UpdateLayoutTree": 74,
+        "Layout": 47.2,
+        "FireAnimationFrame": 15.1,
+        "RunMicrotasks": 8.2,
+        "PrePaint": 8,
+        "Paint": 36.1,
+        "Layerize": 16.2,
+        "Commit": 5.8,
+        "UpdateLayer": 1.6,
+        "HitTest": 0.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 336
+    }
+  },
+  "errors": []
+}

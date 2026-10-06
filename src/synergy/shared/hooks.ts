@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigationType } from 'react-router'
 
 /** Medya sorgusu eşleşiyor mu; değişince yeniden çizer. */
@@ -67,6 +67,8 @@ export function useFillHeight(bottom = '1.5rem', root?: HTMLElement | null) {
   useLayoutEffect(() => {
     if (!el) return
     const measure = () => {
+      // Gizli form sekmesinde (display: none) kutu yok: son ölçü kalır, görününce yeniden çizilmez
+      if (!el.getClientRects().length) return
       const next = root
         ? {
             top: el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop,
@@ -85,8 +87,13 @@ export function useFillHeight(bottom = '1.5rem', root?: HTMLElement | null) {
     }
   }, [el, root])
   const total = box.height === null ? '100dvh' : `${box.height}px`
+  // Yalnızca öğe gelince yazılır: form sekmesi gizlenip görününce (`Activity` bağı kopartıp yeniden
+  // bağlar) durum değişip yeniden çizim olmasın
+  const attach = useCallback((node: HTMLElement | null) => {
+    if (node) setEl(node)
+  }, [])
   return [
-    setEl,
+    attach,
     { '--fill-h': `calc(${total} - ${box.top}px - ${bottom})` } as CSSProperties,
   ] as const
 }

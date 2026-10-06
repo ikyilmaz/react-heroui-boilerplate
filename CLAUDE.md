@@ -45,8 +45,9 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `COLORS`, incl. Mercan and Zümrüt), Köşe yuvarlaklığı (one 3-column grid of six options with a
   corner preview each: Az / Orta / Çok (`RADII` 0.25 / 0.5 / 1rem, presets use these too) on the
   top row round, on the bottom row squircle; the radius drives **everything**: cards, the dock and
-  start box (`CARD_RADIUS` in `ant/ui.tsx`, px via `useRadiusPx` for Motion), tab flares, and
-  circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
+  start box (`CARD_RADIUS` in `ant/ui.tsx`, px via `useRadiusPx` for Motion), tabs and their flares
+  (`TAB_RADIUS` in `tabs/shape.ts`: radius × 2, capped at 16px × `--corner-scale`, like the card's
+  32px cap), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
   `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (tab flares) and `--corner-scale`
   (radius and the radius caps — card 32px, field 14px… — × 1.6 so corners stay as full; caps read
   in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
@@ -61,11 +62,9 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
-  The Başlangıç selected category tab draws the card contour along its sides, top and concave
-  flares (radius × 2, like the tab's corners; two-layer radial-gradient rings, with `corner-shape`
-  support a `scoop` / concave-squircle box whose ring is two shadows) so the card's top line
-  continues into the tab; agenda / form tabs share `FLARES` (`AgendaTabs.tsx`) and start radius × 5
-  in (block corner + flare). Only the variables of changed settings are written
+  Every tab strip (form tabs, workflow boxes, Başlangıç categories) is the shared `tabs/` module (see
+  below); strips start container corner + tab radius in, so the selected sheet's flare lands on the
+  container's straight edge. Only the variables of changed settings are written
   inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position, trail and
   motion reach pages through `LookContext` / `useLook()`. Page transition is a fixed fade; the side
   info scroll fade is always on. No other runtime theming.
@@ -106,7 +105,9 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +
   `Drawer`.
 - `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
-  (5 category blocks + process groups ↔ "Süreç Talepleri").
+  (5 category tabs — the shared `TabStrip`, `sizing="fill"`, sheet on the card surface with the card
+  contour running down the flares into the card's top line (`SHEET_ON_SURFACE`); the work card is
+  their `tabpanel` — + process groups ↔ "Süreç Talepleri").
 - `dashboard/`: `model.ts` (widget kinds with supported sizes, presets, per-preset layout saved in the
   browser), `Dashboard.tsx` (react-grid-layout board with edit mode — drag, resize snapping to the
   nearest supported size, size menu, add / remove, reset — styled through Tailwind selectors on its
@@ -115,7 +116,8 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   "Bitti"); resize is free (min = smallest supported size), the view picks the nearest supported size;
   stacked below 960px), `widgets.tsx` (the extra widgets).
 - İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as agenda tabs incl.
-  Geçmiş (`AgendaTabs.tsx`), search / sort / date range on top of the process list, process list
+  Geçmiş (`AgendaTabs.tsx`: the shared `TabStrip` with links, `sizing="content"`, a "Geçmiş" group
+  label; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
   (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete). Nothing is
   selected automatically: `/is-akislari` (`WF_HOME`; breadcrumb, dock and app links) has no box
   selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
@@ -148,27 +150,33 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   its own tab, returning when the child closes), 3 opens a new tab, so a split pair becomes one
   grouped tab; a form has one open child at a time (opening another closes the previous one with
   its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3. The
-  rules live in `shared/formTabs.ts` (pure reducer); `FormTabs.tsx` draws agenda tabs with process
-  icons (sliding selection bar, `popLayout` tab moves, one easing); dragging the divider writes
-  `--split` straight onto the container (no React render, no Motion); child forms are built once
-  per id (`renderTab` must be a stable function). Layout changes use Motion's own layout animation
-  (FLIP, transform only, the form is laid out once at its final size): in tabs mode each form is a
-  sheet (transparent, so the tab container's `--tab-bg` shows between the cards; radius passed as px through `style` so Motion corrects the corners) with
-  `layout` + `layoutScroll`, its content `layout="position"` (scale undone, no stretched text). Both
-  re-measure only through `layoutDependency` when the pane was visible before and after the change,
-  so a `display: none` pane never animates from an empty box. A side pane opened in the same tab (1 /
-  2, "Yan yana aç") pushes in from the container edge while the opener shrinks; closing pushes it out
-  to its side (`usePresence`, `popLayout`) while the other grows; both start on Motion's frame loop
-  (`frame.update`) so their edges move together. A form shown alone fades in place when closed; tab
-  switches slide in from the tab's direction; swap / shift / ungroup / ratio (Home / End / Enter /
-  double click, arrows) are plain layout animations. The container clips with `overflow-clip` (not a
-  scroll container, so the page-mode sticky header still works) only in tabs mode and while the last
-  child leaves; a lone form (page mode) is not clipped, so edge cards keep their contour / shadow.
-  Clip only where needed: a clip box cuts the 1px card ring (drawn outside the card) and the card
+  rules live in `shared/formTabs.ts` (pure reducer); form groups (each request opened from the
+  Süreçler trail is its own group, max 6, colours `--group-1…6`, all groups' tabs shown, root tab
+  first and the group's drag handle) in `shared/formGroups.ts`. `FormTabs.tsx` composes the shared
+  `tabs/` module: `TabStrip` › `TabGroup` › `ViewTab` (a split tab shows both forms with a 1px
+  divider; the focused one gets the selected colour) and one `Pane` per open form. Forms are built
+  once per pane (`renderRoot` / `renderTab` stable, elements cached per key, `OpenChildContext`
+  stable per group), so a switch re-renders two tabs and two panes, never a form. Panes never move
+  in the DOM: each has a fixed absolute box (single = whole container, split = left / right by its
+  view's ratio, inline `width`); hidden ones are `content-visibility: hidden` (layout kept, scroll
+  kept, not focusable / painted; toggling restyles only the pane). Selecting, opening and closing
+  are transitions (`startTransition`), so the click task stays ~1–2 ms. Motion: panes `layout` +
+  `layoutScroll` measured only through `layoutDependency={moved}` (visible before and after), content
+  `layout="position"`, px radius via `style`. Tab switch: the new pane enters from the tab's
+  direction (30px + fade), the old one fades out in place underneath (`data-entering` replays the
+  header cue). A side pane opened in the same tab (1 / 2, "Yan yana aç") pushes in from the container
+  edge while the opener shrinks; closing pushes it out to its side while the other grows; both start
+  on Motion's frame loop (`frame.update`). A form shown alone fades in place when closed; swap /
+  shift / ungroup / ratio are layout animations; the divider slides with a MotionValue (it is not a
+  layout node). Dragging the divider writes the two panes' widths and its own `left` directly (no
+  React render, no Motion; `data-resizing` on the container). The container clips with
+  `overflow-clip` only in tabs mode and while the last child leaves; a lone form (page mode) is in
+  flow and not clipped. Clip only where needed: a clip box cuts the 1px card ring and the card
   shadow of anything at its edge (e.g. the İK edit card's slide wrapper clips only while its width
-  animates, via a motion value). Every form that enters (root, child,
-  Geri / İleri) shows `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay),
-  then crossfades in;
+  animates, via a motion value). Every form that enters (root, child, Geri / İleri) shows
+  `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay) while the form is
+  pre-rendered behind it in a hidden `<Activity>` (React renders it at idle priority, no effects);
+  at `LOAD_MS` it becomes visible and crossfades in once;
   `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
@@ -190,16 +198,88 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
-  `motion.tsx` (`Indicator`, `Count`, `SwitchPanel` — direction-aware content switch used by the
-  agenda tabs and Geri / İleri), `hr.tsx` (`useNotify`, `DirectionalPanels`).
+  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`).
+- `tabs/`: the one tab system (every strip and content switch in the app):
+  - `TabStrip.tsx`: `TabStrip` (scrolling row, WAI-ARIA tablist keyboard — arrows / Home / End move
+    focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag),
+    `TabGroup` (label or coloured dot + 2px underline, drags as a unit from its `handle` tab),
+    `Tab` (slot: hover pill, separator, context menu, drag), `TabButton` (role=tab button or `Link`;
+    the label reserves its semibold width so selecting never changes a tab's width), `TabClose`
+    (visible on the selected tab, on hover / focus otherwise; hidden in icon-only tabs). Chrome
+    model: flat inactive tabs, 1×16px separators hidden next to the selected / hovered / focused tab,
+    hover pill (group tint in coloured strips), one selected sheet that merges into the container
+    with concave flares; in coloured strips a 2px ring in the group colour that meets the underline,
+    label neutral semibold; single group no ring, label `text-accent-soft-foreground`. The sheet is
+    three transform-only parts (start cap, scaled middle, end cap; MotionValues, no React render)
+    placed from cached tab positions (read only in the ResizeObserver callback and when the
+    structure — `layoutKey` / per-group `layoutKey` — changes, never on a plain switch), snapped to
+    device pixels, middle 1 device px under the caps (no seams). Sizing `chrome`: tabs grow equally
+    from 0 and stop at their natural width (`max-w-max`), the selected one keeps `min(9rem, natural)`
+    (`--nat`), inactive ones go down to 2.75rem and become icon-only below 5rem (`data-compact`, both
+    written by the observer, no React render), then the strip scrolls; `content` natural width;
+    `fill` equal shares. Closing freeze: a pointer close while tabs are squeezed locks the row's width
+    (minus the closed tab or group) until the pointer leaves the strip (+40px below, +60px at the
+    end), 2s after a touch close, or the structure changes. Drag is manual (Motion `drag` measures on
+    every render): threshold 16 × width / 256, swap when the leading edge crosses the neighbour's
+    centre, one swap per move until the new order renders, auto-scroll within 48px of the edges,
+    spring back on release; touch uses the context menu.
+  - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`, `TAB_BG`, `SHEET` / `SHEET_RING` /
+    `SHEET_ON_SURFACE`, caps and middle, `PILL`, `SEPARATOR`, `GROUP_TONE` / `GROUP_LINE` /
+    `GROUP_DOT`). Flares: with `corner-shape` a `scoop` (squircle: `--corner-concave`) box whose ring is
+    a real border; otherwise (Safari, Firefox) a transparent box with a convex corner, the ring as its
+    border and the fill as an unoffset spread shadow clipped to the corner square. No radial-gradient
+    bands.
+  - `Panes.tsx`: `Pane` (memo; box, visibility, enter / leave / push / exit motions, skeleton +
+    hidden `<Activity>` pre-render) and `Divider`. `context.ts`: `OpenChildContext` / `useOpenChild`,
+    `PaneContext` / `useTabScroller` (value never changes on a switch).
+  - `ContentSwitch.tsx`: the direction-aware content switch (workflow boxes, İK sections): new
+    content enters 30px from the change's direction with a fade, the old one fades out in place
+    (`popLayout`). `motion.ts`: the single timing table (`useTabMotion`: sheet spring
+    `visualDuration` 0.3, content in 0.3s / out 0.16s, panes 0.42s, tab in 0.2s, shift 0.2s
+    ease-in-out, drop spring 0.25, strip 0.34 / 0.16, reveal 0.32; "Az" = fades only, "Kapalı" =
+    instant, speed divides durations) and `useDirection`.
+  - `widths.ts`: pure decisions with a self-check (`scripts/tabs/widths.test.mjs`): icon-only
+    threshold, narrow-tab top radius, drag threshold, swap target, closing freeze reducer.
 - `shared/`: data and logic — `workflowData.ts` (people, boxes, processes, events, columns, date
   buckets, menu apps, formatting), `decisions.ts` (in-memory store: `decide`, `markRead`,
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
   forward → `decide()`; `flow.tsx` draws the dialogs), `formTabs.ts` (form tab / split state),
-  `grid.ts`, `ThemePanel.tsx` /
+  `formGroups.ts` (form groups), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
+  `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
+
+## Performance rules (tab system; measured, see `docs/tab-system-rewrite.md`)
+
+- Measure on the production build: `npm run build && npx vite preview --port 4173 --strictPort`, then
+  `node scripts/perf/tabs.mjs --out <file>.json` (scenario A–H, median of 3 rounds, 4× throttled
+  A–D), `node scripts/perf/interactions.mjs` (interruptions, drag, keyboard, divider, closing freeze,
+  all animation levels), `node --test scripts/tabs/widths.test.mjs`, `node scripts/perf/shots.mjs`
+  (strip screenshots, both flare paths). Never report dev-server numbers.
+- A context value that changes on a tab switch re-renders every form: keep `LookContext`,
+  `SettingsContext`, antd `ConfigProvider` props (memoized config, constant `wave` / `card`),
+  `PaneContext` and `OpenChildContext` stable; build pane elements once per key; pass stable
+  callbacks / elements (`placeholder`) to `memo` parts.
+- Every Motion `layout` / `layoutId` node needs a `layoutDependency` that changes only when its box
+  can change (the dock too): a node without one snapshots on every render and forces a style /
+  layout flush before the commit. Don't nest `layout` nodes needlessly; never use `drag` on tabs.
+- Don't put a custom property that changes on interaction on a large container (it restyles the
+  whole subtree); write per-element inline values instead. Hiding big subtrees: `content-visibility`
+  is cheap, `visibility` / `pointer-events` / `inert` toggles restyle the whole subtree (5–20 ms per
+  form), `display: none` re-lays it out on show.
+- `<Activity mode="hidden">` re-runs every mount effect (antd's measuring, Motion remounts with
+  replayed entrance animations) on reveal: use it only for one-time pre-rendering, not for switching.
+- Hooks that keep an element in state must ignore ref detaches (`useAttach`) and skip measuring when
+  the element has no boxes (hidden pane), or hiding / showing re-renders the whole form.
+
+## Approved exceptions (tab system rewrite)
+
+The tab radius cap (`TAB_RADIUS`); 2px group ring and underline (card contours stay 1px); neutral
+selected label in coloured strips; separators and a hover pill on inactive tabs; close button only on
+hover / focus for inactive tabs; Chrome-style width distribution with icon-only tabs; the closing
+freeze; the shared `tabs/` module replacing `AgendaTabs.tsx`'s `FLARES` / `AGENDA_PAGE`, the
+StartPage category constants, `SwitchPanel` and `DirectionalPanels`.
 
 ## Gotchas
 
@@ -213,3 +293,6 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   follow its parent. antd hover backgrounds (text buttons) may need `hover:…!` to keep the design.
 - A popup opened from inside the start menu uses `getPopupContainer` to stay inside it; a portal on
   `body` would move focus out and close the menu.
+- Tailwind only sees literal class names: never build variants like `${PREFIX}:hidden` in a template.
+- antd `Flex` panes are `display: flex`: absolute panes need `block` too, or their content shrinks to
+  max-content width.

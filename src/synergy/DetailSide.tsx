@@ -103,11 +103,15 @@ export function useSidePanel(
 ): [SideState, (el: HTMLElement | null) => void] {
   const phone = useMediaQuery('(max-width: 639px)')
   const [box, setBox] = useState<HTMLElement | null>(null)
+  const attach = useAttach(setBox)
   const [roomy, setRoomy] = useState(true)
   const [viewH, setViewH] = useState<number | null>(null)
   useLayoutEffect(() => {
     if (!box) return
     const measure = () => {
+      // Gizli form sekmesinde (display: none) kutu yok: yerleşim olduğu gibi kalır (gizlenip
+      // görününce çekmeceye dönüp geri gelmesin, form yeniden çizilmesin)
+      if (!box.getClientRects().length) return
       // Tema paneli › Ölçek kök yazı boyunu değiştirir: rem her ölçümde yeniden okunur
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
       setRoomy(box.clientWidth >= COLUMN_MIN * rem)
@@ -157,7 +161,21 @@ export function useSidePanel(
     style: (viewH === null ? {} : { '--view-h': `${viewH}px` }) as CSSProperties,
     scroller,
   }
-  return [state, setBox]
+  return [state, attach]
+}
+
+/**
+ * Durumda tutulan öğenin bağlayıcısı: yalnızca öğe gelince yazar. Form sekmesi gizlenince (`Activity`)
+ * React bağı kopartır (`null`) ve görününce yeniden bağlar; ikisi de durumu değiştirip formu yeniden
+ * çizmesin. Bileşen gerçekten kalkınca durum da gider.
+ */
+function useAttach(set: (el: HTMLElement) => void) {
+  return useCallback(
+    (el: HTMLElement | null) => {
+      if (el) set(el)
+    },
+    [set],
+  )
 }
 
 /* --- Hareket ------------------------------------------------------------------------------------ */

@@ -75,7 +75,8 @@ import { CARD, CARD_RADIUS, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/
 import { useTransition } from '@/synergy/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useFillHeight, useMediaQuery, useRadiusPx, useScrolled } from '@/synergy/shared/hooks'
-import { FormTabs, useTabScroller } from '@/synergy/FormTabs'
+import { FormTabs } from '@/synergy/FormTabs'
+import { useTabScroller } from '@/synergy/tabs/context'
 import {
   MAX_GROUPS,
   activeForm,
@@ -230,17 +231,22 @@ export function DetailPage() {
     box?.id ?? null,
   )
 
-  // Her grubun kök formu; `LayoutGroup`: Süreçler izinin çizgisi (`layoutId`) yalnızca kendi grubunda
-  // kayar (Geri / İleri'de eski kökten yenisine), gruplar birbirine karışmaz
-  const renderRoot = (g: Group) => (
-    <LayoutGroup id={g.key}>
+  // Her grubun kök formu: FormTabs grup ve kök başına bir kez kurar (sabit işlev); olay işleyicileri
+  // son durumu okur (`actions`), kurulan form sekme geçişlerinde yeniden çizilmez
+  const actions = useRef({ openGroup, closeGroup })
+  useLayoutEffect(() => {
+    actions.current = { openGroup, closeGroup }
+  })
+  const renderRoot = useCallback(
+    (g: Group) => (
       <RootViewer
         group={g}
         onReplace={(id) => dispatch({ type: 'replace', key: g.key, root: id })}
-        onOpen={(id) => openGroup(id, g.nav)}
-        onClose={(leaveTo) => closeGroup(g.key, leaveTo)}
+        onOpen={(id) => actions.current.openGroup(id, g.nav)}
+        onClose={(leaveTo) => actions.current.closeGroup(g.key, leaveTo)}
       />
-    </LayoutGroup>
+    ),
+    [],
   )
 
   return (
@@ -250,7 +256,7 @@ export function DetailPage() {
         dispatch={dispatch}
         renderRoot={renderRoot}
         renderTab={renderChild}
-        placeholder={<FormSkeleton />}
+        placeholder={SKELETON}
         onCloseGroup={(key) => {
           const g = latest.current.groups.find((x) => x.key === key)
           const r = g && findRequest(g.tabs.rootId)
@@ -297,12 +303,15 @@ function RootViewer({
       r={r}
       process={process}
       caption={processCaption(process)}
-      nav={index >= 0 ? { ids, index, go: onReplace, open: onOpen, box } : undefined}
+      nav={index >= 0 ? { ids, index, go: onReplace, open: onOpen, box, scope: group.key } : undefined}
       onClose={() => onClose(processLink(box.id, process.id))}
       onDeleted={() => onClose(boxLink('taslaklar'))}
     />
   )
 }
+
+/** Form gelene kadar bölmede duran iskelet (sabit öğe: bölmeler yeniden çizilmesin). */
+const SKELETON = <FormSkeleton />
 
 /** Child sekmesinin görünümü (FormTabs her kimlik için bir kez çağırır; sabit işlev). */
 const renderChild = (id: string, close: () => void) => <ChildViewer id={id} onClose={close} />
@@ -335,6 +344,8 @@ interface DetailNav {
   open: (id: string) => void
   /** Listenin kutusu (ızgaranın sütunları ve tarih alanı). */
   box: Box
+  /** Grubun anahtarı: Süreçler izinin çizgisi (`layoutId`) yalnızca kendi grubunda kayar. */
+  scope: string
 }
 
 /** Tailwind sınıfları antd'nin kendi zemin / yazı rengini ezdiği için devre dışı hâli elle. */
@@ -560,8 +571,12 @@ function Viewer({
                 onPress={prev}
                 onStrip={solid}
               />
+              {/* `LayoutGroup` yalnızca izin çevresinde: çizgi Geri / İleri'de eski kökten yenisine
+                  kayar, gruplar birbirine karışmaz; formun diğer düzen öğeleri gruba girmez */}
               {nav && nav.ids.length > 1 && (
-                <NavTrail nav={nav} process={process} onStrip={solid} />
+                <LayoutGroup id={nav.scope}>
+                  <NavTrail nav={nav} process={process} onStrip={solid} />
+                </LayoutGroup>
               )}
               <NavButton
                 label={VIEWER_LABELS.next}

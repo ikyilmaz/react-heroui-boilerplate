@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { App, ConfigProvider, theme as antTheme, type ThemeConfig } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import trTR from 'antd/locale/tr_TR'
@@ -341,6 +341,10 @@ const FIELD = {
  */
 const BUTTON = { className: '[&.ant-btn-variant-outlined]:border-(length:--field-border-width)' }
 
+/** Dalga yok, kartlar çerçevesiz (sabit nesneler: ConfigProvider bağlamı her çizimde değişmesin). */
+const WAVE = { disabled: true }
+const CARD_CONFIG = { variant: 'borderless' } as const
+
 /**
  * Kabukta: antd bileşenlerine tema, Türkçe yerelleştirme ve düz varsayılanlar (alanlar kart
  * stiline göre dolgulu ya da çerçeveli, dalga yok). Tema değişkenleri çözülmeden (ilk kare) antd'nin kendi varsayılanlarıyla çizmek
@@ -350,15 +354,21 @@ export function AntTheme({ children }: { children: ReactNode }) {
   const vars = useResolved()
   const dark = useIsDark()
   const { motion, speed } = useLook()
-  const config = vars ? tokensOf(vars, dark, motion !== 'off', speed) : undefined
+  const animated = motion !== 'off'
+  // Yapılandırma yalnızca girdileri değişince yenilenir: ConfigProvider'a her çizimde yeni nesne
+  // gelirse bütün antd bileşenleri (gizli form sekmelerindekiler dahil) yeniden çizilir
+  const config = useMemo(
+    () => (vars ? tokensOf(vars, dark, animated, speed) : undefined),
+    [vars, dark, animated, speed],
+  )
   return (
     <StyleProvider layer>
       <ConfigProvider
         locale={trTR}
         theme={config}
         variant={vars && vars.fieldBorderWidth > 0 ? 'outlined' : 'filled'}
-        wave={{ disabled: true }}
-        card={{ variant: 'borderless' }}
+        wave={WAVE}
+        card={CARD_CONFIG}
         input={FIELD}
         textArea={FIELD}
         inputNumber={FIELD}

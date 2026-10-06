@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router'
 import {
@@ -839,11 +839,17 @@ const APP_CIRCLE =
  * - bulunulan yerin tonu ve adı seviye derinleşince / sığlaşınca renk geçişiyle el değiştirir;
  * - raf boyu StartDock'taki kapsayıcının `layout`ıyla aynı yayla büyür / küçülür.
  */
+/** Rafın düzen imzası: hapların sayısı, ikonları, bulunulan yerin adı, aktif uygulama, yerleşim. */
+function dockLayoutKey(crumbs: Crumb[], current: string | undefined, left: boolean, both: boolean) {
+  return JSON.stringify([crumbs.map((c) => [c.label, c.icon, !!c.href]), current, left, both])
+}
+
 function DockPath({
   crumbs,
   current,
   left,
   appOnly = false,
+  layoutKey,
 }: {
   crumbs: Crumb[]
   /** Raftaki aktif uygulama (yolun ilk seviyesi); rafta öğesi olmayan uygulamada yok. */
@@ -854,6 +860,8 @@ function DockPath({
    * Daha derindeyken hap uygulamanın kendisine götürür.
    */
   appOnly?: boolean
+  /** Rafın düzen imzası: hapların yeri yalnızca bu değişince ölçülür. */
+  layoutKey: string
 }) {
   const spring = useTransition(DOCK_SPRING)
   const style = TRAIL_STYLE[useLook().trail]
@@ -898,6 +906,7 @@ function DockPath({
         role="listitem"
         layout
         layoutId={appId ? `dock-app-${appId}` : undefined}
+        layoutDependency={layoutKey}
         // Soldaki hep üstte: daire 10, haplar 9, 8, 7…
         style={{ zIndex: 9 - i }}
         // Uygulama hapı dairesinden dönüşerek gelir; seviyeler öncekinin altından kayarak çıkar
@@ -938,6 +947,7 @@ function DockPath({
         role="listitem"
         layout
         layoutId={`dock-app-${e.id}`}
+        layoutDependency={layoutKey}
         initial={false}
         transition={spring}
         className="relative flex shrink-0"
@@ -1129,9 +1139,17 @@ function Chrome({
     </Link>
   )
 
-  // Raf (StartMenu): başlat ve konum (Başlangıç'tan çıkan haplar, ardından diğer uygulamalar)
+  // Raf (StartMenu): başlat ve konum (Başlangıç'tan çıkan haplar, ardından diğer uygulamalar).
+  // Rafın düzeni yalnızca yol, aktif uygulama ve yerleşim değişince ölçülür (Motion
+  // `layoutDependency`): kabuk başka bir nedenle çizilince (adres, bağlam) raf ölçülmez
+  const dockKey = dockLayoutKey(crumbs, current, left, both)
   const dock = (
-    <StartDock place={place} actions={actions} location={<PanelLocation crumbs={crumbs} />}>
+    <StartDock
+      place={place}
+      actions={actions}
+      layoutKey={dockKey}
+      location={<PanelLocation crumbs={crumbs} />}
+    >
       {(start) => (
         <>
           {start}
@@ -1139,7 +1157,13 @@ function Chrome({
             orientation={left ? 'horizontal' : 'vertical'}
             className={left ? 'my-1 w-6 min-w-0' : 'top-0 mx-1 h-6'}
           />
-          <DockPath crumbs={crumbs} current={current} left={left} appOnly={both} />
+          <DockPath
+            crumbs={crumbs}
+            current={current}
+            left={left}
+            appOnly={both}
+            layoutKey={dockKey}
+          />
         </>
       )}
     </StartDock>
@@ -1276,12 +1300,15 @@ function Shell() {
   const [panel, setPanel] = useState<'news' | 'chat' | null>(null)
 
   const current = appOf(pathname)
+  // Sabit bağlam değeri: kabuk her çizildiğinde (konum değişince) okuyanlar yeniden çizilmesin
+  const settingsControl = useMemo(
+    () => ({ settings: theme, update: setTheme, openPanel: () => setThemeOpen(true) }),
+    [theme, setTheme],
+  )
 
   return (
     <LookContext value={look}>
-      <SettingsContext
-        value={{ settings: theme, update: setTheme, openPanel: () => setThemeOpen(true) }}
-      >
+      <SettingsContext value={settingsControl}>
         <MotionScope>
           {/* antd bileşenlerinin teması (form sayfası; kabuğun tema değişkenlerinden, ant/theme.tsx) */}
           <AntTheme>

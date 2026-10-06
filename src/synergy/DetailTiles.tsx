@@ -60,7 +60,7 @@ import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
 import { CARD, cn, IC, StatusTag, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { FormField, LongField } from '@/synergy/FormFields'
-import { useOpenChild } from '@/synergy/FormTabs'
+import { useOpenChild } from '@/synergy/tabs/context'
 
 /* Flow Viewer karoları (antd): form (ve child form bağlantıları), ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
 

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 
 /* -------------------------------------------------------------------------------------------------
  * Tema paneli ayarları
@@ -630,21 +638,22 @@ export function useThemeSettings(kit: ThemeKit) {
     return () => clear(root)
   }, [settings, dark, kit, motion])
 
-  const update = (next: ThemeSettings) => {
-    setSettings(next)
-    try {
-      if (same(next, kit.defaults)) localStorage.removeItem(kit.storageKey)
-      else localStorage.setItem(kit.storageKey, JSON.stringify(next))
-    } catch {
-      // Depolama kapalıysa ayarlar yalnızca bu oturumda
-    }
-  }
+  const update = useCallback(
+    (next: ThemeSettings) => {
+      setSettings(next)
+      try {
+        if (same(next, kit.defaults)) localStorage.removeItem(kit.storageKey)
+        else localStorage.setItem(kit.storageKey, JSON.stringify(next))
+      } catch {
+        // Depolama kapalıysa ayarlar yalnızca bu oturumda
+      }
+    },
+    [kit],
+  )
 
-  const look: Look = {
-    nav: settings.nav,
-    trail: settings.trail,
-    motion,
-    speed: settings.motionSpeed,
-  }
+  // Bağlamın değeri yalnızca görünüm değişince yenilenir: kabuk her çizildiğinde (ör. konum
+  // değişince) `useLook` okuyan her bileşen, gizli form sekmeleri dahil, yeniden çizilmesin
+  const { nav, trail, motionSpeed: speed } = settings
+  const look = useMemo<Look>(() => ({ nav, trail, motion, speed }), [nav, trail, motion, speed])
   return [settings, update, look] as const
 }

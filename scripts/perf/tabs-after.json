@@ -1,0 +1,1369 @@
+{
+  "meta": {
+    "date": "2026-10-06T16:39:19.621Z",
+    "chrome": "Chrome/154.0.8037.98",
+    "viewport": "1512x945@2",
+    "motion": "full",
+    "url": "http://localhost:4173/is-akislari/bekleyen/satin-alma/bekleyen-satin-alma-0",
+    "commit": "95683d9",
+    "trace": true
+  },
+  "normal": {
+    "A": {
+      "title": "Grup geçişi (g1 → g0)",
+      "label": "A",
+      "clickTask": 0.6,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 1,
+        "gcs": 0,
+        "timers": 1,
+        "raf": 41
+      },
+      "loaf": [],
+      "styleWrites": 277,
+      "styledElements": 5,
+      "attrWrites": 18,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 149
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.rounded-2xl",
+          "writes": 11
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 149,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 0.9,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 0.9,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 10.7
+      },
+      "render": {
+        "FunctionCall": 30.4,
+        "RunMicrotasks": 3.7,
+        "UpdateLayoutTree": 31.9,
+        "Layout": 1.1,
+        "FireAnimationFrame": 7.4,
+        "PrePaint": 4.4,
+        "Paint": 9.8,
+        "Layerize": 12.4,
+        "Commit": 6.1,
+        "UpdateLayer": 0.4,
+        "HitTest": 0.4
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "B": {
+      "title": "Sekme geçişi: yan yana sekmeye",
+      "label": "B",
+      "clickTask": 0.7,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 24,
+        "offset": 8,
+        "client": 7,
+        "gcs": 6,
+        "timers": 1,
+        "raf": 38
+      },
+      "loaf": [],
+      "styleWrites": 862,
+      "styledElements": 16,
+      "attrWrites": 21,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g0:child-tedarikci-teklif-0.@container.min-w-0.rounded-2xl",
+          "writes": 160
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 150
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 66
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div#form-pane-g0:child-tedarikci-karti-0.@container.min-w-0.rounded-2xl",
+          "writes": 43
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 160,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 43,
+          "attrWrites": 3
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1626,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 1.1,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1.1,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 13.5
+      },
+      "render": {
+        "FunctionCall": 54.4,
+        "RunMicrotasks": 6,
+        "FireAnimationFrame": 14.2,
+        "PrePaint": 5.2,
+        "Layerize": 12.6,
+        "Commit": 8,
+        "UpdateLayoutTree": 39,
+        "Layout": 1.7,
+        "Paint": 12.4,
+        "UpdateLayer": 0.5,
+        "HitTest": 0.3
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "C": {
+      "title": "Sekme geçişi: tek formlu sekmeye",
+      "label": "C",
+      "clickTask": 1.1,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 25,
+        "offset": 13,
+        "client": 7,
+        "gcs": 7,
+        "timers": 1,
+        "raf": 38
+      },
+      "loaf": [],
+      "styleWrites": 791,
+      "styledElements": 16,
+      "attrWrites": 22,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 157
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 150
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 66
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 36
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 36
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 157,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 2.4,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 2.4,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 12.1
+      },
+      "render": {
+        "FunctionCall": 53.8,
+        "RunMicrotasks": 5.9,
+        "FireAnimationFrame": 14.7,
+        "PrePaint": 5.5,
+        "Layerize": 13.2,
+        "Commit": 7.7,
+        "UpdateLayoutTree": 44.8,
+        "Layout": 2.2,
+        "Paint": 13.4,
+        "UpdateLayer": 0.4,
+        "HitTest": 0.6
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "D": {
+      "title": "Grup geçişi (g0 → g1)",
+      "label": "D",
+      "clickTask": 0.6,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 1,
+        "gcs": 0,
+        "timers": 1,
+        "raf": 41
+      },
+      "loaf": [],
+      "styleWrites": 167,
+      "styledElements": 5,
+      "attrWrites": 18,
+      "topStyled": [
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.rounded-2xl",
+          "writes": 39
+        },
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 11
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 39,
+          "attrWrites": 3
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 1,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 14.8
+      },
+      "render": {
+        "FunctionCall": 38.4,
+        "FireAnimationFrame": 8.1,
+        "PrePaint": 4.1,
+        "Layerize": 11.2,
+        "Commit": 7.1,
+        "RunMicrotasks": 3.6,
+        "UpdateLayoutTree": 32.6,
+        "Layout": 6.2,
+        "Paint": 9.7,
+        "UpdateLayer": 0.4,
+        "HitTest": 0.4
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "E": {
+      "title": "Child aç, panel boyutu 3 (yeni sekme)",
+      "label": "E",
+      "clickTask": 1.1,
+      "frames": 89,
+      "interval": 16.7,
+      "maxGap": 33,
+      "maxGap500": 17,
+      "over20": 1,
+      "over20in500": 0,
+      "dropped": 1,
+      "counts": {
+        "gbcr": 47,
+        "offset": 46,
+        "client": 30,
+        "gcs": 20,
+        "timers": 24,
+        "raf": 63
+      },
+      "loaf": [
+        {
+          "start": 55581,
+          "dur": 59,
+          "block": 0,
+          "scripts": [
+            {
+              "dur": 42,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 21
+            }
+          ]
+        },
+        {
+          "start": 63331,
+          "dur": 56,
+          "block": 0,
+          "scripts": [
+            {
+              "dur": 39,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 19
+            }
+          ]
+        },
+        {
+          "start": 71066,
+          "dur": 51,
+          "block": 0,
+          "scripts": [
+            {
+              "dur": 39,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 18
+            }
+          ]
+        }
+      ],
+      "styleWrites": 760,
+      "styledElements": 23,
+      "attrWrites": 85,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 156
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 66
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 62
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div#form-pane-g1:child-bakim-sozlesmesi-0.@container.min-w-0.rounded-2xl",
+          "writes": 44
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 37
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        }
+      },
+      "dom": 1903,
+      "inputs": 64,
+      "forms": 5,
+      "trace": {
+        "clickTask": 2,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 2,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 39.5
+      },
+      "render": {
+        "FunctionCall": 122.3,
+        "RunMicrotasks": 5.3,
+        "FireAnimationFrame": 13.7,
+        "PrePaint": 6.1,
+        "Layerize": 14.1,
+        "Commit": 6.1,
+        "UpdateLayoutTree": 68.5,
+        "Layout": 13.9,
+        "Paint": 49.8,
+        "UpdateLayer": 2,
+        "HitTest": 0.1
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        1,
+        1
+      ],
+      "hiddenWrites": 0
+    },
+    "F": {
+      "title": "Sekme geçişi: g1 kökü",
+      "label": "F",
+      "clickTask": 0.6,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 26,
+        "offset": 15,
+        "client": 8,
+        "gcs": 8,
+        "timers": 1,
+        "raf": 37
+      },
+      "loaf": [],
+      "styleWrites": 621,
+      "styledElements": 16,
+      "attrWrites": 19,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 156
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 66
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.rounded-2xl",
+          "writes": 41
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 29
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 29
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 41,
+          "attrWrites": 3
+        },
+        "form-pane-g1:child-bakim-sozlesmesi-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        }
+      },
+      "dom": 1896,
+      "inputs": 64,
+      "forms": 5,
+      "trace": {
+        "clickTask": 1,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 14.4
+      },
+      "render": {
+        "FunctionCall": 43.1,
+        "RunMicrotasks": 5.4,
+        "UpdateLayoutTree": 31.7,
+        "Layout": 5.4,
+        "FireAnimationFrame": 12.1,
+        "PrePaint": 3.5,
+        "Paint": 8.5,
+        "Layerize": 7.9,
+        "Commit": 7.7,
+        "UpdateLayer": 0.3,
+        "HitTest": 0.6
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "G": {
+      "title": "Child sekmesini kapat",
+      "label": "G",
+      "clickTask": 1.1,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 31,
+        "offset": 16,
+        "client": 8,
+        "gcs": 10,
+        "timers": 1,
+        "raf": 15
+      },
+      "loaf": [],
+      "styleWrites": 26,
+      "styledElements": 2,
+      "attrWrites": 1,
+      "topStyled": [
+        {
+          "el": "div.ant-dropdown-trigger.group/tab.relative",
+          "writes": 25
+        },
+        {
+          "el": "div.relative.flex.h-(--tab-h)",
+          "writes": 1
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:child-bakim-sozlesmesi-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 2,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 2,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 10.4
+      },
+      "render": {
+        "FunctionCall": 33.9,
+        "RunMicrotasks": 3.4,
+        "FireAnimationFrame": 5.4,
+        "PrePaint": 0.9,
+        "Layerize": 2.1,
+        "Commit": 5.8,
+        "UpdateLayoutTree": 12.5,
+        "Layout": 0.6,
+        "Paint": 0.5,
+        "UpdateLayer": 0.1,
+        "HitTest": 0.3
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "H": {
+      "title": "Boşta 1.5 s",
+      "label": "H",
+      "clickTask": 0,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 0,
+        "gcs": 0,
+        "timers": 0,
+        "raf": 0
+      },
+      "loaf": [],
+      "styleWrites": 0,
+      "styledElements": 0,
+      "attrWrites": 0,
+      "topStyled": [],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": null,
+        "longTasks": [],
+        "maxTask": 0.1
+      },
+      "render": {},
+      "rounds": 2,
+      "loafPerRound": [
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    }
+  },
+  "throttled": {
+    "A": {
+      "title": "Grup geçişi (g1 → g0)",
+      "label": "A",
+      "clickTask": 0.7,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 17,
+      "maxGap500": 17,
+      "over20": 0,
+      "over20in500": 0,
+      "dropped": 0,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 1,
+        "gcs": 0,
+        "timers": 1,
+        "raf": 42
+      },
+      "loaf": [],
+      "styleWrites": 288,
+      "styledElements": 5,
+      "attrWrites": 18,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 157
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 40
+        },
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.rounded-2xl",
+          "writes": 12
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 157,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 12,
+          "attrWrites": 2
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 1.1,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1.1,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 18
+      },
+      "render": {
+        "FunctionCall": 74.3,
+        "RunMicrotasks": 6.3,
+        "FireAnimationFrame": 10.1,
+        "PrePaint": 10.8,
+        "Commit": 4.6,
+        "UpdateLayoutTree": 60.4,
+        "Layout": 2.9,
+        "Paint": 22.5,
+        "Layerize": 31.7,
+        "UpdateLayer": 0.2,
+        "HitTest": 0.5
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "B": {
+      "title": "Sekme geçişi: yan yana sekmeye",
+      "label": "B",
+      "clickTask": 0.8,
+      "frames": 89,
+      "interval": 16.7,
+      "maxGap": 33,
+      "maxGap500": 33,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 1,
+      "counts": {
+        "gbcr": 24,
+        "offset": 8,
+        "client": 7,
+        "gcs": 6,
+        "timers": 1,
+        "raf": 41
+      },
+      "loaf": [],
+      "styleWrites": 850,
+      "styledElements": 16,
+      "attrWrites": 21,
+      "topStyled": [
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 150
+        },
+        {
+          "el": "div#form-pane-g0:child-tedarikci-teklif-0.@container.min-w-0.rounded-2xl",
+          "writes": 149
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 68
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 60
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 56
+        },
+        {
+          "el": "div#form-pane-g0:child-tedarikci-karti-0.@container.min-w-0.rounded-2xl",
+          "writes": 39
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 149,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 39,
+          "attrWrites": 3
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1626,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 0.9,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 0.9,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 31.3
+      },
+      "render": {
+        "FunctionCall": 94.8,
+        "RunMicrotasks": 9.5,
+        "FireAnimationFrame": 21.5,
+        "PrePaint": 11.7,
+        "Layerize": 29.4,
+        "Commit": 10.2,
+        "UpdateLayoutTree": 122.4,
+        "Layout": 3,
+        "Paint": 35.2,
+        "UpdateLayer": 0.9,
+        "HitTest": 0.7
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "C": {
+      "title": "Sekme geçişi: tek formlu sekmeye",
+      "label": "C",
+      "clickTask": 0.8,
+      "frames": 90,
+      "interval": 16.7,
+      "maxGap": 33,
+      "maxGap500": 33,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 1,
+      "counts": {
+        "gbcr": 25,
+        "offset": 13,
+        "client": 7,
+        "gcs": 7,
+        "timers": 1,
+        "raf": 40
+      },
+      "loaf": [],
+      "styleWrites": 802,
+      "styledElements": 16,
+      "attrWrites": 22,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 157
+        },
+        {
+          "el": "div.flex.shrink-0.h-[52px]",
+          "writes": 156
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 68
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.relative.flex.shrink-0",
+          "writes": 58
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 36
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 36
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 157,
+          "attrWrites": 3
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 1.6,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1.6,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 27.5
+      },
+      "render": {
+        "FunctionCall": 96,
+        "RunMicrotasks": 11.7,
+        "FireAnimationFrame": 22.5,
+        "PrePaint": 12.8,
+        "Commit": 4.5,
+        "UpdateLayoutTree": 121.6,
+        "Layout": 6.1,
+        "Paint": 29.9,
+        "Layerize": 31.8,
+        "UpdateLayer": 0.8,
+        "HitTest": 0.8
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        0,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    },
+    "D": {
+      "title": "Grup geçişi (g0 → g1)",
+      "label": "D",
+      "clickTask": 0.9,
+      "frames": 89,
+      "interval": 16.7,
+      "maxGap": 33,
+      "maxGap500": 33,
+      "over20": 1,
+      "over20in500": 1,
+      "dropped": 1,
+      "counts": {
+        "gbcr": 0,
+        "offset": 0,
+        "client": 1,
+        "gcs": 0,
+        "timers": 1,
+        "raf": 41
+      },
+      "loaf": [
+        {
+          "start": 98846,
+          "dur": 50,
+          "block": 0,
+          "scripts": [
+            {
+              "dur": 5,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 0
+            },
+            {
+              "dur": 17,
+              "fn": "D",
+              "inv": "MessagePort.onmessage",
+              "forced": 10
+            }
+          ]
+        }
+      ],
+      "styleWrites": 167,
+      "styledElements": 5,
+      "attrWrites": 18,
+      "topStyled": [
+        {
+          "el": "div#form-pane-g1:bekleyen-satin-alma-1.@container.min-w-0.rounded-2xl",
+          "writes": 39
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 39
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 39
+        },
+        {
+          "el": "div.absolute.top-0.start-0",
+          "writes": 39
+        },
+        {
+          "el": "div#form-pane-g0:bekleyen-satin-alma-0.@container.min-w-0.rounded-2xl",
+          "writes": 11
+        }
+      ],
+      "churn": {
+        "form-pane-g0:bekleyen-satin-alma-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 11,
+          "attrWrites": 2
+        },
+        "form-pane-g0:child-tedarikci-teklif-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g0:child-tedarikci-karti-0": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 0,
+          "attrWrites": 0
+        },
+        "form-pane-g1:bekleyen-satin-alma-1": {
+          "hidden": false,
+          "inputWrites": 0,
+          "styleWrites": 39,
+          "attrWrites": 3
+        }
+      },
+      "dom": 1605,
+      "inputs": 52,
+      "forms": 4,
+      "trace": {
+        "clickTask": 1.4,
+        "forcedStyle": 0,
+        "forcedLayout": 0,
+        "forced": 0,
+        "script": 1.4,
+        "layouts": 0,
+        "longTasks": [],
+        "maxTask": 28.2
+      },
+      "render": {
+        "FunctionCall": 81.1,
+        "RunMicrotasks": 3.9,
+        "FireAnimationFrame": 8.5,
+        "PrePaint": 8.4,
+        "Layerize": 24.1,
+        "Commit": 8.5,
+        "UpdateLayoutTree": 54.6,
+        "Layout": 14.2,
+        "Paint": 24.6,
+        "UpdateLayer": 2.6,
+        "HitTest": 0.7
+      },
+      "rounds": 3,
+      "loafPerRound": [
+        1,
+        0,
+        0
+      ],
+      "hiddenWrites": 0
+    }
+  },
+  "errors": []
+}

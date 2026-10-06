@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, MotionConfig, useIsPresent, type Transition } from 'framer-motion'
 import { useOutlet } from 'react-router'
 import { MotionFlex, cn } from '@/synergy/ant/ui'
 import { useLook } from '@/synergy/shared/themeSettings'
+import { INSTANT, scaleTransition } from '@/synergy/shared/transition'
 
 /* -------------------------------------------------------------------------------------------------
  * Animasyon düzeni
@@ -16,7 +17,6 @@ import { useLook } from '@/synergy/shared/themeSettings'
 
 /** Seçim göstergesi yayı (hızlı, hafif esnek). */
 const SPRING: Transition = { type: 'spring', stiffness: 520, damping: 40, mass: 0.9 }
-const INSTANT: Transition = { duration: 0 }
 
 /** Kabukta: framer-motion'ı düzeye bağlar (az / kapalıda yerleşim ve kayma yok). */
 export function MotionScope({ children }: { children: ReactNode }) {
@@ -32,25 +32,19 @@ export function MotionScope({ children }: { children: ReactNode }) {
 }
 
 /**
- * Geçişi hız çarpanıyla ölçekler (tema paneli › Animasyon hızı): süre ve gecikme bölünür; yayda
- * sertlik hızın karesiyle, sönüm hızla çarpılır (yayın karakteri korunur, süresi ölçeklenir).
+ * Düzeye ve hıza göre geçiş: kapalıda anında. Aynı girdide aynı nesne döner (geçişi prop olarak
+ * alan `memo` bileşenleri her çizimde yeniden çizilmesin); girdi değerine göre (nesne kimliği değil)
+ * karşılaştırılır, satır içi nesne de verilebilir.
  */
-function scaleTransition(t: Transition, speed: number): Transition {
-  if (speed === 1) return t
-  const out = { ...t } as Record<string, unknown>
-  if (out.type === 'spring' && out.duration == null) {
-    out.stiffness = ((out.stiffness as number) ?? 100) * speed * speed
-    out.damping = ((out.damping as number) ?? 10) * speed
-  }
-  if (typeof out.duration === 'number') out.duration = out.duration / speed
-  if (typeof out.delay === 'number') out.delay = out.delay / speed
-  return out as Transition
-}
-
-/** Düzeye ve hıza göre geçiş: kapalıda anında. */
 export function useTransition(t: Transition = SPRING): Transition {
   const { motion: level, speed } = useLook()
-  return level === 'off' ? INSTANT : scaleTransition(t, speed)
+  const key = t === SPRING ? '' : JSON.stringify(t)
+  return useMemo(
+    () => (level === 'off' ? INSTANT : scaleTransition(t, speed)),
+    // `t` değeriyle (`key`) izlenir
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [level, speed, key],
+  )
 }
 
 /* --- Liste çıkışı ------------------------------------------------------------------------------ */

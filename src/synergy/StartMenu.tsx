@@ -139,11 +139,14 @@ export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
 export function StartDock({
   place,
   actions,
+  layoutKey,
   location,
   children,
 }: {
   place: ChromePlace
   actions: StartActions
+  /** Rafın içeriğinin düzen imzası: raf yalnızca bu değişince ölçülür (Motion `layoutDependency`). */
+  layoutKey?: string
   /** Başlat kutusundaki "Buradasınız" satırı (bulunulan yolun tamamı). */
   location?: ReactNode
   children: (start: ReactNode) => ReactNode
@@ -219,6 +222,7 @@ export function StartDock({
             key="dock"
             ref={dockRef}
             layoutId="start-menu"
+            layoutDependency={layoutKey}
             transition={morph}
             style={radius}
             role="navigation"
@@ -230,6 +234,7 @@ export function StartDock({
               {...content}
               // Raf boyu değişince (alt seviyeler eklenince) içerik ezilmesin; raf ile aynı yay
               layout
+              layoutDependency={layoutKey}
               transition={morph}
               className={cn(
                 'relative flex gap-1',

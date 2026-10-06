@@ -76,6 +76,8 @@ import {
 import { CARD, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { GRID_ROW, GRID_TABLE } from '@/synergy/ant/grid'
 import { Count, Indicator } from '@/synergy/ant/motion'
+import { SHEET_ON_SURFACE } from '@/synergy/tabs/shape'
+import { Tab, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { FastMenu } from '@/synergy/rows'
 import { useFlow } from '@/synergy/flow'
 import { useMediaQuery } from '@/synergy/shared/hooks'
@@ -111,36 +113,6 @@ const IC_BLOCK = { ...IC, size: 20 } as const
 
 const H2 = 'm-0! font-display text-lg font-semibold'
 const ITEM = 'px-3 py-1 transition-colors'
-
-/**
- * Kategori sekmesi (Chrome sekmeleri gibi): seçili sekme iş bloğuyla aynı yüzeyde, alttan ona
- * kaynaşır; diğerleri zeminde saydam, üzerine gelince soluk. Birincil renk ikon ve sayıda.
- */
-const CATEGORY =
-  'relative h-16 w-full min-w-0 justify-start gap-2 overflow-hidden rounded-t-2xl rounded-b-none px-5 shadow-none'
-
-/**
- * Seçili sekme (Chrome sekmeleri gibi): yüzey renginde, yanlarda ve üstte kartın konturu
- * (`--border-width`); alt köşelerde zeminden oyulmuş içbükey kavisler. Kontur kavis boyunca
- * kartın üst çizgisine kesintisiz bağlanır: kavis halkasının orta çizgisi sekmenin köşesiyle aynı
- * yarıçaplı (`--flare`: temel yarıçapın 2 katı), bir ucu sekmenin kenar çizgisinin, öbür ucu kartın
- * halkasının (kartın dışında, `ring`) tam üstünde. Halka zemin rengi üstüne çizilir (alttaki kart
- * halkasıyla üst üste binip koyulaşmasın); halkanın dışı yüzey (kartla kaynaşır), içi saydam.
- * Sekmenin dolgusu çerçevenin altına girmez (`bg-clip-padding`): yarı saydam çizgi kartınki gibi
- * zeminin üstünde durur. `--fa` / `--fb` halkanın iç / dış yarıçapı.
- */
-const TAB =
-  'rounded-t-2xl rounded-b-none bg-surface bg-clip-padding border-x-(length:--border-width) border-t-(length:--border-width) [--flare:calc(var(--radius)*2)] [--fa:calc(var(--flare)_-_var(--border-width)/2)] [--fb:calc(var(--flare)_+_var(--border-width)/2)]'
-/*
- * Kavisler. Sabit metin (Tailwind görsün). Temelde radial-gradient: üstte halka (`--border`),
- * altında zemin + dışında yüzey. `corner-shape` destekleyen tarayıcıda aynı kavis köşe biçimiyle:
- * yüzey renginde kutu, köşesi içbükey (`scoop`; squircle'da içbükey squircle, `--corner-concave`),
- * halka iki gölge (üstte kontur, altında zemin), kutunun dışına taşanı `clip-path` keser.
- */
-const FLARE_L =
-  "before:absolute before:bottom-0 before:start-[calc(var(--border-width)/2_-_var(--flare))] before:size-(--fb) before:bg-[radial-gradient(circle_at_0_0,transparent_var(--fa),var(--border)_var(--fa),var(--border)_var(--fb),transparent_var(--fb)),radial-gradient(circle_at_0_0,transparent_var(--fa),var(--background)_var(--fa),var(--background)_var(--fb),var(--surface)_var(--fb))] before:content-[''] supports-[corner-shape:scoop]:before:bg-none supports-[corner-shape:scoop]:before:bg-surface supports-[corner-shape:scoop]:before:rounded-tl-[100%] supports-[corner-shape:scoop]:before:[corner-shape:var(--corner-concave,scoop)] supports-[corner-shape:scoop]:before:shadow-[0_0_0_var(--border-width)_var(--border),0_0_0_var(--border-width)_var(--background)] supports-[corner-shape:scoop]:before:[clip-path:inset(0)]"
-const FLARE_R =
-  "after:absolute after:bottom-0 after:end-[calc(var(--border-width)/2_-_var(--flare))] after:size-(--fb) after:bg-[radial-gradient(circle_at_100%_0,transparent_var(--fa),var(--border)_var(--fa),var(--border)_var(--fb),transparent_var(--fb)),radial-gradient(circle_at_100%_0,transparent_var(--fa),var(--background)_var(--fa),var(--background)_var(--fb),var(--surface)_var(--fb))] after:content-[''] supports-[corner-shape:scoop]:after:bg-none supports-[corner-shape:scoop]:after:bg-surface supports-[corner-shape:scoop]:after:rounded-tr-[100%] supports-[corner-shape:scoop]:after:[corner-shape:var(--corner-concave,scoop)] supports-[corner-shape:scoop]:after:shadow-[0_0_0_var(--border-width)_var(--border),0_0_0_var(--border-width)_var(--background)] supports-[corner-shape:scoop]:after:[clip-path:inset(0)]"
 
 /**
  * Olaylar sütunu en solda; tablo yatay kaysa da görünür kalır (hızlı onay hiç gizlenmez); köşeleri
@@ -300,6 +272,9 @@ function WorkBlock({ refreshing }: { refreshing: boolean }) {
       <Categories selected={category} onSelect={choose} />
       {/* İş bloğu: seçili sekmenin devamı; hücrenin kalanını doldurur, sütunlar içeride kayar */}
       <Card
+        id="start-work"
+        role="tabpanel"
+        aria-labelledby={`start-category-${category}`}
         className={cn(CARD, 'flex min-h-0 flex-1 flex-col')}
         classNames={{ body: 'flex min-h-0 flex-1 flex-col p-1.5' }}
       >
@@ -620,37 +595,47 @@ function AppsBlock({ size }: { size: WidgetSize }) {
 
 /* --- Satır 2: kategori blokları ---------------------------------------------------------------- */
 
+/** Kategori sekmesinin düğmesi: ad (geniş ekranda), ikon ve sayı; yükseklik sekmenin. */
+const CATEGORY =
+  'relative z-2 h-full w-full min-w-0 justify-start gap-2 rounded-(--tab-r) px-5 shadow-none hover:bg-transparent! focus-visible:outline-none! focus-visible:[box-shadow:inset_0_0_0_2px_var(--focus)]'
+
+/**
+ * Kategori sekmeleri: ortak sekme şeridi (`tabs/TabStrip.tsx`), iş bloğu kartının üstünde. Seçili
+ * sekme kartla aynı yüzeyde ve kartın konturuyla (`SHEET_ON_SURFACE`): kontur içbükey kavisler
+ * boyunca kartın üst çizgisine kesintisiz iner; sekmeler şeridi eşit paylaşır. Birincil renk ikon ve
+ * sayıda.
+ */
 function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: BoxId) => void }) {
   const counts = useBoxCounts({ unreadInfo: true })
   return (
-    <Scroll horizontal className="shrink-0 [scrollbar-width:none]">
-      <Flex
-        role="group"
-        aria-label={START_LABELS.categories}
-        align="stretch"
-        gap={4}
-        // İçeri girme payı = kartın köşe yarıçapı (kart: en çok 32px, squircle'da `--corner-scale`
-        // katı) + kavis (temel yarıçapın 2 katı): seçili sekmenin kavisi her temada kartın düz
-        // kenarına oturur (boşluk ölçeğine bağlı değil)
-        className="w-full min-w-184 px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--radius)*2)]"
-      >
+    <TabStrip
+      label={START_LABELS.categories}
+      selected={selected}
+      sizing="fill"
+      sheet={SHEET_ON_SURFACE}
+      // İçeri girme payı = kartın köşe yarıçapı (en çok 32px, squircle'da `--corner-scale` katı) +
+      // sekme kavisi: seçili sekmenin kavisi her temada kartın düz kenarına oturur
+      inset="min-w-184 px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-r))]"
+      // Kartın üstünde: seçili sekme kartın üst konturunu örter
+      className="z-1 shrink-0 [--tab-h:4rem]"
+    >
+      <TabGroup id="categories">
         {mainBoxes.map((b) => {
           const Icon = b.icon
           const isSel = b.id === selected
           const n = counts.get(b.id) ?? 0
           return (
-            <Flex key={b.id} className={cn('relative grid min-w-0 grow basis-0', isSel && 'z-10')}>
-              {/* Seçili sekme (yüzey, kontur, içbükey kavisler) sekmeden sekmeye kayar */}
-              {isSel && <Indicator id="start-category" className={cn(TAB, FLARE_L, FLARE_R)} />}
+            <Tab key={b.id} id={b.id} selected={isSel}>
               <Button
                 type="text"
-                aria-pressed={isSel}
+                role="tab"
+                id={`start-category-${b.id}`}
+                aria-selected={isSel}
+                aria-controls="start-work"
+                tabIndex={isSel ? 0 : -1}
                 aria-label={`${b.label}, ${n}`}
                 onClick={() => onSelect(b.id)}
-                className={cn(
-                  CATEGORY,
-                  isSel ? 'text-foreground hover:bg-transparent!' : 'text-foreground/70',
-                )}
+                className={cn(CATEGORY, isSel ? 'text-foreground' : 'text-foreground/70')}
               >
                 {/* 1280px altında etiket sığmıyor ("Bekle…"); orada ikon + sayı, ad aria-label'da */}
                 <Text
@@ -667,11 +652,11 @@ function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: Box
                   <Count value={n} />
                 </Text>
               </Button>
-            </Flex>
+            </Tab>
           )
         })}
-      </Flex>
-    </Scroll>
+      </TabGroup>
+    </TabStrip>
   )
 }
 

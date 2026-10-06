@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect } from 'react'
+import { createContext, startTransition, useContext, useEffect } from 'react'
 import {
   boxHref,
   processHref,
@@ -37,8 +37,10 @@ export const FrameContext = createContext<(frame: Frame | null) => void>(() => {
 export function useFrame(crumbs: Crumb[], _scope?: unknown) {
   const set = useContext(FrameContext)
   const key = JSON.stringify(crumbs)
+  // Kabuğun güncellemesi acil değil (geçiş): sayfanın kendi değişimi (ör. sekme geçişi) önce
+  // çizilir, konum hapları ve raf hemen ardından
   useEffect(() => {
-    set({ crumbs: JSON.parse(key) as Crumb[] })
+    startTransition(() => set({ crumbs: JSON.parse(key) as Crumb[] }))
     return () => set(null)
   }, [set, key])
 }
