@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type Ref,
+} from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { LayoutGroup, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
 import {
   Avatar,
@@ -64,10 +73,22 @@ import {
 import { searchText } from '@/synergy/shared/grid'
 import { CARD, CARD_RADIUS, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
-import { SwitchPanel } from '@/synergy/ant/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useFillHeight, useMediaQuery, useRadiusPx, useScrolled } from '@/synergy/shared/hooks'
 import { FormTabs, useTabScroller } from '@/synergy/FormTabs'
+import {
+  MAX_GROUPS,
+  activeForm,
+  activeGroup,
+  canOpen,
+  formPath,
+  groupOf,
+  groupsReducer,
+  initGroups,
+  type Group,
+  type GroupNav,
+} from '@/synergy/shared/formGroups'
+import { useNotify } from '@/synergy/ant/hr'
 import { SidePanel, useSidePanel, type SideTab, type SideTarget } from '@/synergy/DetailSide'
 import {
   DocumentsList,
@@ -94,81 +115,192 @@ export function DetailPage() {
   const params = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { request: r, deleted } = useRequest(params.requestId)
+  const notify = useNotify()
   const routeBox = findBox(params.box)
-  const process = r && findProcess(r.processId)
 
+  // İlk grubun listesi: listeden gelindiyse onun sırası, yoksa kutudaki aynı süreçten talepler
+  // (ızgaranın varsayılanı gibi yeniden eskiye; tarih grupları bölünmesin)
+  const siblings = useBoxRequests((routeBox?.id ?? 'bekleyen') as BoxId)
+  const [st, dispatch] = useReducer(groupsReducer, undefined, () =>
+    initGroups({
+      root: params.requestId ?? '',
+      nav: {
+        ids:
+          (location.state as DetailNavState | null)?.ids ??
+          siblings
+            .filter((x) => x.processId === params.processId)
+            .sort((a, b) => dateOf(b).getTime() - dateOf(a).getTime())
+            .map((x) => x.id),
+        box: (routeBox?.id ?? 'bekleyen') as BoxId,
+      },
+    }),
+  )
+  // Olay işleyicileri ve adres eşlemesi son durumu okur (eski kapanışlar değil)
+  const latest = useRef(st)
+  useLayoutEffect(() => {
+    latest.current = st
+  }, [st])
+
+  const group = activeGroup(st)
+  const root = group.tabs.rootId
+  const rootReq = findRequest(root)
+
+  // Adres etkin grubun kökünü izler (geçmişe kayıt eklemeden: gruplar arası geçiş geri tuşunu doldurmasın)
   useEffect(() => {
-    if (params.requestId) markRead(params.requestId)
+    if (!rootReq || params.requestId === root) return
+    navigate(requestLink(rootReq), {
+      replace: true,
+      state: { ids: group.nav?.ids ?? [] } satisfies DetailNavState,
+    })
+    // Yalnızca kök değişince
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root])
+
+  // Adres dışarıdan başka bir talebe değişince (açık değilse) yeni grupta açılır
+  useEffect(() => {
+    const id = params.requestId
+    if (!id || groupOf(latest.current, id)) return
+    if (!canOpen(latest.current, id)) {
+      warnFull()
+      const back = findRequest(activeGroup(latest.current).tabs.rootId)
+      if (back) navigate(requestLink(back), { replace: true })
+      return
+    }
+    dispatch({ type: 'open', root: id, nav: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.requestId])
 
-  const siblings = useBoxRequests((routeBox?.id ?? 'bekleyen') as BoxId)
-  const [fallbackIds] = useState(() =>
-    siblings.filter((x) => x.processId === params.processId).map((x) => x.id),
-  )
-  const ids = (location.state as DetailNavState | null)?.ids ?? fallbackIds
+  // Konum çubuğundaki ata form (`?form=`): o formun sekmesi seçilir, adres temizlenir
+  const formParam = new URLSearchParams(location.search).get('form')
+  useEffect(() => {
+    if (!formParam) return
+    const owner = groupOf(latest.current, params.requestId ?? '')
+    if (owner) dispatch({ type: 'reveal', key: owner.key, form: formParam })
+    navigate({ pathname: location.pathname }, { replace: true, state: location.state })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formParam])
 
-  // Talep değişince geçişin yönü: listede ilerideyse içerik sağdan, gerideyse soldan gelir
-  const at = params.requestId ? ids.indexOf(params.requestId) : -1
-  const [seen, setSeen] = useState({ id: params.requestId, at })
-  const [dir, setDir] = useState(1)
-  if (seen.id !== params.requestId) {
-    setSeen({ id: params.requestId, at })
-    setDir(at >= seen.at ? 1 : -1)
+  const warnFull = () =>
+    notify.warning(
+      `En çok ${MAX_GROUPS} form grubu açılabilir`,
+      'Yenisini açmak için açık gruplardan birini kapatın.',
+    )
+
+  /** Talebi yeni grupta açar (zaten açıksa o gruba geçer; sınırdaysa uyarır). */
+  const openGroup = (id: string, nav: GroupNav | null) => {
+    if (!canOpen(latest.current, id)) return warnFull()
+    dispatch({ type: 'open', root: id, nav })
   }
 
-  // Konum ve geri dönüş için kutu: rotadaki kutu, yoksa talebin kutusu
-  const box = routeBox ?? (r && findBox(r.box))
+  /** Grubu kapatır; son grupsa sayfadan `leaveTo`ya çıkılır (gruplar sayfayla birlikte biter). */
+  const closeGroup = (key: string, leaveTo: string) => {
+    if (latest.current.groups.length <= 1) navigate(leaveTo)
+    else dispatch({ type: 'close', key })
+  }
+
+  // Konum: kutu › süreç › kök form › … › etkin form (açanlar zinciri; atalar o formun sekmesini açar)
+  const rootProcess = rootReq && findProcess(rootReq.processId)
+  const box = findBox(group.nav?.box ?? rootReq?.box)
+  const path = formPath(group, activeForm(group))
   useFrame(
-    r && process && box
+    rootReq && rootProcess && box
       ? [
           START_CRUMB,
           WF_CRUMB,
           { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
           {
-            label: processCaption(process),
-            href: processLink(box.id, process.id),
-            icon: `process:${process.id}`,
+            label: processCaption(rootProcess),
+            href: processLink(box.id, rootProcess.id),
+            icon: `process:${rootProcess.id}`,
           },
-          // Son halka formun adı (kodu değil; kod formun başlık kartında ve özelliklerde)
-          { label: process.form, icon: 'request' },
+          // Formların adı (kodu değil; kod formun başlık kartında ve özelliklerde)
+          ...path.map((id, i) => {
+            const form = findRequest(id)
+            const p = form && findProcess(form.processId)
+            return {
+              label: p?.form ?? id,
+              icon: i === 0 || !p ? 'request' : `process:${p.id}`,
+              ...(i < path.length - 1 && {
+                href: `${requestLink(rootReq)}?form=${encodeURIComponent(id)}`,
+              }),
+            }
+          }),
         ]
       : [],
     box?.id ?? null,
   )
 
-  if (deleted) return <Navigate to={boxLink('taslaklar')} replace />
-  if (!r || !process || !box) return <Navigate to={boxLink(routeBox?.id ?? 'bekleyen')} replace />
+  // Her grubun kök formu; `LayoutGroup`: Süreçler izinin çizgisi (`layoutId`) yalnızca kendi grubunda
+  // kayar (Geri / İleri'de eski kökten yenisine), gruplar birbirine karışmaz
+  const renderRoot = (g: Group) => (
+    <LayoutGroup id={g.key}>
+      <RootViewer
+        group={g}
+        onReplace={(id) => dispatch({ type: 'replace', key: g.key, root: id })}
+        onOpen={(id) => openGroup(id, g.nav)}
+        onClose={(leaveTo) => closeGroup(g.key, leaveTo)}
+      />
+    </LayoutGroup>
+  )
 
-  const index = ids.indexOf(r.id)
-  const go = (id: string) => {
-    const target = findRequest(id)
-    if (target) navigate(requestLink(target), { state: { ids } satisfies DetailNavState })
-  }
-
-  // Form sekmeleri talebe bağlı: Geri / İleri ile talep değişince yeniden kurulur (eskisi solarak
-  // çıkarken yenisi iskeletiyle gidilen yönden gelir)
   return (
     <Flex className="relative flex flex-col">
-      <SwitchPanel id={r.id} dir={dir} className="flex flex-col">
-        <FormTabs
-          key={r.id}
-          rootId={r.id}
-          root={
-            <Viewer
-              r={r}
-              process={process}
-              caption={processCaption(process)}
-              nav={index >= 0 ? { ids, index, go, box } : undefined}
-              onClose={() => navigate(processLink(box.id, process.id))}
-              onDeleted={() => navigate(boxLink('taslaklar'))}
-            />
-          }
-          renderTab={renderChild}
-          placeholder={<FormSkeleton />}
-        />
-      </SwitchPanel>
+      <FormTabs
+        state={st}
+        dispatch={dispatch}
+        renderRoot={renderRoot}
+        renderTab={renderChild}
+        placeholder={<FormSkeleton />}
+        onCloseGroup={(key) => {
+          const g = latest.current.groups.find((x) => x.key === key)
+          const r = g && findRequest(g.tabs.rootId)
+          closeGroup(key, r ? processLink(r.box, r.processId) : boxLink('bekleyen'))
+        }}
+      />
     </Flex>
+  )
+}
+
+/**
+ * Grubun kök formu: Geri / İleri grubun kökünü değiştirir, Süreçler izinden seçilen talep yeni
+ * grupta açılır, "Kapat" grubu kapatır. Kök bulunamaz ya da silinirse (taslak) grup kapanır.
+ */
+function RootViewer({
+  group,
+  onReplace,
+  onOpen,
+  onClose,
+}: {
+  group: Group
+  onReplace: (id: string) => void
+  onOpen: (id: string) => void
+  /** Grubu kapatır; son grupsa sayfadan bu adrese çıkılır. */
+  onClose: (leaveTo: string) => void
+}) {
+  const root = group.tabs.rootId
+  const { request: r, deleted } = useRequest(root)
+  const process = r && findProcess(r.processId)
+  useEffect(() => markRead(root), [root])
+  const gone = !r || !process || deleted
+  const leaveTo = deleted ? boxLink('taslaklar') : boxLink(group.nav?.box ?? r?.box ?? 'bekleyen')
+  useEffect(() => {
+    if (gone) onClose(leaveTo)
+    // Yalnızca kök gidince
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gone])
+  if (gone) return null
+  const ids = group.nav?.ids ?? []
+  const index = ids.indexOf(root)
+  const box = findBox(group.nav?.box ?? r.box)!
+  return (
+    <Viewer
+      r={r}
+      process={process}
+      caption={processCaption(process)}
+      nav={index >= 0 ? { ids, index, go: onReplace, open: onOpen, box } : undefined}
+      onClose={() => onClose(processLink(box.id, process.id))}
+      onDeleted={() => onClose(boxLink('taslaklar'))}
+    />
   )
 }
 
@@ -197,7 +329,10 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
 interface DetailNav {
   ids: string[]
   index: number
+  /** Geri / İleri: grubun kökü bu talep olur. */
   go: (id: string) => void
+  /** Süreçler izinden seçilen talep: yeni grupta açılır. */
+  open: (id: string) => void
   /** Listenin kutusu (ızgaranın sütunları ve tarih alanı). */
   box: Box
 }
@@ -713,7 +848,7 @@ function NavTrail({
   process: Process
   onStrip: boolean
 }) {
-  const { ids, index, go, box } = nav
+  const { ids, index, open: openGroup, box } = nav
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState<string | null>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -772,7 +907,11 @@ function NavTrail({
               box={box}
               process={process}
               onHover={setHovered}
-              onOpen={(id) => (id === current ? close() : go(id))}
+              // Seçilen talep yeni grupta açılır (açıksa o gruba geçilir); açık olan yalnızca kapatır
+              onOpen={(id) => {
+                close()
+                if (id !== current) openGroup(id)
+              }}
             />
           }
         >

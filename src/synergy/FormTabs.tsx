@@ -6,10 +6,10 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
   type CSSProperties,
+  type Dispatch,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
@@ -20,25 +20,34 @@ import {
   AnimatePresence,
   animate,
   frame,
+  useDragControls,
   useMotionValue,
   usePresence,
+  useTransform,
+  type Box,
+  type PanInfo,
   type Transition,
 } from 'framer-motion'
-import { Button, Flex, Typography } from 'antd'
+import { Button, Dropdown, Flex, Typography, type MenuProps } from 'antd'
 import { findRequest, panelSizeOf, processOf, type PanelSize } from '@/synergy/shared/workflowData'
 import {
   activeView,
   clampRatio,
-  initTabs,
   SPLIT_MAX,
   SPLIT_MIN,
-  tabsReducer,
+  type TabsAction,
   type View,
 } from '@/synergy/shared/formTabs'
+import {
+  activeGroup,
+  type Group,
+  type GroupsAction,
+  type GroupsState,
+} from '@/synergy/shared/formGroups'
 import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { useTransition } from '@/synergy/motion'
-import { cn, IC, MotionFlex, Scroll, Tip } from '@/synergy/ant/ui'
+import { cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
 import { FLARES } from '@/synergy/AgendaTabs'
 
 /* -------------------------------------------------------------------------------------------------
@@ -46,16 +55,22 @@ import { FLARES } from '@/synergy/AgendaTabs'
  *
  * Formdaki bir düğmeyle açılan child talep, detay sayfasının aynısıyla açılır. Nerede açılacağını
  * child formun panel boyutu belirler (mantık `shared/formTabs.ts`): 1 / 2 sekmeyi böler, 3 yeni
- * sekmede açılır; bölünmüş iki form tek sekmede gruplanır. Dar ekranda yer yok: 1024px altında
- * hepsi, 1200px altında 2'ler de 3 gibi açılır (orijinaldeki gibi).
+ * sekmede açılır; bölünmüş iki form tek sekmede yan yana durur. Dar ekranda yer yok: 1024px
+ * altında hepsi, 1200px altında 2'ler de 3 gibi açılır (orijinaldeki gibi).
  *
- * Sekmeler ajanda sekmeleri gibi (AgendaTabs.tsx ile aynı görünüş): açık formlar, açık renkli bir
- * sayfa kabının içinde birer yaprak; seçili sekme o kabın renginde ve içbükey kavislerle kaba
- * kaynaşır, seçim zemini sekmeden sekmeye kayar; diğerleri kısa ve gri. Her formun önünde süreç
- * ikonu; gruplu sekme iki formun ikonu ve adıyla, odaktaki formun ikonu ve adı birincil renkte. Ada
- * basınca o bölme odaklanır (dar ekranda yalnızca o görünür). Şeridin ucunda yer değiştirme (⇄) ve
- * sekmelere ayırma; tek formlu sekme "Yan yana aç" ile seçili sekmenin yanına alınır. Klavye: oklar
- * sekmeler arasında gezer, Delete formu kapatır.
+ * Form grupları (açık istek üzerine; mantık `shared/formGroups.ts`): her açılan talep kendi grubu,
+ * grubun child'ları onun sekmeleri. Yalnızca etkin grup açık, diğerleri tek sekmeye daralır;
+ * birden çok grup varken her grup kendi yumuşak renginde (Chrome gibi alt çizgi, seçili sekmenin
+ * çerçevesi ve grubun noktası). Sekmeler ve gruplar
+ * sürükleyerek ya da sağ tık menüsüyle sıralanır.
+ *
+ * Sekmeler ajanda sekmeleri gibi (AgendaTabs.tsx): açık formlar, açık renkli bir sayfa kabının
+ * içinde birer yaprak; seçili sekme o kabın renginde ve içbükey kavislerle kaba kaynaşır, seçim
+ * zemini sekmeden sekmeye kayar; diğerleri aynı boyda, gri (renkli grupta zeminsiz). Her
+ * formun önünde süreç ikonu; yan yana sekme iki formun ikonu ve adıyla, odaktaki formun ikonu ve adı
+ * birincil renkte. Ada basınca o bölme odaklanır (dar ekranda yalnızca o görünür). Şeridin ucunda
+ * yer değiştirme (⇄) ve sekmelere ayırma; tek formlu sekme "Yan yana aç" ile seçili sekmenin yanına
+ * alınır. Klavye: oklar sekmeler arasında gezer, Delete formu kapatır (kökün sekmesinde grubu).
  *
  * Hareket Motion'ın düzen animasyonuyla (`layout`, FLIP): düzen değişince her form son yerine bir
  * kez dizilir; Motion yaprağı eski yerinden yenisine yalnızca dönüşümle (kayma + ölçek) götürür,
@@ -78,6 +93,8 @@ import { FLARES } from '@/synergy/AgendaTabs'
  * Formlar DOM'da hiç yer değiştirmez ve bir kez çizilir (sekme seçmek formları yeniden çizmez): hepsi
  * aynı kapta takılı kalır, görünenler CSS `order` ve genişlikle bölmelere yerleşir.
  * ------------------------------------------------------------------------------------------------- */
+
+type MenuItem = NonNullable<MenuProps['items']>[number]
 
 /** Child açma: açan form ve açılacak talep. */
 type OpenChild = (from: string, id: string) => void
@@ -119,6 +136,15 @@ const LOAD_MS = 1000
 /** Yaprağın köşesi (`rounded-2xl`). */
 const SHEET_RADIUS = 'calc(var(--radius) * 2)'
 
+/** Bölmenin (ve sekmesinin) anahtarı: grup ve form; aynı form iki grupta birden açık olabilir. */
+const paneKey = (group: string, id: string) => `${group}:${id}`
+/** Bölme anahtarının grubu ve formu. */
+const splitPaneKey = (key: string) => {
+  const i = key.indexOf(':')
+  return [key.slice(0, i), key.slice(i + 1)] as const
+}
+const formOf = (key: string) => splitPaneKey(key)[1]
+
 /** Sekmedeki ad ve ikon, ipucundaki talep numarası. */
 function formMeta(id: string) {
   const r = findRequest(id)
@@ -129,6 +155,10 @@ function formMeta(id: string) {
 /** Düzen adımı: görünen formlar ve pay her değişince bir artar. */
 interface Step {
   layout: string
+  /** Etkin grup, sırası ve kökü (grup geçişinin ve Geri / İleri'nin yönü için). */
+  group: string
+  groupIndex: number
+  root: string
   key: string
   index: number
   shown: string[]
@@ -151,21 +181,30 @@ interface Entered {
 }
 
 export function FormTabs({
-  rootId,
-  root,
+  state: st,
+  dispatch,
+  renderRoot,
   renderTab,
   placeholder,
+  onCloseGroup,
 }: {
-  rootId: string
-  /** Ana formun görünümü. */
-  root: ReactNode
+  /** Form grupları (`shared/formGroups.ts`; sayfa tutar: adres ve konum çubuğu da ondan). */
+  state: GroupsState
+  dispatch: Dispatch<GroupsAction>
+  /** Grubun kök formunun görünümü. */
+  renderRoot: (group: Group) => ReactNode
   /** Form gelene kadar (`LOAD_MS`) bölmede duran iskelet. */
   placeholder: ReactNode
   /** Child sekmesinin görünümü; `close` formu (ve child'larını) kapatır. Sabit bir işlev olmalı. */
   renderTab: (id: string, close: () => void) => ReactNode
+  /** Grubu kapatır (kökün sekmesi); son grupsa sayfa listeye döner. */
+  onCloseGroup: (key: string) => void
 }) {
-  const [st, dispatch] = useReducer(tabsReducer, rootId, initTabs)
-  const hasTabs = st.entries.length > 0
+  const group = activeGroup(st)
+  const groupIndex = st.groups.indexOf(group)
+  const root = group.tabs.rootId
+  // Sekme kipi: birden çok grup ya da grubun açık child'ı var (yoksa kök form sayfa gibi)
+  const hasTabs = st.groups.length > 1 || group.tabs.entries.length > 0
   // Son child kapanırken sekme kipinden çıkılır ama çıkan bölme hâlâ kayıyor: bitene kadar kırpılır
   const [hadTabs, setHadTabs] = useState(hasTabs)
   const [leaving, setLeaving] = useState(false)
@@ -176,9 +215,11 @@ export function FormTabs({
   // Yan yana yalnızca geniş ekranda; daralınca bölünmüş sekmenin odaktaki formu tek başına kalır
   const wide = useMediaQuery('(min-width: 1024px)')
   const roomy = useMediaQuery('(min-width: 1200px)')
-  const view = activeView(st)
+  const view = activeView(group.tabs)
   const split = wide && view.ids.length === 2
-  const shown = split ? view.ids : [view.focus]
+  // Bölmeler grup başına anahtarlı: aynı child (aynı şablon) iki grupta birden açık olabilir
+  const shown = (split ? view.ids : [view.focus]).map((id) => paneKey(group.key, id))
+  const tabs = (action: TabsAction) => dispatch({ type: 'tabs', key: group.key, action })
   const fadeT = useTransition({ duration: 0.16, ease: EASE })
   const enterT = useTransition({ duration: 0.34, ease: EASE })
   const moveT = useTransition({ duration: 0.42, ease: EASE })
@@ -195,35 +236,61 @@ export function FormTabs({
     return () => window.removeEventListener('resize', measure)
   }, [hasTabs])
 
-  /** Formdan child açma: yeri child'ın panel boyutundan (dar ekranda hep yeni sekme). */
-  const open = useCallback<OpenChild>(
-    (from, id) => {
-      // İlk child açılırken sayfa başa döner ki sekme alanı ekranın kalanına otursun
-      if (!hasTabs) window.scrollTo({ top: 0 })
-      const asked = panelSizeOf(id)
-      const size: PanelSize = !wide || (asked === 2 && !roomy) ? 3 : asked
-      dispatch({ type: 'open', from, id, size })
-    },
-    [hasTabs, wide, roomy],
+  /** Formdan child açma (grubun içinde): yeri child'ın panel boyutundan (dar ekranda hep yeni sekme). */
+  const groupKeys = st.groups.map((g) => g.key).join('|')
+  const openers = useMemo(() => {
+    const make =
+      (key: string): OpenChild =>
+      (from, id) => {
+        // İlk child açılırken sayfa başa döner ki sekme alanı ekranın kalanına otursun
+        if (!hasTabs) window.scrollTo({ top: 0 })
+        const asked = panelSizeOf(id)
+        const size: PanelSize = !wide || (asked === 2 && !roomy) ? 3 : asked
+        dispatch({ type: 'tabs', key, action: { type: 'open', from, id, size } })
+      }
+    return new Map(groupKeys.split('|').map((key) => [key, make(key)]))
+  }, [groupKeys, hasTabs, wide, roomy, dispatch])
+  const close = useCallback(
+    (key: string, id: string) => dispatch({ type: 'tabs', key, action: { type: 'close', id } }),
+    [dispatch],
   )
-  const close = useCallback((id: string) => dispatch({ type: 'close', id }), [])
 
   // Child formlar kimlik başına bir kez kurulur: sekme seçmek, bölmeye tıklamak ya da bölücüyü
   // sürüklemek formları yeniden çizmez (`renderTab` sabit bir işlev olmalı)
-  const idsKey = st.entries.map((e) => e.id).join('|')
+  const childKeys = st.groups
+    .flatMap((g) => g.tabs.entries.map((e) => paneKey(g.key, e.id)))
+    .join('|')
   const children = useMemo(
     () =>
-      (idsKey ? idsKey.split('|') : []).map((id) => ({ id, node: renderTab(id, () => close(id)) })),
-    [idsKey, renderTab, close],
+      (childKeys ? childKeys.split('|') : []).map((key) => {
+        const [g, id] = splitPaneKey(key)
+        return { key, group: g, id, node: renderTab(id, () => close(g, id)) }
+      }),
+    [childKeys, renderTab, close],
   )
+  // Bütün grupların formları takılı kalır (girilen alanlar kaybolmasın); yalnızca etkin grubunkiler görünür
+  const panes = [
+    ...st.groups.map((g) => ({
+      key: paneKey(g.key, g.tabs.rootId),
+      group: g.key,
+      id: g.tabs.rootId,
+      node: renderRoot(g),
+    })),
+    ...children,
+  ]
 
   // Düzen değişimi çizimde yakalanır (görünen formlar, pay). Hem önce hem şimdi görünen bölme bu
   // adımda ölçülür (Motion eski yerinden götürür); yeni görünen yönden kayarak gelir. Gizlenen
   // bölmenin adımı değişmez: gizliyken ölçülmez, görününce de boş kutusundan hareket başlamaz.
-  const layout = `${view.key}|${shown.join(',')}|${split ? view.ratio : ''}`
-  const index = st.views.indexOf(view)
+  // Yön: grup değiştiyse grupların sırası, kök değiştiyse (Geri / İleri) listedeki sıra, sekme
+  // değiştiyse sekmelerin, bölme değiştiyse bölmelerin sırası.
+  const layout = `${group.key}|${view.key}|${shown.join(',')}|${split ? view.ratio : ''}`
+  const index = group.tabs.views.indexOf(view)
   const [step, setStep] = useState<Step>(() => ({
     layout,
+    group: group.key,
+    groupIndex,
+    root,
     key: view.key,
     index,
     shown,
@@ -236,15 +303,33 @@ export function FormTabs({
     const n = step.n + 1
     const moved = { ...step.moved }
     const entered = { ...step.entered }
-    for (const id of shown) {
-      if (step.shown.includes(id)) moved[id] = n
-      else entered[id] = { n, push: split && step.key === view.key && shown.indexOf(id) === 1 }
+    const sameView = step.group === group.key && step.key === view.key
+    for (const key of shown) {
+      if (step.shown.includes(key)) moved[key] = n
+      else entered[key] = { n, push: split && sameView && shown.indexOf(key) === 1 }
     }
+    const order = group.nav?.ids ?? []
     const forward =
-      step.key !== view.key
-        ? index >= step.index
-        : view.ids.indexOf(shown[0]!) >= view.ids.indexOf(step.shown[0]!)
-    setStep({ layout, key: view.key, index, shown, n, dir: forward ? 1 : -1, moved, entered })
+      step.group !== group.key
+        ? groupIndex >= step.groupIndex
+        : step.root !== root
+          ? order.indexOf(root) >= order.indexOf(step.root)
+          : step.key !== view.key
+            ? index >= step.index
+            : view.ids.indexOf(formOf(shown[0]!)) >= view.ids.indexOf(formOf(step.shown[0]!))
+    setStep({
+      layout,
+      group: group.key,
+      groupIndex,
+      root,
+      key: view.key,
+      index,
+      shown,
+      n,
+      dir: forward ? 1 : -1,
+      moved,
+      entered,
+    })
   }
 
   /* --- Bölücü: sürüklerken pay doğrudan `--split`e yazılır (React çizmez), bırakınca kaydedilir -- */
@@ -276,26 +361,26 @@ export function FormTabs({
     if (!d) return
     drag.current = null
     setResizing(false)
-    dispatch({ type: 'ratio', value: d.ratio })
+    tabs({ type: 'ratio', value: d.ratio })
   }
   // Oklar küçük adım, Home / End uçlar, Enter panel boyutunun payı (bölmeler yeni paya kayar)
   const onDividerKey = (e: KeyboardEvent<HTMLElement>) => {
     const by = e.shiftKey ? 10 : 2
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight')
-      dispatch({ type: 'nudge', delta: e.key === 'ArrowLeft' ? -by : by })
-    else if (e.key === 'Home') dispatch({ type: 'ratio', value: SPLIT_MIN })
-    else if (e.key === 'End') dispatch({ type: 'ratio', value: SPLIT_MAX })
-    else if (e.key === 'Enter') dispatch({ type: 'ratio', value: view.base })
+      tabs({ type: 'nudge', delta: e.key === 'ArrowLeft' ? -by : by })
+    else if (e.key === 'Home') tabs({ type: 'ratio', value: SPLIT_MIN })
+    else if (e.key === 'End') tabs({ type: 'ratio', value: SPLIT_MAX })
+    else if (e.key === 'Enter') tabs({ type: 'ratio', value: view.base })
     else return
     e.preventDefault()
   }
 
-  const focusPane = (id: string) => dispatch({ type: 'focus', view: view.key, id })
+  const focusPane = (id: string) => tabs({ type: 'focus', view: view.key, id })
   // Seçili sekme tek formluysa diğer tek formlu sekmeler onun yanına alınabilir
-  const canJoin = wide && view.ids.length === 1
+  const canPair = wide && view.ids.length === 1
 
   return (
-    <FormTabsContext value={open}>
+    <>
       {/* Yapı sabit: sekmeler gelip gidince ana form yeniden takılmaz. `relative`: çıkan şerit
           (`popLayout`) burada mutlak konumlanır */}
       <Flex
@@ -320,13 +405,20 @@ export function FormTabs({
               className="flex shrink-0"
             >
               <TabStrip
-                views={st.views}
-                active={view.key}
-                rootId={rootId}
+                groups={st.groups}
+                active={group.key}
                 split={split}
-                onSelect={(key, id) => dispatch({ type: 'focus', view: key, id })}
+                // Etkin grupta sekme seçilir; başka grupta o gruba geçilip form gösterilir
+                onSelect={(g, view, id) =>
+                  g === group.key
+                    ? tabs({ type: 'focus', view, id })
+                    : dispatch({ type: 'reveal', key: g, form: id })
+                }
                 onClose={close}
-                onJoin={canJoin ? (key) => dispatch({ type: 'join', view: key }) : undefined}
+                onCloseGroup={onCloseGroup}
+                onPair={canPair ? (key) => tabs({ type: 'pair', view: key }) : undefined}
+                onMoveTab={(g, view, to) => dispatch({ type: 'moveTab', key: g, view, to })}
+                onMoveGroup={(key, to) => dispatch({ type: 'moveGroup', key, to })}
               />
               <AnimatePresence initial={false}>
                 {split && (
@@ -338,7 +430,7 @@ export function FormTabs({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
                     transition={fadeT}
-                    className="flex shrink-0 items-center gap-0.5 ps-1 pe-3 pt-3"
+                    className="flex h-10 shrink-0 items-center gap-0.5 self-end ps-1 pe-3"
                   >
                     <Tip label="Yer değiştir">
                       <Button
@@ -346,7 +438,7 @@ export function FormTabs({
                         size="small"
                         aria-label="Bölmelerin yerini değiştir"
                         icon={<ArrowLeftRight {...IC} size={15} />}
-                        onClick={() => dispatch({ type: 'swap', view: view.key })}
+                        onClick={() => tabs({ type: 'swap', view: view.key })}
                         className="text-muted hover:text-foreground!"
                       />
                     </Tip>
@@ -356,7 +448,7 @@ export function FormTabs({
                         size="small"
                         aria-label="Ayrı sekmelere ayır"
                         icon={<Ungroup {...IC} size={15} />}
-                        onClick={() => dispatch({ type: 'ungroup', view: view.key })}
+                        onClick={() => tabs({ type: 'unpair', view: view.key })}
                         className="text-muted hover:text-foreground!"
                       />
                     </Tip>
@@ -388,16 +480,16 @@ export function FormTabs({
             mode="popLayout"
             onExitComplete={() => setLeaving(false)}
           >
-            {[{ id: rootId, node: root }, ...children].map(({ id, node }) => {
-              const slot = shown.indexOf(id) as -1 | 0 | 1
+            {panes.map(({ key, group: g, id, node }) => {
+              const slot = shown.indexOf(key) as -1 | 0 | 1
               return (
                 <Pane
-                  key={id}
-                  id={id}
+                  key={key}
+                  id={key}
                   slot={slot}
                   sheet={hasTabs}
-                  moved={step.moved[id] ?? 0}
-                  entered={step.entered[id]}
+                  moved={step.moved[key] ?? 0}
+                  entered={step.entered[key]}
                   dir={step.dir}
                   paired={split && slot >= 0}
                   slide={wide}
@@ -414,7 +506,8 @@ export function FormTabs({
                     resizing && 'pointer-events-none',
                   )}
                 >
-                  {node}
+                  {/* Formun içinden açılan child kendi grubunda açılır */}
+                  <FormTabsContext value={openers.get(g) ?? null}>{node}</FormTabsContext>
                 </Pane>
               )
             })}
@@ -439,7 +532,7 @@ export function FormTabs({
               onPointerCancel={onDividerUp}
               onKeyDown={onDividerKey}
               // Çift tık: panel boyutunun payına döner
-              onDoubleClick={() => dispatch({ type: 'ratio', value: view.base })}
+              onDoubleClick={() => tabs({ type: 'ratio', value: view.base })}
               className="group/divider order-1 flex w-3 shrink-0 animate-[fade-in_calc(0.3s*var(--motion-time,1))_ease-out] cursor-col-resize touch-none justify-center py-6 outline-none"
             >
               {/* İnce çizgi; üstüne gelince, sürüklerken ve klavye odağında kalınlaşıp renklenir */}
@@ -455,70 +548,146 @@ export function FormTabs({
           )}
         </Flex>
       </Flex>
-    </FormTabsContext>
+    </>
   )
 }
 
+/* --- Sürükleyerek sıralama ------------------------------------------------------------------- */
+
 /**
- * Sekme şeridi: sekmeler ve seçili sekmenin kayan zemini. Sekme eklenip çıkınca diğerleri yerine
- * kayar; seçim zemini aynı yayla yeni yerine gider.
+ * Motion `Reorder`'ın mantığı, öğeler antd `Flex` (MotionFlex) kalsın diye elle: her öğe ölçüsünü
+ * `onLayoutMeasure` ile bildirir; sürüklenen öğe, gittiği yöndeki komşusunun ortasını geçince yer
+ * değiştirir (`onMove`). Yeni sıra çizilene kadar ikinci kez taşınmaz. `min`: bu sıranın önüne
+ * geçilmez (grubun kök sekmesi).
+ */
+function useReorder(values: string[], onMove: (value: string, to: number) => void, min = 0) {
+  const boxes = useRef(new Map<string, { min: number; max: number }>())
+  const busy = useRef(false)
+  const order = values.join('|')
+  useEffect(() => {
+    busy.current = false
+  }, [order])
+  return {
+    register: (value: string, box: Box) => boxes.current.set(value, box.x),
+    update: (value: string, offset: number, velocity: number) => {
+      if (busy.current || !velocity) return
+      const i = values.indexOf(value)
+      const step = velocity > 0 ? 1 : -1
+      const to = i + step
+      if (i < 0 || to < min || to >= values.length) return
+      const me = boxes.current.get(value)
+      const next = boxes.current.get(values[to]!)
+      if (!me || !next) return
+      const center = (next.min + next.max) / 2
+      if ((step === 1 && me.max + offset > center) || (step === -1 && me.min + offset < center)) {
+        busy.current = true
+        onMove(value, to)
+      }
+    },
+  }
+}
+
+type Reorderer = ReturnType<typeof useReorder>
+
+/**
+ * Sürüklenebilir öğenin Motion özellikleri: yatay sürüklenir, bırakınca yeni yerine akar
+ * (`dragSnapToOrigin` + düzen animasyonu); sürüklenirken üstte. Sürükleme bittikten sonraki tıklama
+ * yutulur (sekme seçilmesin). Şerit kaydırılabiliyorsa kenara yaklaşınca kayar.
+ */
+function useDragItem(value: string, reorder: Reorderer, scroller: HTMLElement | null) {
+  const x = useMotionValue(0)
+  const zIndex = useTransform(x, (v) => (v ? 30 : 'auto'))
+  const dragged = useRef(false)
+  return {
+    drag: 'x' as const,
+    dragSnapToOrigin: true,
+    dragMomentum: false,
+    style: { x, zIndex },
+    onDragStart: () => {
+      dragged.current = true
+    },
+    onDrag: (_: unknown, info: PanInfo) => {
+      reorder.update(value, x.get(), info.velocity.x)
+      // Kenara 48px kala şerit o yöne kayar
+      if (!scroller) return
+      const r = scroller.getBoundingClientRect()
+      const edge = info.point.x < r.left + 48 ? -1 : info.point.x > r.right - 48 ? 1 : 0
+      if (edge) scroller.scrollBy({ left: edge * 12 })
+    },
+    onDragEnd: () => {
+      // Bırakınca gelen tıklama geçsin diye bir sonraki görev
+      setTimeout(() => {
+        dragged.current = false
+      })
+    },
+    onLayoutMeasure: (box: Box) => reorder.register(value, box),
+    onClickCapture: (e: { stopPropagation: () => void; preventDefault: () => void }) => {
+      if (!dragged.current) return
+      e.stopPropagation()
+      e.preventDefault()
+    },
+  }
+}
+
+/* --- Şerit ------------------------------------------------------------------------------------- */
+
+/** Sekmenin anahtarı (seçim, ölçüm): grup ve sekme. */
+const tabKey = (group: string, view: string) => `${group}:${view}`
+
+/**
+ * Sekme şeridi: gruplar soldan sağa, her grubun bütün sekmeleri görünür (kökün sekmesi başta, sonra
+ * child sekmeleri). Birden çok grup varken her grup kendi renginde: altında çizgi, başında nokta,
+ * seçili sekmesi çerçeveli (Chrome'daki gibi). Başka grubun sekmesine basınca o grup etkin olur.
+ * Seçili sekmenin zemini sekmeden sekmeye (gruplar arasında da) kayar (`layoutId`). Sıralama
+ * sürükleyerek: child sekmesi grubun içinde, kökün sekmesi bütün grubu taşır; sağ tık menüsünde de
+ * (klavyede menü tuşu).
  */
 function TabStrip({
-  views,
+  groups,
   active,
-  rootId,
   split,
   onSelect,
   onClose,
-  onJoin,
+  onCloseGroup,
+  onPair,
+  onMoveTab,
+  onMoveGroup,
 }: {
-  views: View[]
+  groups: Group[]
   active: string
-  rootId: string
   split: boolean
-  onSelect: (key: string, id: string) => void
-  onClose: (id: string) => void
-  onJoin?: (key: string) => void
+  /** Sekmeyi seçer (başka gruptaysa o gruba geçer). */
+  onSelect: (group: string, view: string, id: string) => void
+  onClose: (group: string, id: string) => void
+  onCloseGroup: (group: string) => void
+  /** Yan yana aç (yalnızca etkin grupta). */
+  onPair?: (view: string) => void
+  onMoveTab: (group: string, view: string, to: number) => void
+  onMoveGroup: (group: string, to: number) => void
 }) {
   const { motion: level } = useLook()
-  // Ortak yay: sekmelerin yer değiştirmesi ve seçim zemini aynı anda, aynı biçimde
-  const spring = useTransition()
-  const fadeT = useTransition({ duration: 0.2, ease: EASE })
-  const exitT = useTransition({ duration: 0.14, ease: [0.4, 0, 1, 1] })
-
-  // Seçim zemininin yeri: seçili sekmenin şerit içindeki konumu (dönüşümden bağımsız: kayan
-  // sekmenin varacağı yer). İlk ölçümde kaymadan yerleşir.
+  const group = groups.find((g) => g.key === active)!
+  const selected = tabKey(group.key, group.tabs.active)
   const [row, setRow] = useState<HTMLElement | null>(null)
-  const [bar, setBar] = useState<{ left: number; width: number } | null>(null)
-  const layout = views.map((v) => `${v.key}:${v.ids.join(',')}`).join('|')
-  useLayoutEffect(() => {
-    if (!row) return
-    const measure = () => {
-      const el = row.querySelector<HTMLElement>(`[data-tab="${CSS.escape(active)}"]`)
-      setBar((b) => {
-        if (!el) return null
-        const next = { left: el.offsetLeft, width: el.offsetWidth }
-        return b && b.left === next.left && b.width === next.width ? b : next
-      })
-    }
-    measure()
-    // Şerit ya da tek tek sekmelerin boyutu değişince (gruplanma, yazı tipi) de yeniden ölçülür
-    const ro = new ResizeObserver(measure)
-    ro.observe(row)
-    row.querySelectorAll('[data-tab]').forEach((t) => ro.observe(t))
-    return () => ro.disconnect()
-  }, [row, active, layout])
+  const scroller = row?.parentElement ?? null
+  const groupOrder = useReorder(
+    groups.map((g) => g.key),
+    onMoveGroup,
+  )
+  // Renkler grupları birbirinden ayırır: yalnızca birden çok grup varken
+  const colored = groups.length > 1
 
   // Seçili sekme şeridin dışında kaldıysa görünür yere kayar
   useEffect(() => {
-    row?.querySelector(`[data-tab="${CSS.escape(active)}"]`)?.scrollIntoView({
+    row?.querySelector(`[data-tab="${CSS.escape(selected)}"]`)?.scrollIntoView({
       block: 'nearest',
       inline: 'nearest',
       behavior: level === 'full' ? 'smooth' : 'auto',
     })
-  }, [row, active, level])
+  }, [row, selected, level])
 
-  // Klavye (WAI-ARIA sekmeleri): oklar / Home / End sekmeler arasında gezer, Delete formu kapatır
+  // Klavye (WAI-ARIA sekmeleri): oklar / Home / End bütün sekmeler arasında gezer, Delete formu
+  // kapatır (kökün sekmesinde grubu)
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     const tabs = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')]
     const i = tabs.indexOf(document.activeElement as HTMLElement)
@@ -532,17 +701,23 @@ function TabStrip({
     else if (e.key === 'Home') go(0)
     else if (e.key === 'End') go(tabs.length - 1)
     else if (e.key === 'Delete') {
-      const id = tabs[i]?.dataset.form
-      if (!id || id === rootId) return
+      const { form, group: g, root } = tabs[i]?.dataset ?? {}
+      if (!form || !g) return
       e.preventDefault()
       // Kapanınca odak şeritte kalsın: soldaki sekmeye
       tabs[i - 1]?.focus()
-      onClose(id)
+      if (root) onCloseGroup(g)
+      else onClose(g, form)
     }
   }
 
   return (
-    <Scroll horizontal className="min-w-0 flex-1 [scrollbar-width:none]">
+    // Kayan şerit Motion öğesi (`layoutScroll`): şerit kaydırılmışken de düzen animasyonları ve
+    // sürüklemede yer değiştirme eşikleri kaymaz
+    <MotionFlex
+      layoutScroll
+      className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
+    >
       <Flex
         ref={setRow}
         role="tablist"
@@ -551,118 +726,362 @@ function TabStrip({
         onKeyDown={onKeyDown}
         // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`, yarıçap × 3) + sekme kavisi
         // (yarıçap × 2): seçili sekmenin kavisi kabın düz üst kenarına oturur
-        className="relative flex min-w-max items-end gap-1 ps-[calc(var(--radius)*5)] pe-8 pt-1"
+        className="relative flex min-w-max items-end gap-3 ps-[calc(var(--radius)*5)] pe-8 pt-1"
       >
-        {bar && (
-          <MotionFlex
-            aria-hidden
-            initial={false}
-            animate={{ left: bar.left, width: bar.width }}
-            transition={spring}
-            className={cn(
-              'pointer-events-none absolute bottom-0 z-1 block h-12 rounded-t-2xl bg-(--tab-bg)',
-              FLARES,
-            )}
+        {groups.map((g, i) => (
+          <GroupBlock
+            key={g.key}
+            group={g}
+            colored={colored}
+            index={i}
+            count={groups.length}
+            selected={selected}
+            split={split}
+            order={groupOrder}
+            scroller={scroller}
+            onSelect={(view, id) => onSelect(g.key, view, id)}
+            onClose={(id) => onClose(g.key, id)}
+            onCloseGroup={() => onCloseGroup(g.key)}
+            onPair={g.key === active ? onPair : undefined}
+            onMoveTab={(view, to) => onMoveTab(g.key, view, to)}
+            onMoveGroup={(to) => onMoveGroup(g.key, to)}
           />
-        )}
-        {/* Çıkan sekme akıştan hemen çıkar (`popLayout`): diğerleri beklemeden yerine kayar */}
-        <AnimatePresence initial={false} mode="popLayout">
-          {views.map((v) => {
-            const selected = v.key === active
-            return (
-              <MotionFlex
-                key={v.key}
-                layout="position"
-                data-tab={v.key}
-                // Yeni sekme kabın içinden kısa yükselir; çıkan solarak iner
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10, pointerEvents: 'none', transition: exitT }}
-                transition={{ layout: spring, y: spring, opacity: fadeT }}
-                // Seçili sekme seçim zemininin (z-1) üstünde; kayarken de yazısı örtülmez
-                className={cn(
-                  'group/tab relative flex h-12 shrink-0 items-stretch',
-                  selected && 'z-2',
-                )}
-              >
-                <TabBody
-                  view={v}
-                  selected={selected}
-                  split={split}
-                  rootId={rootId}
-                  onSelect={(id) => onSelect(v.key, id)}
-                  onClose={onClose}
-                  onJoin={
-                    onJoin && !selected && v.ids.length === 1 ? () => onJoin(v.key) : undefined
-                  }
-                />
-              </MotionFlex>
-            )
-          })}
-        </AnimatePresence>
+        ))}
       </Flex>
-    </Scroll>
+    </MotionFlex>
+  )
+}
+
+/** Grubun rengi `--g` (tema dosyası `--group-1` … `--group-6`); sabit metin, Tailwind görsün. */
+const GROUP_TONE = [
+  '[--g:var(--group-1)]',
+  '[--g:var(--group-2)]',
+  '[--g:var(--group-3)]',
+  '[--g:var(--group-4)]',
+  '[--g:var(--group-5)]',
+  '[--g:var(--group-6)]',
+] as const
+
+/**
+ * Renkli grubun çizgisi (Chrome'daki gibi): grubun sekmelerinin altında grubun renginde 2px çizgi;
+ * seçili sekmede çizgi sekmenin yanlarından ve üstünden dolaşır (`TAB_RING`).
+ */
+const GROUP_LINE =
+  'pointer-events-none absolute inset-x-1 bottom-0 block h-[2px] rounded-full bg-(--g)'
+
+/**
+ * Renkli grubun seçili sekmesi: yanlarda ve üstte grubun çizgisi; alt köşelerdeki içbükey kavisler
+ * boyunca çizgi grubun alt çizgisine kesintisiz iner (Başlangıç'taki seçili kategori sekmesiyle aynı
+ * yol, StartPage.tsx): kavis halkasının orta çizgisi sekmenin köşesiyle aynı yarıçapta, bir ucu
+ * sekmenin kenar çizgisinin, öbür ucu grubun alt çizgisinin üstünde. Halkanın dışı kabın rengi
+ * (sekme kaba kaynaşır), içi saydam. Temelde radial-gradient; `corner-shape` destekleyen tarayıcıda
+ * köşesi içbükey kutu, halka gölgeyle. Sabit metin (Tailwind görsün).
+ */
+const TAB_RING =
+  "border-x-2 border-t-2 border-(--g) [--flare:calc(var(--radius)*2)] [--fa:calc(var(--flare)_-_1px)] [--fb:calc(var(--flare)_+_1px)] before:absolute before:bottom-0 before:start-[calc(1px_-_var(--flare)_-_2px)] before:size-(--fb) before:bg-[radial-gradient(circle_at_0_0,transparent_var(--fa),var(--g)_var(--fa),var(--g)_var(--fb),var(--tab-bg)_var(--fb))] before:content-[''] supports-[corner-shape:scoop]:before:bg-none supports-[corner-shape:scoop]:before:bg-(--tab-bg) supports-[corner-shape:scoop]:before:rounded-tl-[100%] supports-[corner-shape:scoop]:before:[corner-shape:var(--corner-concave,scoop)] supports-[corner-shape:scoop]:before:shadow-[0_0_0_2px_var(--g)] supports-[corner-shape:scoop]:before:[clip-path:inset(0)] after:absolute after:bottom-0 after:end-[calc(1px_-_var(--flare)_-_2px)] after:size-(--fb) after:bg-[radial-gradient(circle_at_100%_0,transparent_var(--fa),var(--g)_var(--fa),var(--g)_var(--fb),var(--tab-bg)_var(--fb))] after:content-[''] supports-[corner-shape:scoop]:after:bg-none supports-[corner-shape:scoop]:after:bg-(--tab-bg) supports-[corner-shape:scoop]:after:rounded-tr-[100%] supports-[corner-shape:scoop]:after:[corner-shape:var(--corner-concave,scoop)] supports-[corner-shape:scoop]:after:shadow-[0_0_0_2px_var(--g)] supports-[corner-shape:scoop]:after:[clip-path:inset(0)]"
+
+/** Grubun noktası: açık grubun başında ve daralmış grupta grubun rengi. */
+const GROUP_DOT = 'relative z-2 block size-2 shrink-0 self-center rounded-full bg-(--g)'
+
+/**
+ * Bir grup: kökün sekmesi ve child sekmeleri. Renkliyken (birden çok grup) altında grubun renginde
+ * çizgi, başında grubun noktası. Blok bütün olarak sürüklenir (gruplar arası sıralama): kökün
+ * sekmesinden tutulur; genişliği sekmeler açılıp kapanınca Motion'la değişir.
+ */
+function GroupBlock({
+  group,
+  colored,
+  index,
+  count,
+  selected,
+  split,
+  order,
+  scroller,
+  onSelect,
+  onClose,
+  onCloseGroup,
+  onPair,
+  onMoveTab,
+  onMoveGroup,
+}: {
+  group: Group
+  /** Birden çok grup var: grup kendi renginde. */
+  colored: boolean
+  index: number
+  count: number
+  /** Seçili sekmenin anahtarı (etkin grubun seçili sekmesi). */
+  selected: string
+  split: boolean
+  order: Reorderer
+  scroller: HTMLElement | null
+  onSelect: (view: string, id: string) => void
+  onClose: (id: string) => void
+  onCloseGroup: () => void
+  onPair?: (view: string) => void
+  onMoveTab: (view: string, to: number) => void
+  onMoveGroup: (to: number) => void
+}) {
+  const spring = useTransition()
+  const controls = useDragControls()
+  const drag = useDragItem(group.key, order, scroller)
+  const [rootView, ...rest] = group.tabs.views
+  const tabOrder = useReorder(
+    group.tabs.views.map((v) => v.key),
+    onMoveTab,
+    1,
+  )
+  const rootSelected = selected === tabKey(group.key, rootView!.key)
+  const close = (id: string) => (id === group.tabs.rootId ? onCloseGroup() : onClose(id))
+  const groupMenu: MenuItem[] = [
+    {
+      key: 'group-left',
+      label: 'Grubu sola taşı',
+      disabled: index === 0,
+      onClick: () => onMoveGroup(index - 1),
+    },
+    {
+      key: 'group-right',
+      label: 'Grubu sağa taşı',
+      disabled: index === count - 1,
+      onClick: () => onMoveGroup(index + 1),
+    },
+    { type: 'divider' },
+    { key: 'group-close', label: 'Grubu kapat', onClick: onCloseGroup },
+  ]
+
+  return (
+    <MotionFlex
+      {...drag}
+      // Kökün sekmesinden tutulur
+      dragListener={false}
+      dragControls={controls}
+      layout
+      transition={{ layout: spring }}
+      role="presentation"
+      className={cn(
+        'relative flex h-10 shrink-0 items-stretch gap-1',
+        GROUP_TONE[group.color % GROUP_TONE.length],
+      )}
+    >
+      {/* Grubun alt çizgisi */}
+      {colored && <Flex aria-hidden className={GROUP_LINE} />}
+      <TabMenu items={groupMenu}>
+        <MotionFlex
+          layout="position"
+          transition={{ layout: spring }}
+          data-tab={tabKey(group.key, rootView!.key)}
+          onPointerDown={(e) => controls.start(e)}
+          className={cn('group/tab relative flex h-10 shrink-0 items-stretch', rootSelected && 'z-2')}
+        >
+          {/* Grubun başında grubun rengi: seçili sekme çizgiyi örtse de grup belli olur */}
+          {colored && <Flex aria-hidden className={cn(GROUP_DOT, 'ms-3.5 -me-1.5')} />}
+          <TabBody
+            group={group.key}
+            view={rootView!}
+            selected={rootSelected}
+            split={split}
+            tinted={colored}
+            rootId={group.tabs.rootId}
+            onSelect={(id) => onSelect(rootView!.key, id)}
+            onClose={close}
+          />
+        </MotionFlex>
+      </TabMenu>
+      {/* Yeni sekme kökün yanından açılır, kapanan solarak çıkar */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {rest.map((v, i) => (
+          <ChildTab
+            key={tabKey(group.key, v.key)}
+            group={group.key}
+            view={v}
+            index={i + 1}
+            count={group.tabs.views.length}
+            selected={selected === tabKey(group.key, v.key)}
+            split={split}
+            tinted={colored}
+            rootId={group.tabs.rootId}
+            order={tabOrder}
+            scroller={scroller}
+            onSelect={(id) => onSelect(v.key, id)}
+            onClose={close}
+            onPair={onPair && v.ids.length === 1 ? () => onPair(v.key) : undefined}
+            onMove={(to) => onMoveTab(v.key, to)}
+          />
+        ))}
+      </AnimatePresence>
+    </MotionFlex>
+  )
+}
+
+/** Grubun child sekmesi: grubun içinde sürüklenir; sağ tık menüsünde de taşınır. */
+function ChildTab({
+  group,
+  view,
+  index,
+  count,
+  selected,
+  split,
+  tinted,
+  rootId,
+  order,
+  scroller,
+  onSelect,
+  onClose,
+  onPair,
+  onMove,
+}: {
+  group: string
+  view: View
+  index: number
+  count: number
+  selected: boolean
+  split: boolean
+  tinted: boolean
+  rootId: string
+  order: Reorderer
+  scroller: HTMLElement | null
+  onSelect: (id: string) => void
+  onClose: (id: string) => void
+  onPair?: () => void
+  onMove: (to: number) => void
+}) {
+  const spring = useTransition()
+  const fadeT = useTransition({ duration: 0.2, ease: EASE })
+  const exitT = useTransition({ duration: 0.16, ease: [0.4, 0, 1, 1] })
+  const drag = useDragItem(view.key, order, scroller)
+  const menu: MenuItem[] = [
+    { key: 'left', label: 'Sola taşı', disabled: index <= 1, onClick: () => onMove(index - 1) },
+    {
+      key: 'right',
+      label: 'Sağa taşı',
+      disabled: index >= count - 1,
+      onClick: () => onMove(index + 1),
+    },
+    { type: 'divider' },
+    { key: 'close', label: 'Kapat', onClick: () => onClose(view.focus) },
+  ]
+  return (
+    <TabMenu items={menu}>
+      <MotionFlex
+        {...drag}
+        layout="position"
+        data-tab={tabKey(group, view.key)}
+        // Yeni sekme soldan kısa kayarak belirir; kapanan solarak çıkar
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -16, pointerEvents: 'none', transition: exitT }}
+        transition={{ layout: spring, x: spring, opacity: fadeT }}
+        // Seçili sekme seçim zemininin üstünde; kayarken de yazısı örtülmez
+        className={cn('group/tab relative flex h-10 shrink-0 items-stretch', selected && 'z-2')}
+      >
+        <TabBody
+          group={group}
+          view={view}
+          selected={selected}
+          split={split}
+          tinted={tinted}
+          rootId={rootId}
+          onSelect={onSelect}
+          onClose={onClose}
+          onPair={selected ? undefined : onPair}
+        />
+      </MotionFlex>
+    </TabMenu>
+  )
+}
+
+/** Sağ tık menüsü (klavyede menü tuşu / Shift+F10 da açar): sekmeyi ya da grubu taşır, kapatır. */
+function TabMenu({ items, children }: { items: MenuItem[]; children: ReactNode }) {
+  return (
+    <Dropdown trigger={['contextMenu']} menu={{ items }}>
+      {children}
+    </Dropdown>
   )
 }
 
 /**
- * Sekmenin içi: kısa gri zemin (seçilince solar; seçim zemini altından gelir) ve formlar. Gruplu
- * sekmede iki form, aralarında ince çizgi. Kapatma her formun yanında; ana form kapanmaz.
+ * Sekmenin içi: gri zemin (renkli grupta yok; seçilince solar, seçim zemini altından gelir; renkli
+ * grupta seçim zemini grubun renginde çerçeveli) ve formlar. Yan yana
+ * sekmede iki form, aralarında ince çizgi. Kapatma her formun yanında; kökünki bütün grubu kapatır.
+ * Seçili sekmenin zemini (`layoutId`) sekmenin içinde: sekmeyle birlikte sürüklenir, sekmeden sekmeye
+ * kayar.
  */
 function TabBody({
+  group,
   view,
   selected,
   split,
+  tinted = false,
   rootId,
   onSelect,
   onClose,
-  onJoin,
+  onPair,
 }: {
+  group: string
   view: View
   selected: boolean
   split: boolean
+  /** Renkli grupta: gri zemin yok (üzerine gelince grubun açık tonu), seçiliyse grubun çerçevesi. */
+  tinted?: boolean
   rootId: string
   onSelect: (id: string) => void
   onClose: (id: string) => void
   /** Yan yana aç: bu sekmeyi seçili sekmenin yanına alır. */
-  onJoin?: () => void
+  onPair?: () => void
 }) {
-  const grouped = view.ids.length > 1
+  const spring = useTransition()
+  const paired = view.ids.length > 1
   return (
     <>
       <Flex
         aria-hidden
         className={cn(
-          'absolute inset-x-0 top-2 bottom-0 block rounded-t-2xl bg-surface-tertiary transition-[opacity,background-color] duration-[calc(200ms*var(--motion-time,1))]',
+          'absolute inset-0 block rounded-t-2xl transition-[opacity,background-color] duration-[calc(200ms*var(--motion-time,1))]',
           selected
             ? 'opacity-0'
-            : 'group-hover/tab:bg-[color-mix(in_oklab,var(--foreground)_6%,var(--surface-tertiary))]',
+            : tinted
+              ? 'group-hover/tab:bg-[color-mix(in_oklab,var(--g)_12%,transparent)]'
+              : 'bg-surface-tertiary group-hover/tab:bg-[color-mix(in_oklab,var(--foreground)_6%,var(--surface-tertiary))]',
         )}
       />
-      <Flex className="relative flex min-w-0 items-center pt-2 pe-1.5">
+      {selected && (
+        <MotionFlex
+          aria-hidden
+          layoutId="form-tab-selection"
+          transition={spring}
+          className={cn(
+            'pointer-events-none absolute inset-0 z-1 block rounded-t-2xl bg-(--tab-bg)',
+            tinted ? TAB_RING : FLARES,
+          )}
+        />
+      )}
+      <Flex className="relative z-2 flex min-w-0 items-center pe-1.5">
         {view.ids.map((id, i) => (
           <Fragment key={id}>
             {i > 0 && <Flex aria-hidden className="mx-0.5 block h-4 w-px shrink-0 bg-border" />}
             <TabLabel
               id={id}
+              group={group}
+              pane={paneKey(group, id)}
               lead={i === 0}
-              grouped={grouped}
-              current={selected && (!grouped || id === view.focus)}
+              paired={paired}
+              current={selected && (!paired || id === view.focus)}
               // Bölünmüşken iki form birden görünür
-              visible={selected && (split || !grouped || id === view.focus)}
+              visible={selected && (split || !paired || id === view.focus)}
+              root={id === rootId}
               onSelect={() => onSelect(id)}
-              onClose={id === rootId ? undefined : () => onClose(id)}
+              onClose={() => onClose(id)}
             />
           </Fragment>
         ))}
-        {onJoin && (
+        {onPair && (
           <Tip label="Yan yana aç">
             <Button
               type="text"
               size="small"
               aria-label={`Yan yana aç: ${formMeta(view.ids[0]!).name}`}
               icon={<Columns2 {...IC} size={14} />}
-              onClick={onJoin}
+              onClick={onPair}
               className="ms-0.5 rounded-full text-muted opacity-0 transition-opacity group-hover/tab:opacity-100 hover:text-foreground! focus-visible:opacity-100"
             />
           </Tip>
@@ -675,23 +1094,32 @@ function TabBody({
 /** Sekmedeki form: süreç ikonu ve adı (ipucunda talep numarası), yanında kapatma. */
 function TabLabel({
   id,
+  group,
+  pane,
   lead,
-  grouped,
+  paired,
   current,
   visible,
+  root,
   onSelect,
   onClose,
 }: {
   id: string
+  /** Formun grubu (Delete kapatırken). */
+  group: string
+  /** Formun bölmesinin anahtarı (`aria-controls`). */
+  pane: string
   /** Sekmenin ilk formu (solda daha geniş boşluk). */
   lead: boolean
-  grouped: boolean
+  paired: boolean
   /** Odaktaki form: birincil renkte, klavyeyle sekmeye gelince odak buraya. */
   current: boolean
   /** Formu ekranda (`aria-selected`). */
   visible: boolean
+  /** Grubun kökü: kapatma bütün grubu kapatır. */
+  root: boolean
   onSelect: () => void
-  onClose?: () => void
+  onClose: () => void
 }) {
   const { name, icon: Icon, no } = formMeta(id)
   return (
@@ -701,10 +1129,12 @@ function TabLabel({
         <Button
           type="text"
           role="tab"
-          id={`form-tab-${id}`}
+          id={`form-tab-${pane}`}
           data-form={id}
+          data-group={group}
+          data-root={root || undefined}
           aria-selected={visible}
-          aria-controls={`form-pane-${id}`}
+          aria-controls={`form-pane-${pane}`}
           tabIndex={current ? 0 : -1}
           onClick={onSelect}
           icon={
@@ -720,7 +1150,7 @@ function TabLabel({
             // Klavye odağı sekmenin içinde ince çizgi (dışa taşan halka yerine)
             'h-full min-w-0 gap-2 rounded-t-xl rounded-b-none px-3 outline-none hover:bg-transparent! focus-visible:outline-none! focus-visible:[box-shadow:inset_0_0_0_2px_var(--focus)]',
             lead && 'ps-4',
-            grouped ? 'max-w-[15rem]' : 'max-w-[22rem]',
+            paired ? 'max-w-[15rem]' : 'max-w-[22rem]',
             current ? 'text-accent-soft-foreground' : 'text-foreground/70 hover:text-foreground!',
           )}
         >
@@ -735,18 +1165,18 @@ function TabLabel({
           </Typography.Text>
         </Button>
       </Tip>
-      {onClose && (
-        <Tip label="Kapat">
-          <Button
-            type="text"
-            size="small"
-            aria-label={`Kapat: ${name}`}
-            icon={<X {...IC} size={14} />}
-            onClick={onClose}
-            className="-ms-1 rounded-full text-muted hover:text-foreground!"
-          />
-        </Tip>
-      )}
+      <Tip label={root ? 'Grubu kapat' : 'Kapat'}>
+        <Button
+          type="text"
+          size="small"
+          aria-label={`${root ? 'Grubu kapat' : 'Kapat'}: ${name}`}
+          icon={<X {...IC} size={14} />}
+          // Kapatma sekmeyi sürüklemeye başlatmasın
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onClose}
+          className="-ms-1 rounded-full text-muted hover:text-foreground!"
+        />
+      </Tip>
     </Flex>
   )
 }

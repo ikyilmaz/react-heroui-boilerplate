@@ -33,7 +33,7 @@ interface Entry {
   undo?: Undo
 }
 
-/** Sekme: tek form ya da yan yana iki form (gruplu sekme). */
+/** Sekme: tek form ya da yan yana iki form (yan yana sekme). */
 export interface View {
   key: string
   /** Formlar, soldan sağa (bir ya da iki). */
@@ -63,8 +63,8 @@ export type TabsAction =
   | { type: 'close'; id: string }
   | { type: 'focus'; view: string; id: string }
   | { type: 'swap'; view: string }
-  | { type: 'ungroup'; view: string }
-  | { type: 'join'; view: string }
+  | { type: 'unpair'; view: string }
+  | { type: 'pair'; view: string }
   /** Seçili sekmenin sol bölme payı: kesin değer ya da öncekine eklenen. */
   | { type: 'ratio'; value: number }
   | { type: 'nudge'; delta: number }
@@ -203,7 +203,7 @@ function focusIn(s: TabsState, key: string, id: string): TabsState {
   return { ...s, active: key, views: s.views.map((x) => (x === v ? { ...x, focus: id } : x)) }
 }
 
-/** Gruplu sekmenin bölmelerinin yerini değiştirir (paylar da yer değiştirir). */
+/** Yan yana sekmenin bölmelerinin yerini değiştirir (paylar da yer değiştirir). */
 function swapIn(s: TabsState, key: string): TabsState {
   const v = s.views.find((x) => x.key === key)
   if (!v || v.ids.length < 2) return s
@@ -211,8 +211,8 @@ function swapIn(s: TabsState, key: string): TabsState {
   return { ...s, views: s.views.map((x) => (x === v ? next : x)) }
 }
 
-/** Gruplu sekmeyi iki sekmeye ayırır; odaktaki form seçili kalır. */
-function ungroupIn(s: TabsState, key: string): TabsState {
+/** Yan yana sekmeyi iki sekmeye ayırır; odaktaki form seçili kalır. */
+function unpairIn(s: TabsState, key: string): TabsState {
   const i = s.views.findIndex((v) => v.key === key)
   const v = s.views[i]
   if (!v || v.ids.length < 2) return s
@@ -224,7 +224,7 @@ function ungroupIn(s: TabsState, key: string): TabsState {
 }
 
 /** Tek formlu sekmeyi seçili (tek formlu) sekmenin sağına alır. */
-function joinIn(s: TabsState, key: string): TabsState {
+function pairIn(s: TabsState, key: string): TabsState {
   const host = activeView(s)
   const other = s.views.find((v) => v.key === key)
   if (!other || host === other || host.ids.length > 1 || other.ids.length > 1) return s
@@ -254,10 +254,10 @@ export function tabsReducer(s: TabsState, a: TabsAction): TabsState {
       return focusIn(s, a.view, a.id)
     case 'swap':
       return swapIn(s, a.view)
-    case 'ungroup':
-      return ungroupIn(s, a.view)
-    case 'join':
-      return joinIn(s, a.view)
+    case 'unpair':
+      return unpairIn(s, a.view)
+    case 'pair':
+      return pairIn(s, a.view)
     case 'ratio':
       return ratioIn(s, a.value)
     case 'nudge':

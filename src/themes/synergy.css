@@ -65,6 +65,17 @@
     --danger: oklch(0.6 0.21 25);
     --danger-foreground: oklch(1 0 0);
 
+    /* Form gruplarının renkleri (form sekmeleri; açık istek üzerine, tek renk kuralının tek
+       istisnası): turkuaz, lavanta, kum, pembe, mavi, gri. Durum renklerini (kırmızı, sarı, yeşil)
+       çağrıştırmayan yumuşak tonlar; mavi geride (varsayılan birincil renkle karışmasın). Grubun
+       noktası bu renk, zemini çok açık tonu (FormTabs.tsx) */
+    --group-1: oklch(0.66 0.08 190);
+    --group-2: oklch(0.64 0.1 295);
+    --group-3: oklch(0.7 0.06 75);
+    --group-4: oklch(0.68 0.09 340);
+    --group-5: oklch(0.64 0.1 245);
+    --group-6: oklch(0.62 0.03 255);
+
     --segment: oklch(1 0 0);
     --segment-foreground: var(--foreground);
     --link: var(--accent-soft-foreground);
@@ -111,6 +122,13 @@
     --accent-foreground: oklch(1 0 0);
     --accent-soft-foreground: oklch(0.78 0.11 262);
     --focus: oklch(0.72 0.13 262);
+
+    --group-1: oklch(0.76 0.07 190);
+    --group-2: oklch(0.74 0.08 295);
+    --group-3: oklch(0.78 0.05 75);
+    --group-4: oklch(0.76 0.07 340);
+    --group-5: oklch(0.74 0.08 245);
+    --group-6: oklch(0.72 0.03 255);
 
     --segment: var(--surface-tertiary);
     --segment-foreground: var(--foreground);
