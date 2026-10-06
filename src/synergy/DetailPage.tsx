@@ -11,7 +11,16 @@ import {
 import { useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import { LayoutGroup, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, FileText, History, Trash2, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  History,
+  Save,
+  Send,
+  Trash2,
+  X,
+} from 'lucide-react'
 import {
   Avatar,
   Button,
@@ -44,6 +53,7 @@ import {
   dateOf,
   documentsOf,
   eventsFor,
+  findApp,
   findBox,
   findProcess,
   findRequest,
@@ -59,7 +69,15 @@ import {
 } from '@/synergy/shared/workflowData'
 import { useHistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
-import { START_CRUMB, WF_CRUMB, boxLink, processLink, requestLink, useFrame } from '@/synergy/paths'
+import {
+  BASE,
+  START_CRUMB,
+  WF_CRUMB,
+  boxLink,
+  processLink,
+  requestLink,
+  useFrame,
+} from '@/synergy/paths'
 import { CellValue, EmptyNote, GroupLabel, SearchField, useBand } from '@/synergy/ant/parts'
 import {
   GRID_CELL,
@@ -90,6 +108,14 @@ import {
   type GroupNav,
 } from '@/synergy/shared/formGroups'
 import { useNotify } from '@/synergy/ant/hr'
+import {
+  APP_FORM_TEXT,
+  appFormOf,
+  appIdOf,
+  appOfRoot,
+  appRoot,
+} from '@/synergy/shared/appForms'
+import { AppFormBody } from '@/synergy/AppForm'
 import { SidePanel, useSidePanel, type SideTab, type SideTarget } from '@/synergy/DetailSide'
 import {
   DocumentsList,
@@ -102,7 +128,11 @@ import {
 } from '@/synergy/DetailTiles'
 
 /* -------------------------------------------------------------------------------------------------
- * Talep ayrıntısı (Flow Viewer), antd: vurgu bandı + bento
+ * Form çalışma alanı: talep ayrıntısı (Flow Viewer) ve menü uygulamalarının formları aynı form
+ * gruplarında (`/is-akislari/:box/:processId/:requestId` ve `/uygulamalar/:appId` aynı sayfa: biri
+ * açıkken öbürüne gidilince sayfa yeniden kurulmaz, yeni grup açılır; açıksa o gruba geçilir).
+ *
+ * Talep ayrıntısı, antd: vurgu bandı + bento
  *
  * Band: süreç ve talep sahibi, Geri / İleri (aralarında süreç şeridi), başlık, numaralar, durum, olay
  * şeridi. Kaydırınca 64px yapışkan şeride daralır. Bento: solda form (ya da tam tarihçe), sağda yan
@@ -118,22 +148,26 @@ export function DetailPage() {
   const location = useLocation()
   const notify = useNotify()
   const routeBox = findBox(params.box)
+  // Adresin formu: talep ya da menü uygulaması (`app:<uygulama>`)
+  const addressRoot = params.requestId ?? (params.appId ? appRoot(params.appId) : '')
 
   // İlk grubun listesi: listeden gelindiyse onun sırası, yoksa kutudaki aynı süreçten talepler
   // (ızgaranın varsayılanı gibi yeniden eskiye; tarih grupları bölünmesin)
   const siblings = useBoxRequests((routeBox?.id ?? 'bekleyen') as BoxId)
   const [st, dispatch] = useReducer(groupsReducer, undefined, () =>
     initGroups({
-      root: params.requestId ?? '',
-      nav: {
-        ids:
-          (location.state as DetailNavState | null)?.ids ??
-          siblings
-            .filter((x) => x.processId === params.processId)
-            .sort((a, b) => dateOf(b).getTime() - dateOf(a).getTime())
-            .map((x) => x.id),
-        box: (routeBox?.id ?? 'bekleyen') as BoxId,
-      },
+      root: addressRoot,
+      nav: params.requestId
+        ? {
+            ids:
+              (location.state as DetailNavState | null)?.ids ??
+              siblings
+                .filter((x) => x.processId === params.processId)
+                .sort((a, b) => dateOf(b).getTime() - dateOf(a).getTime())
+                .map((x) => x.id),
+            box: (routeBox?.id ?? 'bekleyen') as BoxId,
+          }
+        : null,
     }),
   )
   // Olay işleyicileri ve adres eşlemesi son durumu okur (eski kapanışlar değil)
@@ -145,37 +179,41 @@ export function DetailPage() {
   const group = activeGroup(st)
   const root = group.tabs.rootId
   const rootReq = findRequest(root)
+  const rootApp = appOfRoot(root)
 
   // Adres etkin grubun kökünü izler (geçmişe kayıt eklemeden: gruplar arası geçiş geri tuşunu doldurmasın)
   useEffect(() => {
-    if (!rootReq || params.requestId === root) return
-    navigate(requestLink(rootReq), {
+    if (addressRoot === root) return
+    const to = linkOf(root)
+    if (!to) return
+    navigate(to, {
       replace: true,
-      state: { ids: group.nav?.ids ?? [] } satisfies DetailNavState,
+      state: rootReq ? ({ ids: group.nav?.ids ?? [] } satisfies DetailNavState) : undefined,
     })
     // Yalnızca kök değişince
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [root])
 
-  // Adres dışarıdan başka bir talebe değişince (açık değilse) yeni grupta açılır
+  // Adres dışarıdan başka bir forma değişince (menüden uygulama, tarayıcının geri tuşu) yeni grupta
+  // açılır; zaten bir grubun köküyse o gruba geçilir
   useEffect(() => {
-    const id = params.requestId
-    if (!id || groupOf(latest.current, id)) return
+    const id = addressRoot
+    if (!id) return
     if (!canOpen(latest.current, id)) {
       warnFull()
-      const back = findRequest(activeGroup(latest.current).tabs.rootId)
-      if (back) navigate(requestLink(back), { replace: true })
+      const back = linkOf(activeGroup(latest.current).tabs.rootId)
+      if (back) navigate(back, { replace: true })
       return
     }
     dispatch({ type: 'open', root: id, nav: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.requestId])
+  }, [addressRoot])
 
   // Konum çubuğundaki ata form (`?form=`): o formun sekmesi seçilir, adres temizlenir
   const formParam = new URLSearchParams(location.search).get('form')
   useEffect(() => {
     if (!formParam) return
-    const owner = groupOf(latest.current, params.requestId ?? '')
+    const owner = groupOf(latest.current, addressRoot)
     if (owner) dispatch({ type: 'reveal', key: owner.key, form: formParam })
     navigate({ pathname: location.pathname }, { replace: true, state: location.state })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,11 +237,12 @@ export function DetailPage() {
     else dispatch({ type: 'close', key })
   }
 
-  // Konum: kutu › süreç › kök form › … › etkin form (açanlar zinciri; atalar o formun sekmesini açar)
+  // Konum: kutu › süreç › kök form › … › etkin form (açanlar zinciri; atalar o formun sekmesini açar);
+  // menü uygulamasının formunda Başlangıç › uygulama (orijinalde menü öğesinin paneli)
   const rootProcess = rootReq && findProcess(rootReq.processId)
   const box = findBox(group.nav?.box ?? rootReq?.box)
   const path = formPath(group, activeForm(group))
-  useFrame(
+  const requestCrumbs =
     rootReq && rootProcess && box
       ? [
           START_CRUMB,
@@ -227,7 +266,9 @@ export function DetailPage() {
             }
           }),
         ]
-      : [],
+      : []
+  useFrame(
+    rootApp ? [START_CRUMB, { label: rootApp.caption, icon: `app:${rootApp.id}` }] : requestCrumbs,
     box?.id ?? null,
   )
 
@@ -237,17 +278,20 @@ export function DetailPage() {
   useLayoutEffect(() => {
     actions.current = { openGroup, closeGroup }
   })
-  const renderRoot = useCallback(
-    (g: Group) => (
+  const renderRoot = useCallback((g: Group) => {
+    const appId = appIdOf(g.tabs.rootId)
+    // Menü uygulamasının formu: son grupsa kapanınca Başlangıç'a dönülür
+    if (appId !== undefined)
+      return <AppViewer appId={appId} onClose={() => actions.current.closeGroup(g.key, BASE)} />
+    return (
       <RootViewer
         group={g}
         onReplace={(id) => dispatch({ type: 'replace', key: g.key, root: id })}
         onOpen={(id) => actions.current.openGroup(id, g.nav)}
         onClose={(leaveTo) => actions.current.closeGroup(g.key, leaveTo)}
       />
-    ),
-    [],
-  )
+    )
+  }, [])
 
   return (
     <Flex className="relative flex flex-col">
@@ -260,11 +304,26 @@ export function DetailPage() {
         onCloseGroup={(key) => {
           const g = latest.current.groups.find((x) => x.key === key)
           const r = g && findRequest(g.tabs.rootId)
-          closeGroup(key, r ? processLink(r.box, r.processId) : boxLink('bekleyen'))
+          closeGroup(
+            key,
+            r
+              ? processLink(r.box, r.processId)
+              : g && appIdOf(g.tabs.rootId) !== undefined
+                ? BASE
+                : boxLink('bekleyen'),
+          )
         }}
       />
     </Flex>
   )
+}
+
+/** Grubun kökünün adresi: talebin ayrıntısı ya da menü uygulaması. */
+function linkOf(root: string) {
+  const app = appOfRoot(root)
+  if (app) return app.href
+  const r = findRequest(root)
+  return r && requestLink(r)
 }
 
 /**
@@ -331,6 +390,157 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
       onDeleted={onClose}
       isChild
     />
+  )
+}
+
+/** Menü formunun olayları (orijinal: akışın başlangıç olayları ya da uygulama formunun araç çubuğu). */
+type AppEvent = 'send' | 'draft' | 'cancel' | 'save' | 'close'
+
+const APP_EVENTS: Record<
+  'start' | 'form',
+  { id: AppEvent; label: string; icon: LucideIcon; primary?: boolean }[]
+> = {
+  start: [
+    { id: 'send', label: APP_FORM_TEXT.send, icon: Send, primary: true },
+    { id: 'draft', label: APP_FORM_TEXT.saveDraft, icon: Save },
+    { id: 'cancel', label: APP_FORM_TEXT.cancel, icon: X },
+  ],
+  form: [
+    { id: 'save', label: APP_FORM_TEXT.save, icon: Save, primary: true },
+    { id: 'close', label: APP_FORM_TEXT.close, icon: X },
+  ],
+}
+
+/**
+ * Menü uygulamasının formu (maket, `shared/appForms.ts`): talep ayrıntısının bandı (ikon, ad,
+ * olaylar; kaydırınca yapışkan şerit) ve form kartı; Geri / İleri, yan bilgiler, tarihçe yok (akış
+ * henüz başlamadı). "Gönder" bildirip formu kapatır, "Taslak Olarak Kaydet" / "Kaydet" yalnızca
+ * bildirir (hiçbir şey kaydedilmez), "İptal" / "Kapat" formu (grubu) kapatır. Uygulama yoksa grup
+ * kapanır.
+ */
+function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
+  const app = findApp(appId)
+  // Maket değerler (bugüne göre tarihler) form kurulurken bir kez
+  const [form] = useState(() => appFormOf(appId))
+  const notify = useNotify()
+  const phone = useMediaQuery('(max-width: 639px)')
+  const scroller = useTabScroller()
+  const scrolled = useScrolled(220, scroller)
+  const [attachFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const bandStyle = useBand('record')
+  const solid = !bandStyle.light
+  const band = cn(CARD, bandStyle.band)
+  const gone = !app || !form
+  useEffect(() => {
+    if (gone) onClose()
+    // Yalnızca uygulama yoksa
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gone])
+  if (gone) return null
+
+  const run = (id: AppEvent) => {
+    if (id === 'send') {
+      notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.sent(app.caption))
+      onClose()
+    } else if (id === 'draft') notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.draftSaved)
+    else if (id === 'save') notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.saved)
+    else onClose()
+  }
+  const actions = (onStrip: boolean) => (
+    <Flex role="group" aria-label="Olaylar" className={ROW}>
+      {APP_EVENTS[form.kind].map(({ id, label, icon: Icon, primary }) => (
+        <Button
+          key={id}
+          type={primary ? 'primary' : 'default'}
+          onClick={() => run(id)}
+          className={
+            primary ? (onStrip ? ON_STRIP : ON_BAND) : onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND
+          }
+          icon={<Icon {...IC} />}
+        >
+          {label}
+        </Button>
+      ))}
+    </Flex>
+  )
+  const Icon = app.icon ?? FileText
+
+  return (
+    <Flex vertical gap={12} className={cn(phone && 'pb-24')}>
+      {/* Kaydırınca: 64px yapışkan şerit (olaylar + formun adı; talep ayrıntısındaki gibi) */}
+      <Flex className="sticky top-[calc(var(--chrome-top,0px)+0.5rem)] z-30 -mb-3 block h-0">
+        <Card
+          aria-hidden={!scrolled}
+          className={cn(
+            STRIP,
+            CARD,
+            'absolute inset-x-0 h-16 transition duration-[calc(320ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
+            !scrolled && 'pointer-events-none -translate-y-[calc(100%+1rem)] opacity-0',
+          )}
+          classNames={{ body: 'flex h-full items-center gap-4 px-6 py-0' }}
+        >
+          {!phone && scrolled && <Flex className={cn(ROW, 'shrink-0')}>{actions(true)}</Flex>}
+          <Typography.Text
+            ellipsis
+            title={app.caption}
+            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current`}
+          >
+            {app.caption}
+          </Typography.Text>
+        </Card>
+      </Flex>
+
+      {/* Bant: uygulamanın ikonu ve adı (formun başlığı), altında olaylar */}
+      <Card className={band} classNames={{ body: 'flex flex-col gap-5 p-6' }}>
+        <Flex align="center" gap={16} className="min-w-0">
+          <Flex
+            aria-hidden
+            align="center"
+            justify="center"
+            className="size-12 shrink-0 rounded-2xl bg-current/10"
+          >
+            <Icon {...IC} size={22} />
+          </Flex>
+          <Typography.Title
+            level={1}
+            title={app.caption}
+            data-tab-cue
+            className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current sm:text-[1.75rem]"
+          >
+            {app.caption}
+          </Typography.Title>
+        </Flex>
+        {!phone && (
+          <Flex
+            {...({ inert: scrolled } as Record<string, unknown>)}
+            aria-hidden={scrolled || undefined}
+            className={ROW}
+          >
+            {actions(solid)}
+          </Flex>
+        )}
+      </Card>
+
+      {/* Form kartı kabın (sayfa ya da form sekmesinin bölmesi) altına kadar uzanır */}
+      <Flex ref={attachFill} style={fillStyle} className="flex">
+        <Card
+          className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1')}
+          classNames={{ body: 'p-6 sm:p-8' }}
+        >
+          <AppFormBody form={form} />
+        </Card>
+      </Flex>
+
+      {/* Telefonda olaylar altta sabit */}
+      {phone && (
+        <Card
+          className={cn(band, 'fixed inset-x-3 bottom-3 z-30 animate-rise')}
+          classNames={{ body: cn(ROW, 'p-3') }}
+        >
+          {actions(solid)}
+        </Card>
+      )}
+    </Flex>
   )
 }
 

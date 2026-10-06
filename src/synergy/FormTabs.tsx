@@ -15,6 +15,7 @@ import { AnimatePresence } from 'framer-motion'
 import { Button, Flex, type MenuProps } from 'antd'
 import { findRequest, panelSizeOf, processOf, type PanelSize } from '@/synergy/shared/workflowData'
 import { activeView, type TabsAction, type View } from '@/synergy/shared/formTabs'
+import { appOfRoot } from '@/synergy/shared/appForms'
 import {
   activeGroup,
   type Group,
@@ -37,8 +38,8 @@ import { Tab, TabButton, TabClose, TabGroup, TabStrip } from '@/synergy/tabs/Tab
  * sekmede açılır; bölünmüş iki form tek sekmede yan yana durur. Dar ekranda yer yok: 1024px
  * altında hepsi, 1200px altında 2'ler de 3 gibi açılır (orijinaldeki gibi).
  *
- * Form grupları (açık istek üzerine; mantık `shared/formGroups.ts`): her açılan talep kendi grubu,
- * grubun child'ları onun sekmeleri; birden çok grup varken her grup kendi renginde (Chrome gibi
+ * Form grupları (açık istek üzerine; mantık `shared/formGroups.ts`): her açılan talep ve menüden
+ * açılan uygulama formu (`shared/appForms.ts`) kendi grubu, grubun child'ları onun sekmeleri; birden çok grup varken her grup kendi renginde (Chrome gibi
  * nokta, alt çizgi, seçili sekmenin çerçevesi). Sekmeler ve gruplar sürükleyerek ya da sağ tık
  * menüsüyle sıralanır.
  *
@@ -70,8 +71,10 @@ const formOf = (key: string) => splitPaneKey(key)[1]
 /** Sekmenin anahtarı (`data-tab`): grup ve sekme. */
 const tabKey = (group: string, view: string) => `${group}:${view}`
 
-/** Sekmedeki ad ve ikon, ipucundaki talep numarası. */
+/** Sekmedeki ad ve ikon, ipucundaki talep numarası (menü uygulamasının formunda uygulamanınkiler). */
 function formMeta(id: string) {
+  const app = appOfRoot(id)
+  if (app) return { name: app.caption, icon: app.icon ?? FileText, no: undefined }
   const r = findRequest(id)
   const p = r && processOf(r)
   return { name: p?.form ?? id, icon: p?.icon ?? FileText, no: r?.no }

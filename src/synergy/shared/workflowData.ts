@@ -1567,7 +1567,7 @@ export interface MenuApp {
   caption: string
   /** Yoksa kart baş harfleri (`initials`) ve `avatarColor` ile çizilir. */
   icon?: LucideIcon
-  /** Uygulamanın adresi; sayfası olmayanlar `/uygulamalar/:id` ("Yakında"). */
+  /** Uygulamanın adresi; sayfası olmayanlar `/uygulamalar/:id` (formu form gruplarında, `appForms.ts`). */
   href: string
   /** Başlangıçta favori mi (sunucudaki pinned). Güncel değer için `useMenuApps`. */
   pinned: boolean

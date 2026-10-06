@@ -81,13 +81,14 @@
     --link: var(--accent-soft-foreground);
     --backdrop: oklch(0.21 0.01 260 / 0.35);
 
-    /* Kart gölgesi (kontur ayrı, `--border-width`). `none` değil: kartlarda halkayla aynı
-       `box-shadow` listesine girer, `none` orada geçersiz kalıp konturu da siler */
-    --surface-shadow: 0 0 #0000;
+    /* Kart gölgesi (kontur ayrı, `--border-width`; tema paneli › Kart gölgesi "İnce"). `none`
+       değil: kartlarda halkayla aynı `box-shadow` listesine girer, `none` orada geçersiz kalıp
+       konturu da siler */
+    --surface-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.06);
     --overlay-shadow:
       0 0 0 1px var(--border), 0 4px 12px -2px oklch(0.21 0.01 260 / 0.08),
       0 12px 32px -8px oklch(0.21 0.01 260 / 0.1);
-    --field-shadow: 0 0 #0000;
+    --field-shadow: 0 1px 1px 0 oklch(0 0 0 / 0.04);
   }
 
   .dark,
@@ -135,8 +136,8 @@
     --link: var(--accent-soft-foreground);
     --backdrop: oklch(0 0 0 / 0.6);
 
-    --surface-shadow: 0 0 #0000;
+    --surface-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.3);
     --overlay-shadow: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
-    --field-shadow: 0 0 #0000;
+    --field-shadow: 0 1px 1px 0 oklch(0 0 0 / 0.25);
   }
 }

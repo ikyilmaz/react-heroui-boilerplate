@@ -3,7 +3,6 @@ import { AppShell } from '@/synergy'
 import { StartPage } from '@/synergy/StartPage'
 import { WorkflowPage } from '@/synergy/WorkflowPage'
 import { DetailPage } from '@/synergy/DetailPage'
-import { AppPage } from '@/synergy/AppPage'
 import { HrPage } from '@/synergy/hr/HrPage'
 
 export const router = createBrowserRouter([
@@ -13,8 +12,9 @@ export const router = createBrowserRouter([
       { path: '/', element: <Navigate to="/calisma-alani" replace /> },
       // Başlangıç (orijinaldeki "Başlangıç" paneli)
       { path: '/calisma-alani', Component: StartPage },
-      // Menü uygulamaları (Favoriler / Son Kullanılan Uygulamalar)
-      { path: '/uygulamalar/:appId', Component: AppPage },
+      // Menü uygulamaları (Favoriler / Son Kullanılan Uygulamalar): formları talep ayrıntısıyla aynı
+      // form gruplarında açılır (aynı sayfa; `DetailPage`)
+      { path: '/uygulamalar/:appId', Component: DetailPage },
       // İş Akış Yönetimi: kutu → süreç → talepler
       // Boş durum: kutu / süreç seçili değil (kırıntı ve uygulama bağlantıları buraya gelir)
       { path: '/is-akislari', Component: WorkflowPage },

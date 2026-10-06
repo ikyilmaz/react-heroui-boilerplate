@@ -1257,12 +1257,13 @@ function Chrome({
 
 /** Sayfa geçişi anahtarı: aynı anahtarda kalan gezinme (kutu / süreç değişimi) geçiş oynatmaz. */
 function pageOf(pathname: string) {
-  if (matchPath('/is-akislari/:box/:processId/:requestId', pathname)) return 'detail'
+  // Form çalışma alanı: talep ayrıntısı ve menü uygulamalarının formları aynı form gruplarında
+  // (aralarında gezinme sayfayı yeniden kurmaz, yeni grup açar)
+  if (matchPath('/is-akislari/:box/:processId/:requestId', pathname)) return 'forms'
+  if (matchPath('/uygulamalar/:appId', pathname)) return 'forms'
   if (matchPath({ path: '/is-akislari', end: false }, pathname)) return 'workflow'
   // İK: modüller ve kayıtlar arası gezinme aynı ekran (geçiş yok)
   if (matchPath({ path: '/insan-kaynaklari', end: false }, pathname)) return 'hr'
-  const app = matchPath('/uygulamalar/:appId', pathname)
-  if (app) return `app:${app.params.appId}`
   return pathname
 }
 

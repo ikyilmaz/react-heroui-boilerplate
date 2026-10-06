@@ -3,7 +3,7 @@ import type { BoxId } from '@/synergy/shared/workflowData'
 
 /* -------------------------------------------------------------------------------------------------
  * Form grupları (FormTabs.tsx çizer). Açık istek üzerine eklendi, orijinalde yok. Her grup bir kök
- * talep ve ondan açılan formlar; grubun içindeki sekmeler `formTabs.ts`'in durumu (panel boyutu,
+ * talep (ya da menüden açılan uygulama formu, kökü `app:<uygulama>`) ve ondan açılan formlar; grubun içindeki sekmeler `formTabs.ts`'in durumu (panel boyutu,
  * tek child, kapanan formun child'ları... aynen). Saf işlevler, React yok; `useReducer` ile.
  * - Talep yeni grupta açılır (etkin grubun hemen sağında); zaten bir grubun kökü olarak açıksa o
  *   gruba geçilir. En çok `MAX_GROUPS` grup: sınırda açılmaz (`canOpen`, çağıran uyarır).

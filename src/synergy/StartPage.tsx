@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useState,
   type CSSProperties,
@@ -239,8 +240,14 @@ export function StartPage() {
   )
 }
 
-/** İş Akışları widget'ı: kategori sekmeleri ve altında süreç grupları ↔ talepler (hücreyi doldurur). */
-function WorkBlock({ refreshing }: { refreshing: boolean }) {
+/**
+ * İş Akışları widget'ı: kategori sekmeleri ve altında süreç grupları ↔ talepler (kabını doldurur).
+ * Başlat kutusunun İş Akış Yönetimi bölümü de bunu gösterir (`StartMenu.tsx`); ikisi aynı anda
+ * açık olabileceği için kimlikler örneğe özel.
+ */
+export function WorkBlock({ refreshing = false }: { refreshing?: boolean }) {
+  const uid = useId()
+  const panelId = `${uid}work`
   const [category, setCategory] = useState<BoxId>('bekleyen')
   const [processId, setProcessId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -269,12 +276,12 @@ function WorkBlock({ refreshing }: { refreshing: boolean }) {
 
   return (
     <Flex vertical className="h-full min-h-0">
-      <Categories selected={category} onSelect={choose} />
+      <Categories selected={category} onSelect={choose} uid={uid} panelId={panelId} />
       {/* İş bloğu: seçili sekmenin devamı; hücrenin kalanını doldurur, sütunlar içeride kayar */}
       <Card
-        id="start-work"
+        id={panelId}
         role="tabpanel"
-        aria-labelledby={`start-category-${category}`}
+        aria-labelledby={`${uid}category-${category}`}
         className={cn(CARD, 'flex min-h-0 flex-1 flex-col')}
         classNames={{ body: 'flex min-h-0 flex-1 flex-col p-1.5' }}
       >
@@ -605,7 +612,19 @@ const CATEGORY =
  * boyunca kartın üst çizgisine kesintisiz iner; sekmeler şeridi eşit paylaşır. Birincil renk ikon ve
  * sayıda.
  */
-function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: BoxId) => void }) {
+function Categories({
+  selected,
+  onSelect,
+  uid,
+  panelId,
+}: {
+  selected: BoxId
+  onSelect: (b: BoxId) => void
+  /** Sekme kimliklerinin öneki (widget örneğine özel). */
+  uid: string
+  /** İş bloğunun (sekme panelinin) kimliği. */
+  panelId: string
+}) {
   const counts = useBoxCounts({ unreadInfo: true })
   return (
     <TabStrip
@@ -629,9 +648,9 @@ function Categories({ selected, onSelect }: { selected: BoxId; onSelect: (b: Box
               <Button
                 type="text"
                 role="tab"
-                id={`start-category-${b.id}`}
+                id={`${uid}category-${b.id}`}
                 aria-selected={isSel}
-                aria-controls="start-work"
+                aria-controls={panelId}
                 tabIndex={isSel ? 0 : -1}
                 aria-label={`${b.label}, ${n}`}
                 onClick={() => onSelect(b.id)}

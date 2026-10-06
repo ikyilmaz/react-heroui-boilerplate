@@ -5,7 +5,8 @@
  *   - yaprak seçili sekmenin üstünde (±1px), görünür bölmeler seçili sekmenin formları, tam
  *     saydam ve dönüşümsüz; gizli bölmelerin içi atlanmış (`content-visibility: hidden`),
  *   - sekmelerde dönüşüm kalmamış, sayfada hata yok.
- * Sınamalar: sayfa kipi (tek form) ve sekmelerden ona dönüş; beş hızlı sekme tıklaması; child açıp hemen kapatma; bir sekme gelirken başka birini
+ * Sınamalar: sayfa kipi (tek form) ve sekmelerden ona dönüş; menü formları (form gruplarında açılır,
+ * ikinci kez açılmaz, talep grubuyla birlikte, kapanınca Başlangıç); beş hızlı sekme tıklaması; child açıp hemen kapatma; bir sekme gelirken başka birini
  * kapatma; grubu sürükleyerek taşıma; klavye (oklar, Enter, Delete); bölücü klavyesi; kapatırken
  * genişlik donması (dar pencere, altı grup); animasyon "Az" ve "Kapalı".
  *
@@ -160,6 +161,106 @@ async function check(page, name, extra) {
   await sleep(1800)
   await click(page, { css: '[aria-label^="Kapat: "]' })
   await check(page, 'sekmelerden sayfa kipine dönüş', pageMode)
+  await page.close()
+}
+
+// 0b. Menü formları: form gruplarında açılır; aynı uygulama ikinci kez açılınca grubuna geçilir
+{
+  const page = await open()
+  /** Başlat menüsünden (Favoriler) uygulama açar. */
+  const app = async (caption) => {
+    await click(page, { css: 'button[aria-label="Başlat"]' })
+    await sleep(500)
+    await click(page, { css: '[role=dialog][aria-label="Başlat"] button', text: caption })
+    await sleep(1800)
+  }
+  const state = () =>
+    page.evaluate(() => ({
+      path: location.pathname,
+      groups: document.querySelectorAll('[role=presentation][data-group]').length,
+      strip: !!document.querySelector('[role=tablist][aria-label="Açık formlar"]'),
+      selected: document.querySelector('[data-tab] [role=tab][tabindex="0"]')?.dataset.form,
+      title: [...document.querySelectorAll('[id^="form-pane-"] h1')]
+        .filter((h) => h.checkVisibility())
+        .map((h) => h.textContent),
+      labels: [...document.querySelectorAll('[id^="form-pane-"] label')]
+        .filter((l) => l.checkVisibility())
+        .map((l) => l.textContent),
+    }))
+  const expect = (cond, msg) => (cond ? [] : [msg])
+
+  await page.goto(URL_BASE + '/uygulamalar/satin-alma-talebi')
+  await find(page, { css: '[id^="form-pane-"] label', text: 'Bütçe kodu' })
+  await check(page, 'menü formu: sayfa kipi', async () => {
+    const s = await state()
+    return [
+      ...expect(!s.strip, 'tek formda şerit var'),
+      ...expect(s.title.join() === 'Satın Alma Talebi', `başlık: ${s.title}`),
+      ...expect(
+        (await page.$$eval('button', (b) => b.map((x) => x.textContent))).join('|').includes('Gönder'),
+        'Gönder yok',
+      ),
+    ]
+  })
+
+  await app('Personel Rehberi')
+  await check(page, 'menü formu: ikinci uygulama yeni grupta', async () => {
+    const s = await state()
+    return [
+      ...expect(s.strip && s.groups === 2, `grup sayısı ${s.groups}`),
+      ...expect(s.path === '/uygulamalar/personel-rehberi', `adres ${s.path}`),
+      ...expect(s.selected === 'app:personel-rehberi', `seçili ${s.selected}`),
+      ...expect(s.title.join() === 'Personel Rehberi', `başlık: ${s.title}`),
+    ]
+  })
+
+  await app('Satın Alma Talebi')
+  await check(page, 'menü formu: açık uygulama ikinci kez açılmaz', async () => {
+    const s = await state()
+    return [
+      ...expect(s.groups === 2, `grup sayısı ${s.groups}`),
+      ...expect(s.path === '/uygulamalar/satin-alma-talebi', `adres ${s.path}`),
+      ...expect(s.selected === 'app:satin-alma-talebi', `seçili ${s.selected}`),
+      // Girilen değerler kalır: form yeniden kurulmadı (iskelet yok)
+      ...expect(s.labels.includes('Bütçe kodu'), 'form yeniden kuruldu'),
+    ]
+  })
+
+  // Talep de aynı şeritte: adres talebe gidince yeni grup
+  await page.evaluate((r) => {
+    history.pushState(null, '', r)
+    dispatchEvent(new PopStateEvent('popstate'))
+  }, ROUTE)
+  await sleep(1800)
+  await click(page, TAB('g0'))
+  await sleep(600)
+  await check(page, 'menü formu: talep grubuyla birlikte', async () => {
+    const s = await state()
+    return [
+      ...expect(s.groups === 3, `grup sayısı ${s.groups}`),
+      ...expect(s.path === '/uygulamalar/satin-alma-talebi', `adres ${s.path}`),
+    ]
+  })
+
+  // "İptal" grubu kapatır; son grupta "Kapat" Başlangıç'a döner
+  await click(page, B('İptal'))
+  await sleep(800)
+  // Sıra: g0 (Satın Alma Talebi), g2 (talep, etkin grubun sağında açıldı), g1 (Personel Rehberi);
+  // g0 kapanınca yerindeki talep grubu etkin, onu da şeritten kapat
+  await click(page, { css: '[data-group="g2"] [aria-label^="Grubu kapat"]' })
+  await sleep(800)
+  await check(page, 'menü formu: gruplar kapanır', async () => {
+    const s = await state()
+    return [
+      ...expect(!s.strip, `şerit duruyor (${s.groups} grup)`),
+      ...expect(s.path === '/uygulamalar/personel-rehberi', `adres ${s.path}`),
+    ]
+  })
+  await click(page, B('Kapat'))
+  await sleep(800)
+  const end = await page.evaluate(() => location.pathname)
+  results.push({ name: 'menü formu: son grup Başlangıç’a döner', ok: end === '/calisma-alani', issues: [end] })
+  console.log(`${end === '/calisma-alani' ? 'TAMAM' : 'HATA'}  menü formu: son grup Başlangıç’a döner (${end})`)
   await page.close()
 }
 

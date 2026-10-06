@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { AnimatePresence, type Transition } from 'framer-motion'
+import { AnimatePresence, LayoutGroup, type Transition } from 'framer-motion'
 import {
   AppWindow,
   ArrowRight,
-  ArrowUpRight,
   ChevronRight,
   LayoutDashboard,
   Boxes,
@@ -36,16 +35,19 @@ import { EmptyNote, SearchField } from '@/synergy/ant/parts'
 import { CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
 import { boxLink, k } from '@/synergy/paths'
+import { WorkBlock } from '@/synergy/StartPage'
 
 /*
  * Yüzen raf ve başlat kutusu (solda, dikeyde ortada; ya da üstte).
  *
  * Rafın tepesindeki arama düğmesine basınca rafın tamamı, paylaşılan yerleşim (`layoutId`)
  * geçişiyle sabit boylu bir kutuya dönüşür (clamp(30rem, 70dvh, 42rem)) (Windows'un başlat menüsü gibi). Kutuda:
- * arama (tüm bölümleri süzer), duyurular / sohbet, Favoriler, İş Akış Yönetimi kutuları (sayılarıyla),
- * Görünüm (tema ayarları, açık / koyu tema) ve tüm uygulamalar ağacı; altta
- * kullanıcı ve "Ana sayfaya dön". Esc, dışarı tıklama, odağın dışarı çıkması ya da bir yere
- * gitmek kutuyu kapatır; kutu kapanırken yine rafa dönüşür, odak arama düğmesine döner.
+ * arama (tüm bölümleri süzer), duyurular / sohbet, Favoriler, İş Akış Yönetimi (Başlangıç'taki İş
+ * Akışları widget'ı: kategoriler, süreç grupları ↔ talepler), Görünüm (tema ayarları, açık / koyu
+ * tema) ve tüm uygulamalar ağacı. Gezinme üstteyken kutu ekranın %55'i genişliğinde (en az 44rem).
+ * Esc, dışarı tıklama, odağın dışarı çıkması ya da bir yere gitmek kutuyu kapatır; kutunun açtığı
+ * pencereler (açılır menü, karar diyaloğu: `body`'deki portallar) dışarı sayılmaz. Kutu kapanırken
+ * yine rafa dönüşür, odak arama düğmesine döner.
  */
 
 export interface DockEntry {
@@ -113,11 +115,16 @@ const PLACE: Record<ChromePlace, { shell: string; panel: string }> = {
   // Pay ve düğme boyu piksel: temanın boşluk ölçeği (kompakt / geniş) rafın oranını bozmasın
   // Solda kutu dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
   // ekranın %85'i boyunda
-  left: { shell: 'flex-col items-center p-[6px]', panel: 'start-3 inset-y-0 my-auto h-[85dvh]' },
-  // Üstte raf ortada; kutu da ortadan açılır (dönüşüm transform kullandığı için ortalama `mx-auto` ile)
+  left: {
+    shell: 'flex-col items-center p-[6px]',
+    panel: 'start-3 inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
+  },
+  // Üstte raf ortada; kutu da ortadan açılır (dönüşüm transform kullandığı için ortalama `mx-auto` ile),
+  // ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki widget'a yer; en az 44rem)
   top: {
     shell: 'h-[52px] flex-row items-center p-[6px]',
-    panel: 'inset-x-0 top-3 mx-auto h-[clamp(30rem,70dvh,42rem)]',
+    panel:
+      'inset-x-0 top-3 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]',
   },
 }
 
@@ -263,17 +270,24 @@ export function StartDock({
               style={radius}
               role="dialog"
               aria-label={START_LABELS.start}
-              onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.key === 'Escape') setOpen(false)
+              onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
+                // Kutunun açtığı pencerede (portal) Esc yalnızca o pencereyi kapatır
+                if (e.key === 'Escape' && e.currentTarget.contains(e.target as Node)) setOpen(false)
               }}
               onBlur={(e: React.FocusEvent<HTMLElement>) => {
-                // Odak kutunun dışına çıkınca (Tab) kapanır
+                // Odak kutunun dışına çıkınca (Tab) kapanır; kutunun açtığı pencerelere (açılır
+                // menü, karar diyaloğu: uygulama kökünün dışındaki portallar) geçmek kapatmaz
                 const next = e.relatedTarget as Node | null
-                if (next && !e.currentTarget.contains(next)) setOpen(false)
+                if (
+                  next &&
+                  !e.currentTarget.contains(next) &&
+                  document.getElementById('root')?.contains(next)
+                )
+                  setOpen(false)
               }}
               className={cn(
                 // Sabit boy (`PLACE`): bölüm değişince kutu zıplamaz
-                'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(44rem,calc(100vw-1.5rem))] flex-col overflow-hidden',
+                'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden',
                 p.panel,
                 CHROME_PANEL,
               )}
@@ -470,65 +484,12 @@ function StartPanel({
     </Flex>
   )
 
+  // Başlangıç'taki İş Akışları widget'ı (kategoriler, süreç grupları ↔ talepler); kendi göstergesi
+  // (`layoutId`) Başlangıç'takiyle karışmasın diye ayrı grupta. Talebe gidince kutu kapanır (adres)
   const workflow = (
-    <Flex className="flex flex-col gap-5">
-      {/* Kutular bento: bekleyen onaylar geniş ve dolu, diğerleri sayılarıyla */}
-      <Flex className="grid grid-cols-2 gap-2">
-        {mainBoxes.map((b) => {
-          const Icon = b.icon
-          const main = b.id === 'bekleyen'
-          return (
-            <Button
-              key={b.id}
-              type="text"
-              onClick={() => go(boxLink(b.id))}
-              className={cn(
-                // Kart: temanın düğme şekli (hap) kartları bozmasın diye yarıçap sabit
-                'h-auto w-full flex-col items-start gap-3 rounded-2xl! p-3.5 text-start font-normal',
-                main
-                  ? 'col-span-2 bg-accent text-accent-foreground hover:bg-accent/92! hover:text-accent-foreground!'
-                  : 'bg-surface-secondary text-foreground hover:bg-surface-tertiary!',
-              )}
-            >
-              <Flex className="flex w-full items-center justify-between">
-                <Icon {...IC} size={18} className={main ? undefined : 'text-muted'} />
-                <ArrowUpRight {...IC} size={14} className="opacity-50" />
-              </Flex>
-              <Flex className="flex w-full items-end justify-between gap-2">
-                <Text className="text-sm font-medium text-current">{b.label}</Text>
-                <Text
-                  className={cn(
-                    'font-display leading-none font-bold text-current tabular-nums',
-                    main ? 'text-4xl' : 'text-2xl',
-                  )}
-                >
-                  {counts.get(b.id) ?? 0}
-                </Text>
-              </Flex>
-            </Button>
-          )
-        })}
-      </Flex>
-      <Flex className="flex flex-col gap-1.5">
-        <SectionTitle>{HISTORY_GROUP_LABEL}</SectionTitle>
-        <Flex className="flex flex-wrap gap-1.5">
-          {historyBoxes.map((b) => {
-            const Icon = b.icon
-            return (
-              <Button
-                key={b.id}
-                type="text"
-                onClick={() => go(boxLink(b.id))}
-                icon={<Icon {...IC} size={14} className="text-muted" />}
-                className="h-8 gap-1.5 rounded-full bg-surface-secondary px-3 font-normal text-foreground hover:bg-surface-tertiary!"
-              >
-                {b.label}
-              </Button>
-            )
-          })}
-        </Flex>
-      </Flex>
-    </Flex>
+    <LayoutGroup id="start-menu-work">
+      <WorkBlock />
+    </LayoutGroup>
   )
 
   const sortButton = (
@@ -721,10 +682,14 @@ function StartPanel({
         </Flex>
 
         {/* Sağ: seçili bölüm (ya da arama sonuçları); değişince hafifçe solarak gelir */}
+        {/* İş Akış Yönetimi kutunun kalanını doldurur (widget'ın sütunları kendi içinde kayar) */}
         <Scroll className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
           <Flex
             key={searching ? 'search' : section}
-            className="block animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
+            className={cn(
+              'block animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]',
+              !searching && section === 'workflow' && 'h-full',
+            )}
           >
             {body}
           </Flex>

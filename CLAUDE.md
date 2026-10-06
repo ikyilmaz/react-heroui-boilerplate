@@ -37,8 +37,11 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   surfaces (`bg-surface`, `bg-surface-secondary`, `bg-background`, `text-muted`, `ring-border`…).
   `success` / `warning` / `danger` only for status (status tags, decision results). No per-box colours.
 - **Theme.** Base theme changes go into `src/themes/synergy.css`; light / dark via `setColorMode` /
-  `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`).
-  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo), nav
+  `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`;
+  with no stored choice the mode is light, not the system's).
+  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
+  squircle, Serin, Plus Jakarta Sans, Kompakt, Dolu, İnce shadow — the theme file's
+  `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
   positions and four presets in `theme.ts`): presets (Kâğıt, Bulut, Keskin, Gün Batımı; each sets
   the look keys only, never nav / corner shape / motion; cards with a live preview drawn by writing
   `lookVars()` onto the preview box; "Özel" when nothing matches), primary colour (swatches only,
@@ -53,7 +56,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
   written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), background
   (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
-  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default = theme file's Bricolage + Inter pair; also Inter, Bricolage, Jakarta, Figtree, Geist, Outfit), density
+  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
   `useLook().trail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 6 levels incl. Renkli = accent-tinted glow, never `none`: it shares one `box-shadow` list with
@@ -91,10 +94,14 @@ assistant — no AI backend —, calendar, controls, notes); don't extend it fur
 
 Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:appId`,
 `/is-akislari/:box[/:processId[/:requestId]]`, `/insan-kaynaklari/:module[/:recordId]`.
+`/uygulamalar/:appId` and the request detail render the same `DetailPage` under one page key
+(`'forms'` in `pageOf`), so moving between them keeps the open form groups.
 
 - `index.tsx` › `AppShell`: chrome as separate floating panels on one side, set by tema paneli ›
   Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
-  `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left; its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
+  `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left, 55 % of the
+  viewport wide (min 44rem) when it is on top; its İş Akış Yönetimi section is the Başlangıç İş
+  Akışları widget (`WorkBlock` from `StartPage.tsx`, in its own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
   back / forward | centered dock | actions / profile; "İkisi de" = the left column without back /
   forward plus a slim 32px top bar (`CrumbBar`, aligned with the logo, page-colour strip
   behind) holding back / forward and the animated `Crumbs` (earlier levels icon-only, current level
@@ -107,7 +114,8 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
   (5 category tabs — the shared `TabStrip`, `sizing="fill"`, sheet on the card surface with the card
   contour running down the flares into the card's top line (`SHEET_ON_SURFACE`); the work card is
-  their `tabpanel` — + process groups ↔ "Süreç Talepleri").
+  their `tabpanel` — + process groups ↔ "Süreç Talepleri"; `WorkBlock`, exported for the start
+  menu, so its DOM ids come from `useId`).
 - `dashboard/`: `model.ts` (widget kinds with supported sizes, presets, per-preset layout saved in the
   browser), `Dashboard.tsx` (react-grid-layout board with edit mode — drag, resize snapping to the
   nearest supported size, size menu, add / remove, reset — styled through Tailwind selectors on its
@@ -151,7 +159,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   grouped tab; a form has one open child at a time (opening another closes the previous one with
   its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3. The
   rules live in `shared/formTabs.ts` (pure reducer); form groups (each request opened from the
-  Süreçler trail is its own group, max 6, colours `--group-1…6`, all groups' tabs shown, root tab
+  Süreçler trail, and each menu app form, is its own group, max 6, colours `--group-1…6`, all groups' tabs shown, root tab
   first and the group's drag handle) in `shared/formGroups.ts`. `FormTabs.tsx` composes the shared
   `tabs/` module: `TabStrip` › `TabGroup` › `ViewTab` (a split tab shows both forms with a 1px
   divider; the focused one gets the selected colour) and one `Pane` per open form. Forms are built
@@ -178,12 +186,31 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   pre-rendered behind it in a hidden `<Activity>` (React renders it at idle priority, no effects);
   at `LOAD_MS` it becomes visible and crossfades in once;
   `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
+- Menu app forms (dummy content, added on explicit request; replaced the "Yakında" page): every
+  menu app except İş Akış Yönetimi opens its form as a form group (root id `app:<appId>`,
+  `shared/appForms.ts`; `AppViewer` in `DetailPage.tsx`, body in `AppForm.tsx`). As in the
+  original, a menu item opens one panel, and opening it again switches to its group. Two kinds
+  mirror the original menu actions:
+  - StartAProcess (Satın Alma Talebi, Yıllık İzin Talebi, Masraf Bildirimi, Araç Tahsis Talebi,
+    Toplantı Odası Rezervasyonu) is a start form with the buttons "Gönder", "Taslak Olarak
+    Kaydet" and "İptal".
+  - FillAForm (Tedarikçi Listesi, Personel Rehberi, Bütçe Takip Raporu, Kalite Dokümanları, Stok
+    Durum Raporu, Eğitim Kataloğu) is an application form with filter fields and a list table,
+    plus "Kaydet" and "Kapat".
+
+  Each form has the request viewer's band and sticky strip and a form card filling the container.
+  There is no Geri / İleri, side info or history. Fields are editable and nothing is saved:
+  - "Gönder" shows "{caption} gönderildi." and closes the group.
+  - "Taslak Olarak Kaydet" and "Kaydet" only notify.
+  - "İptal" and "Kapat" close the group; the last group returns to Başlangıç.
+
+  The breadcrumb is Başlangıç › app. Dates are relative to today.
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
   company admins and property relations have their own views (`HrSpecial.tsx`). Data and in-memory
   store in `shared/hrData.ts`.
 - `AllApps.tsx` ("Tüm uygulamalar" panel: search, order ↔ alphabetic sort, collapsible app tree from
-  `shared/menuTree.ts`; no menu editing), `AppPage.tsx`, `paths.ts`, `theme.ts`, `motion.tsx`
+  `shared/menuTree.ts`; no menu editing), `AppForm.tsx` (menu app form body), `paths.ts`, `theme.ts`, `motion.tsx`
   (`MotionScope`, `useTransition`, `useLeaving`, `PageTransition`).
 - Brand (Bimser Synergy): `assets/brand/` — `icon.svg` / `icon-dark.svg` (four-colour mark; dark
   theme has a white centre) and `wordmark.svg` / `wordmark-light.svg` ("bimser synergy"), cut from
@@ -245,7 +272,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
   forward → `decide()`; `flow.tsx` draws the dialogs), `formTabs.ts` (form tab / split state),
-  `formGroups.ts` (form groups), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
+  `formGroups.ts` (form groups), `appForms.ts` (menu app forms), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
   `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
@@ -291,8 +318,9 @@ StartPage category constants, `SwitchPanel` and `DirectionalPanels`.
   row.
 - antd `Typography` sets its own colour; use `text-current!` (or `!` utilities) when a label must
   follow its parent. antd hover backgrounds (text buttons) may need `hover:…!` to keep the design.
-- A popup opened from inside the start menu uses `getPopupContainer` to stay inside it; a portal on
-  `body` would move focus out and close the menu.
+- The start menu closes when focus leaves it for another element inside `#root`; focus moving into
+  a portal outside `#root` (a dropdown, a decision dialog opened from the menu) keeps it open, and
+  Esc inside such a portal closes only the portal.
 - Tailwind only sees literal class names: never build variants like `${PREFIX}:hidden` in a template.
 - antd `Flex` panes are `display: flex`: absolute panes need `block` too, or their content shrinks to
   max-content width.

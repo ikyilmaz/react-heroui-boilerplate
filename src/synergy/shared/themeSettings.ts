@@ -560,7 +560,7 @@ export const useSettingsControl = () => useContext(SettingsContext)
 
 /* --- Açık / koyu --------------------------------------------------------------------------------- */
 
-/** Açık / koyu tercihi (tarayıcıda; eski anahtar da okunur). Tercih yoksa sistemin rengi. */
+/** Açık / koyu tercihi (tarayıcıda; eski anahtar da okunur). Tercih yoksa açık tema. */
 const MODE_KEY = 'synergy-color-mode'
 const LEGACY_MODE_KEY = 'heroui-theme'
 
@@ -571,9 +571,9 @@ function storedMode(): ColorMode {
     const v = localStorage.getItem(MODE_KEY) ?? localStorage.getItem(LEGACY_MODE_KEY)
     if (v === 'light' || v === 'dark') return v
   } catch {
-    // Depolama kapalı: sistem tercihi
+    // Depolama kapalı: varsayılan
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'light'
 }
 
 /** Rengi <html>'e yazar (`light` / `dark` sınıfı ve `data-theme`; tema dosyası bunlara bakar). */

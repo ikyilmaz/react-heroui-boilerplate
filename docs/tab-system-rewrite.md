@@ -196,7 +196,7 @@ Animation levels (after; click task / longest task / style writes):
 
 ## Interaction tests
 
-`node scripts/perf/interactions.mjs` passes **16/16**. After each test (1 s settle) it checks:
+`node scripts/perf/interactions.mjs` passes **22/22**. After each test (1 s settle) it checks:
 - the sheet is on the selected tab within 1 px;
 - the visible panes are exactly the selected tab's forms, at full opacity, with no leftover
   transforms;
@@ -207,6 +207,7 @@ Animation levels (after; click task / longest task / style writes):
 | Test | Animation levels |
 |---|---|
 | Page mode (single form, no tabs): the pane fills its container and the page scrolls | full |
+| Menu app forms: page mode, second app opens as a new group, reopening an open app switches to it (form not rebuilt), alongside a request group, closing with "İptal" / group close, last "Kapat" returns to Başlangıç | full |
 | Back to page mode after a child opens and closes | full |
 | Five rapid alternating tab clicks | full, Az, Kapalı |
 | Open a child, then immediately close it | full, Az, Kapalı |
