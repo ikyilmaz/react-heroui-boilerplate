@@ -33,7 +33,8 @@ import { Highlight, useAppTree } from '@/synergy/AllApps'
 import { useTransition } from '@/synergy/motion'
 import { Indicator } from '@/synergy/ant/motion'
 import { EmptyNote, SearchField } from '@/synergy/ant/parts'
-import { IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { useRadiusPx } from '@/synergy/shared/hooks'
 import { boxLink, k } from '@/synergy/paths'
 
 /*
@@ -83,14 +84,8 @@ const { Text } = Typography
 
 const fold = (v: string) => v.toLocaleLowerCase('tr')
 
-/**
- * Raf ve kutunun ortak yarıçapı (px): paylaşılan geçişte köşeler bozulmasın diye stil olarak
- * verilir (framer yarıçapı ölçekte düzeltir). Raf bu değerle tam hap, kutu yuvarlak köşeli.
- */
-const RADIUS = 28
-
 /** Raf ve kutunun ortak yüzeyi (dönüşümde zemin değişmez). */
-const SHELL = 'border border-border bg-surface/95 shadow-(--overlay-shadow) backdrop-blur-xl'
+const SHELL = 'border border-border bg-surface shadow-(--overlay-shadow)'
 
 /* --- Raf --------------------------------------------------------------------------------------- */
 
@@ -102,9 +97,16 @@ export type ChromePlace = 'left' | 'top'
  */
 export const DOCK_SPRING: Transition = { type: 'spring', stiffness: 380, damping: 36, mass: 0.9 }
 
-/** Kabuk panellerinin ortak yüzeyi (raf, üst / alt paneller, header). */
-// Yarıçap raf / kutuyla aynı (onlarınki dönüşüm için stil olarak verilir)
-export const CHROME_PANEL = cn('pointer-events-auto rounded-[28px]', SHELL)
+/**
+ * Kabuk panellerinin ortak yüzeyi (raf, başlat kutusu). Köşe kartlarınki (`CARD_RADIUS`; tema
+ * paneli › Köşe yuvarlaklığı): "Çok"ta raf tam hap, daha azında köşeli. Raf ve kutuda yarıçap
+ * ayrıca px olarak stilde (paylaşılan geçişte framer yarıçapı ölçekte düzeltir); sınıf ilk ölçüme
+ * kadar.
+ */
+export const CHROME_PANEL = cn(
+  'pointer-events-auto rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))]',
+  SHELL,
+)
 
 /** Rafın içi ve açılan kutunun konumu. */
 const PLACE: Record<ChromePlace, { shell: string; panel: string }> = {
@@ -157,6 +159,9 @@ export function StartDock({
     lastOpen.current = open
   }
   const morph = useTransition(DOCK_SPRING)
+  // Raf ve kutunun ortak yarıçapı (px; ölçülene kadar sınıftaki)
+  const radiusPx = useRadiusPx(CARD_RADIUS)
+  const radius = radiusPx === undefined ? undefined : { borderRadius: radiusPx }
   const trigger = useRef<HTMLButtonElement>(null)
   const dockRef = useRef<HTMLElement>(null)
   const [holder, setHolder] = useState<{ w: number; h: number } | null>(null)
@@ -215,7 +220,7 @@ export function StartDock({
             ref={dockRef}
             layoutId="start-menu"
             transition={morph}
-            style={{ borderRadius: RADIUS }}
+            style={radius}
             role="navigation"
             aria-label="Ana menü"
             className={cn('flex shrink-0', p.shell, CHROME_PANEL)}
@@ -245,12 +250,12 @@ export function StartDock({
               exit={{ opacity: 0 }}
               onPointerDown={() => setOpen(false)}
               // `block`: antd'de içi boş `Flex` gizlenir
-              className="pointer-events-auto block fixed inset-0 z-40 bg-foreground/10 backdrop-blur-[2px]"
+              className="pointer-events-auto block fixed inset-0 z-40 bg-foreground/10"
             />
             <MotionFlex
               layoutId="start-menu"
               transition={morph}
-              style={{ borderRadius: RADIUS }}
+              style={radius}
               role="dialog"
               aria-label={START_LABELS.start}
               onKeyDown={(e: React.KeyboardEvent) => {

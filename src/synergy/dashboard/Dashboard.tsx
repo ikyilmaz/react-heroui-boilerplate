@@ -256,7 +256,7 @@ function freeSpot(items: PlacedWidget[], w: number, h: number) {
 /* --- Hücre ------------------------------------------------------------------------------------- */
 
 /** Düzenleme modunda widget'ın üstündeki yüzen küçük düğmeler (ad, boyut, kaldır). */
-const CHIP = 'rounded-full border-0 bg-surface/90 shadow-sm backdrop-blur'
+const CHIP = 'rounded-full border-0 bg-surface shadow-sm'
 
 function CellContent({
   item,
@@ -416,7 +416,7 @@ function Toolbar({
       aria-label="Panoyu düzenle"
       align="center"
       gap={6}
-      className="fixed start-1/2 top-2.5 z-50 -translate-x-1/2 animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out] rounded-full border border-border bg-surface/95 p-1.5 shadow-(--overlay-shadow) backdrop-blur-xl"
+      className="fixed start-1/2 top-2.5 z-50 -translate-x-1/2 animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out] rounded-full border border-border bg-surface p-1.5 shadow-(--overlay-shadow)"
     >
       {start}
       <Select

@@ -62,7 +62,7 @@ import {
   GridFooter,
 } from '@/synergy/ant/grid'
 import { searchText } from '@/synergy/shared/grid'
-import { CARD, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/ant/ui'
+import { CARD, CARD_RADIUS, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
 import { SwitchPanel } from '@/synergy/ant/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
@@ -219,9 +219,6 @@ const OUTLINE_ON_STRIP = cn(
   'border-current/40 bg-transparent text-current hover:border-current! hover:bg-accent-foreground/10! hover:text-current!',
   OFF,
 )
-/** Kartın köşesi: AntTheme › Card `borderRadiusLG` ile aynı (temel yarıçapın 3 katı, en çok 32px). */
-const CARD_RADIUS = 'min(32px, calc(var(--radius) * 3))'
-
 /** Form kartı: Motion düzen animasyonu için. */
 const MotionCard = motion.create(Card)
 

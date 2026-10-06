@@ -17,9 +17,14 @@ import { useFillHeight } from '@/synergy/shared/hooks'
 /** Kap ve seçili sekmenin rengi: birincil rengin zemine karışmış çok açık tonu. */
 export const AGENDA_PAGE = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
 
-/** Seçili sekmenin kaba bağlandığı alt köşelerdeki içbükey kavisler. */
-const FLARES =
-  "before:absolute before:bottom-0 before:-start-4 before:size-4 before:bg-[radial-gradient(circle_at_0_0,transparent_1rem,var(--tab-bg)_1rem)] before:content-[''] after:absolute after:bottom-0 after:-end-4 after:size-4 after:bg-[radial-gradient(circle_at_100%_0,transparent_1rem,var(--tab-bg)_1rem)] after:content-['']"
+/**
+ * Seçili sekmenin kaba bağlandığı alt köşelerdeki içbükey kavisler (form sekmeleri de kullanır):
+ * sekmenin köşesiyle aynı yarıçap (`--flare`: temel yarıçapın 2 katı). Temelde radial-gradient;
+ * `corner-shape` destekleyen tarayıcıda köşesi içbükey kutu (`scoop`; squircle'da içbükey
+ * squircle, `--corner-concave`).
+ */
+export const FLARES =
+  "[--flare:calc(var(--radius)*2)] before:absolute before:bottom-0 before:start-[calc(var(--flare)*-1)] before:size-(--flare) before:bg-[radial-gradient(circle_at_0_0,transparent_var(--flare),var(--tab-bg)_var(--flare))] before:content-[''] supports-[corner-shape:scoop]:before:bg-none supports-[corner-shape:scoop]:before:bg-(--tab-bg) supports-[corner-shape:scoop]:before:rounded-tl-[100%] supports-[corner-shape:scoop]:before:[corner-shape:var(--corner-concave,scoop)] after:absolute after:bottom-0 after:end-[calc(var(--flare)*-1)] after:size-(--flare) after:bg-[radial-gradient(circle_at_100%_0,transparent_var(--flare),var(--tab-bg)_var(--flare))] after:content-[''] supports-[corner-shape:scoop]:after:bg-none supports-[corner-shape:scoop]:after:bg-(--tab-bg) supports-[corner-shape:scoop]:after:rounded-tr-[100%] supports-[corner-shape:scoop]:after:[corner-shape:var(--corner-concave,scoop)]"
 
 export interface AgendaTab {
   id: string
@@ -92,7 +97,9 @@ export function AgendaTabs({
           ref={setRow}
           role="navigation"
           aria-label={label}
-          className="relative flex min-w-max items-end gap-1 px-8 pt-1"
+          // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`, yarıçap × 3) + sekme kavisi
+        // (yarıçap × 2): seçili sekmenin kavisi kabın düz üst kenarına oturur
+        className="relative flex min-w-max items-end gap-1 ps-[calc(var(--radius)*5)] pe-8 pt-1"
         >
           {bar && (
             <Flex

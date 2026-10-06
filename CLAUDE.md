@@ -12,8 +12,12 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
     CSS-in-JS goes into `@layer antd`, so Tailwind utilities always beat it), `@import 'tailwindcss'`,
     the theme import, Tailwind `@theme` keys mapping the theme variables to colours / radii / shadows
     (`bg-accent`, `text-muted`, `ring-border`, `rounded-2xl`…) plus `font-display` (`font-mono` removed: `--font-mono: initial`), the
-    animation keys (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`) and base rules
-    for border-colour inheritance (`var(--border)`) and the thin, track-less scrollbars.
+    animation keys (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`), base rules
+    for border-colour inheritance (`var(--border)`), the corner shape (`corner-shape:
+    var(--corner-shape, round)` on every element and pseudo-element, no exceptions) and the thin,
+    track-less scrollbars, and one `@layer components` block that points antd's circle / pill shapes
+    (avatar, circle / round button, switch, slider handle, radio, steps icon, badge…) at
+    `--pill-radius` (`rounded-full` gets it through the `--radius-full` theme key).
   - `src/themes/synergy.css`: the theme, **variables only**, in `@layer base`, for
     `:root, .light, [data-theme='light']` and `.dark, [data-theme='dark']`. Base colours only
     (`--background`, `--surface*`, `--accent`, `--accent-soft`, `--border`, `--success`…).
@@ -24,7 +28,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   theme variables (`--accent`, `--surface*`, `--border`, `--radius`, fonts, root size) on every
   `<html>` class / style change and turns them into antd tokens, so the tema paneli drives antd too
   (dark via `darkAlgorithm`, motion speed). Flat language: no shadows (overlays get a 1px ring), no
-  wave, `filled` fields, borderless cards; Turkish locale (`tr_TR`, dayjs `tr`). Component tokens only
+  wave, **no blur anywhere** (no `backdrop-blur` / `blur()`, opaque surfaces instead), `filled`
+  fields, borderless cards; Turkish locale (`tr_TR`, dayjs `tr`). Component tokens only
   in `AntTheme`; everything else with Tailwind. Notifications through `App.useApp().notification`
   (`useNotify` in `ant/hr.tsx`, `pipeline.ts`).
 - **One colour.** The primary colour is `--accent` (`bg-accent`, `text-accent-foreground`,
@@ -35,9 +40,17 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`).
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo), nav
   positions and four presets in `theme.ts`): presets (Kâğıt, Bulut, Keskin, Gün Batımı; each sets
-  the look keys only, never nav / motion; cards with a live preview drawn by writing `lookVars()`
-  onto the preview box; "Özel" when nothing matches), primary colour (swatches only, `COLORS`,
-  incl. Mercan and Zümrüt), radius, background
+  the look keys only, never nav / corner shape / motion; cards with a live preview drawn by writing
+  `lookVars()` onto the preview box; "Özel" when nothing matches), primary colour (swatches only,
+  `COLORS`, incl. Mercan and Zümrüt), Köşe yuvarlaklığı (one 3-column grid of six options with a
+  corner preview each: Az / Orta / Çok (`RADII` 0.25 / 0.5 / 1rem, presets use these too) on the
+  top row round, on the bottom row squircle; the radius drives **everything**: cards, the dock and
+  start box (`CARD_RADIUS` in `ant/ui.tsx`, px via `useRadiusPx` for Motion), tab flares, and
+  circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
+  `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (tab flares) and `--corner-scale`
+  (radius and the radius caps — card 32px, field 14px… — × 1.6 so corners stay as full; caps read
+  in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
+  written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), background
   (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
   +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default = theme file's Bricolage + Inter pair; also Inter, Bricolage, Jakarta, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
@@ -49,7 +62,10 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
   The Başlangıç selected category tab draws the card contour along its sides, top and concave
-  flares (two-layer radial-gradient rings) so the card's top line continues into the tab. Only the variables of changed settings are written
+  flares (radius × 2, like the tab's corners; two-layer radial-gradient rings, with `corner-shape`
+  support a `scoop` / concave-squircle box whose ring is two shadows) so the card's top line
+  continues into the tab; agenda / form tabs share `FLARES` (`AgendaTabs.tsx`) and start radius × 5
+  in (block corner + flare). Only the variables of changed settings are written
   inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position, trail and
   motion reach pages through `LookContext` / `useLook()`. Page transition is a fixed fade; the side
   info scroll fade is always on. No other runtime theming.
@@ -81,7 +97,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
   `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left; its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
   back / forward | centered dock | actions / profile; "İkisi de" = the left column without back /
-  forward plus a slim 32px top bar (`CrumbBar`, aligned with the logo, blurred page-colour strip
+  forward plus a slim 32px top bar (`CrumbBar`, aligned with the logo, page-colour strip
   behind) holding back / forward and the animated `Crumbs` (earlier levels icon-only, current level
   named); the dock then shows only the active app's pill (`DockPath appOnly`, links to the app when
   deeper); content starts 56px down (`CHROME_SPACE.both`, `--chrome-top: 56px`). The breadcrumb lives in the dock as nested pills

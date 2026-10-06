@@ -8,14 +8,15 @@ export const APP_THEME: ThemeKit = {
   defaults: {
     color: 'blue',
     radius: 0.5,
+    corner: 'round',
     background: 'cool',
     font: 'synergy',
-    density: 'normal',
+    density: 'compact',
     cardStyle: 'filled',
     shadow: 'none',
     border: 1,
-    nav: 'default',
-    trail: 'soft',
+    nav: 'top',
+    trail: 'solid',
     motion: 'full',
     motionSpeed: 1,
   },
@@ -26,8 +27,9 @@ export const APP_THEME: ThemeKit = {
     { id: 'both', label: 'İkisi de' },
   ],
   /*
-   * Hazır temalar: her biri ayrı bir karakter; görünüşü belirleyen bütün ayarları verir (gezinme ve
-   * animasyon kullanıcının tercihi olarak kalır). Açık ve koyu temada aynı ayarlar hesaplanır.
+   * Hazır temalar: her biri ayrı bir karakter; görünüşü belirleyen bütün ayarları verir (gezinme,
+   * köşe biçimi ve animasyon kullanıcının tercihi olarak kalır). Açık ve koyu temada aynı ayarlar
+   * hesaplanır.
    */
   presets: [
     {
@@ -71,7 +73,7 @@ export const APP_THEME: ThemeKit = {
       description: 'Zümrüt, beyaz zemin, kıl çizgiler',
       look: {
         color: 'emerald',
-        radius: 0.375,
+        radius: 0.25,
         background: 'white',
         font: 'geist',
         density: 'compact',
@@ -88,7 +90,7 @@ export const APP_THEME: ThemeKit = {
       description: 'Mercan, serin zemin, kabarık kartlar',
       look: {
         color: 'coral',
-        radius: 0.75,
+        radius: 1,
         background: 'complement',
         font: 'bricolage',
         density: 'normal',

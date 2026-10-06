@@ -47,6 +47,8 @@ export interface Resolved {
   /** Form alanının gölgesi (`box-shadow` metni ya da `none`). */
   fieldShadow: string
   radius: number
+  /** Yarıçap tavanlarının çarpanı (`--corner-scale`; squircle'da büyür, yoksa 1). */
+  cornerScale: number
   font: string
   display: string
   rootPx: number
@@ -112,6 +114,9 @@ export function resolve(host: HTMLElement = document.body): Resolved {
   }
   probe.style.borderRadius = 'var(--radius)'
   const radius = parseFloat(getComputedStyle(probe).borderTopLeftRadius) || 8
+  // Çarpan sayı: 100px'lik genişlikle okunur
+  probe.style.width = 'calc(var(--corner-scale, 1) * 100px)'
+  const cornerScale = parseFloat(getComputedStyle(probe).width) / 100 || 1
   probe.style.fontFamily = 'var(--font-sans)'
   const font = getComputedStyle(probe).fontFamily
   probe.style.fontFamily = 'var(--font-display)'
@@ -141,6 +146,7 @@ export function resolve(host: HTMLElement = document.body): Resolved {
     fieldBorderWidth,
     fieldShadow,
     radius,
+    cornerScale,
     font,
     display,
     rootPx: parseFloat(getComputedStyle(document.documentElement).fontSize) || 16,
@@ -174,8 +180,10 @@ function useResolved() {
 export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: number): ThemeConfig {
   const px = v.rootPx
   const r = v.radius
+  // Yarıçap tavanı (px); squircle'da yarıçapla birlikte büyür (köşe yuvarlak kadar dolgun kalsın)
+  const cap = (n: number) => Math.round(n * v.cornerScale)
   // Alanlar ve düğmeler: temel yarıçapın 1.5 katı, en çok 14px (yuvarlak temada alanlar hap olmasın)
-  const control = Math.min(14, Math.round(r * 1.5))
+  const control = Math.min(cap(14), Math.round(r * 1.5))
   // Açılır katmanlar gölge yerine ince bir çizgiyle ayrılır
   const ring = `0 0 0 1px ${v.border}`
   // Form alanları kartın stiline uyar (tema paneli › kart stili / gölge / kontur): konturlu temada
@@ -215,8 +223,8 @@ export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: num
       controlHeightLG: Math.round(px * 2.75),
       controlHeightSM: Math.round(px * 1.75),
       borderRadius: control,
-      borderRadiusLG: Math.min(20, Math.round(r * 2)),
-      borderRadiusSM: Math.min(10, Math.round(r)),
+      borderRadiusLG: Math.min(cap(20), Math.round(r * 2)),
+      borderRadiusSM: Math.min(cap(10), Math.round(r)),
       borderRadiusXS: Math.max(2, Math.round(r / 2)),
       lineWidth: 1,
       // Düz: gölge yok
@@ -241,8 +249,8 @@ export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: num
         defaultBorderColor: bw > 0 ? v.fieldBorder : 'transparent',
       },
       Card: {
-        // Kabuğun kart köşesiyle aynı (en çok 32px)
-        borderRadiusLG: Math.min(32, Math.round(r * 3)),
+        // Kabuğun kart köşesiyle aynı (en çok 32px; squircle'da büyür)
+        borderRadiusLG: Math.min(cap(32), Math.round(r * 3)),
         bodyPadding: Math.round(px * 1.5),
         colorBorderSecondary: 'transparent',
       },

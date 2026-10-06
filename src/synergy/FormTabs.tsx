@@ -39,6 +39,7 @@ import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { useTransition } from '@/synergy/motion'
 import { cn, IC, MotionFlex, Scroll, Tip } from '@/synergy/ant/ui'
+import { FLARES } from '@/synergy/AgendaTabs'
 
 /* -------------------------------------------------------------------------------------------------
  * Form sekmeleri (parent → child → child child)
@@ -101,10 +102,6 @@ const PAGE = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
  */
 const CUE =
   '[&_[data-tab-cue]]:animate-[tick-up_calc(0.18s*var(--motion-time,1))_cubic-bezier(0.22,1,0.36,1)_both]'
-
-/** Seçili sekmenin kaba bağlandığı alt köşelerdeki içbükey kavisler (zeminden oyulmuş çeyrek daire). */
-const FLARES =
-  "before:absolute before:bottom-0 before:-start-4 before:size-4 before:bg-[radial-gradient(circle_at_0_0,transparent_1rem,var(--tab-bg)_1rem)] before:content-[''] after:absolute after:bottom-0 after:-end-4 after:size-4 after:bg-[radial-gradient(circle_at_100%_0,transparent_1rem,var(--tab-bg)_1rem)] after:content-['']"
 
 /** Bütün geçişlerin eğrisi (ease-out-quint): şerit, sekmeler, bölmeler aynı ritimde. */
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -552,7 +549,9 @@ function TabStrip({
         aria-label="Açık formlar"
         aria-multiselectable={split || undefined}
         onKeyDown={onKeyDown}
-        className="relative flex min-w-max items-end gap-1 px-8 pt-1"
+        // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`, yarıçap × 3) + sekme kavisi
+        // (yarıçap × 2): seçili sekmenin kavisi kabın düz üst kenarına oturur
+        className="relative flex min-w-max items-end gap-1 ps-[calc(var(--radius)*5)] pe-8 pt-1"
       >
         {bar && (
           <MotionFlex

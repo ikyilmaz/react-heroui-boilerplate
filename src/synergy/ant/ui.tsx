@@ -110,3 +110,9 @@ export function Scroll({
  * stili (`--surface-shadow`; düz varsayılanda boş). Dolguyu kart stili `--surface`'le verir.
  */
 export const CARD = 'ring-(length:--border-width) ring-border shadow-(--surface-shadow)'
+
+/**
+ * Kartın köşesi (CSS): AntTheme › Card `borderRadiusLG` ile aynı (temel yarıçapın 3 katı, en çok
+ * 32px; squircle'da tavan da `--corner-scale` kadar büyür). Raf ve başlat kutusu da bunu kullanır.
+ */
+export const CARD_RADIUS = 'min(calc(32px * var(--corner-scale, 1)), calc(var(--radius) * 3))'

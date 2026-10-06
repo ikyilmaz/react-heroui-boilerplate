@@ -399,7 +399,8 @@ export function SidePanel({
             stack(
               'drawer',
               cn(
-                'absolute end-[calc(100%+0.25rem)] -top-2 w-[min(25rem,calc(100cqw-4.5rem))] rounded-[2.25rem] p-2',
+                // Köşe içindeki kartlarla eşmerkezli: kart yarıçapı + iç boşluk
+                'absolute end-[calc(100%+0.25rem)] -top-2 w-[min(25rem,calc(100cqw-4.5rem))] rounded-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--spacing)*2)] p-2',
                 side.tray,
               ),
               'Yan bilgiler',

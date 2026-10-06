@@ -36,6 +36,8 @@ export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
 export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
 /** `glow`: birincil renkle tonlanmış yumuşak gölge (kart rengini zemine yayar). */
 export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep' | 'glow'
+/** Köşe biçimi: yuvarlak (daire yayı) ya da squircle (süperelips; CSS `corner-shape`). */
+export type CornerShape = 'round' | 'squircle'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
 /** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
@@ -44,8 +46,10 @@ export type TrailStyle = 'soft' | 'solid'
 export interface ThemeSettings {
   /** Birincil renk (`COLORS`). */
   color: ColorId
-  /** Temel yarıçap (rem); alanlar bunun iki katı (en çok 1.25rem). */
+  /** Temel yarıçap (rem, `RADII`'den biri); alanlar bunun iki katı (en çok 1.25rem). */
   radius: number
+  /** Köşe biçimi; tarayıcı squircle çizemiyorsa yuvarlak kalır (`SQUIRCLE_SUPPORTED`). */
+  corner: CornerShape
   background: Background
   /** Yazı tipi: başlıklar ve metin. */
   font: FontId
@@ -82,16 +86,30 @@ export interface ThemeKit {
 }
 
 /**
- * Hazır tema: görünüşü belirleyen ayarların bir bileşimi (`look`). Gezinme konumu ve animasyon
- * tercih sayılır, hazır tema onlara dokunmaz. Seçilince ayarlara yazılır; sonra her ayar panelden
- * ayrıca değiştirilebilir (eşleşme bozulunca "Özel").
+ * Hazır tema: görünüşü belirleyen ayarların bir bileşimi (`look`). Gezinme konumu, köşe biçimi ve
+ * animasyon tercih sayılır, hazır tema onlara dokunmaz. Seçilince ayarlara yazılır; sonra her ayar
+ * panelden ayrıca değiştirilebilir (eşleşme bozulunca "Özel").
  */
 export interface ThemePreset {
   id: string
   label: string
   description: string
-  look: Partial<Omit<ThemeSettings, 'nav' | 'motion' | 'motionSpeed'>>
+  look: Partial<Omit<ThemeSettings, 'nav' | 'corner' | 'motion' | 'motionSpeed'>>
 }
+
+/** Tarayıcı squircle köşe çizebiliyor mu (`corner-shape`); çizemiyorsa ayar hiçbir şey yazmaz. */
+export const SQUIRCLE_SUPPORTED =
+  typeof CSS !== 'undefined' && CSS.supports('corner-shape', 'squircle')
+
+/** Köşe yuvarlaklığının üç boyu (rem): az, orta, çok; her biri yuvarlak ya da squircle. */
+export const RADII = [0.25, 0.5, 1] as const
+
+/**
+ * Squircle aynı yarıçapta daireden az keser (45°'de kabaca yarısı, köşe sivri görünür); köşeler
+ * aynı yuvarlaklıkta görünsün diye squircle'da yarıçap ve yarıçap tavanları (kart en çok 32px,
+ * alan en çok 14px… `--corner-scale`) bu kadar büyür.
+ */
+export const SQUIRCLE_SCALE = 1.6
 
 /** Birincil renkler (OKLCH); `cls` önizleme sınıfı (sabit metin; Tailwind görsün). */
 export const COLORS: {
@@ -150,6 +168,10 @@ const VARS = [
   '--default',
   '--radius',
   '--field-radius',
+  '--pill-radius',
+  '--corner-shape',
+  '--corner-concave',
+  '--corner-scale',
   '--border-width',
   '--surface-shadow',
   '--field-fill',
@@ -348,9 +370,25 @@ function variables(
     out['--default'] = 'var(--surface-tertiary)'
   }
 
-  if (s.radius !== d.radius) {
-    out['--radius'] = `${s.radius}rem`
-    out['--field-radius'] = `${Math.min(s.radius * 2, 1.25)}rem`
+  // Squircle: köşe biçimi, büyütülmüş yarıçap ve tavanlar (tema dosyası yuvarlak; varsayılan olsa
+  // da yazılır)
+  const squircle = s.corner === 'squircle' && SQUIRCLE_SUPPORTED
+  if (squircle) {
+    out['--corner-shape'] = 'squircle'
+    // İçbükey kavisler (sekmelerin kaba bağlandığı köşeler): squircle'ın içbükeyi (yoksa `scoop`)
+    out['--corner-concave'] = 'superellipse(-2)'
+    out['--corner-scale'] = String(SQUIRCLE_SCALE)
+  }
+  if (s.radius !== d.radius || squircle) {
+    const f = squircle ? SQUIRCLE_SCALE : 1
+    out['--radius'] = `${+(s.radius * f).toFixed(3)}rem`
+    out['--field-radius'] = `${+(Math.min(s.radius * 2, 1.25) * f).toFixed(3)}rem`
+    // Daire ve haplar: en büyük boyda tam yuvarlak, diğerlerinde alanların yarıçapı (AntTheme'deki
+    // `borderRadius` ile aynı hesap; tema dosyasındaki karşılığı hesabı köke yazdığı için açık değer)
+    out['--pill-radius'] =
+      s.radius >= RADII[RADII.length - 1]
+        ? '9999px'
+        : `min(${+(14 * f).toFixed(2)}px, ${+(s.radius * 1.5 * f).toFixed(3)}rem)`
   }
   // Çerçeveli kartta kontur en az 1px; form alanlarının çerçevesi de aynı kalınlıkta (0: çerçevesiz)
   const border = s.cardStyle === 'outlined' ? Math.max(s.border, 1) : s.border
@@ -378,7 +416,9 @@ function variables(
     out['--font-sans'] = font
     out['--font-display'] = font
   }
-  if (s.density !== d.density) out['--spacing'] = `${DENSITIES[s.density].spacing}rem`
+  // Tema dosyasının aralığı normal yoğunluğunki; varsayılan yoğunluk ondan farklı olabilir
+  if (s.density !== d.density || s.density !== 'normal')
+    out['--spacing'] = `${DENSITIES[s.density].spacing}rem`
   // Animasyon: az = kayma / ölçek yok, kapalı = süre de yok
   if (motion !== 'full') out['--motion-shift'] = '0'
   // Hız çarpanı süreleri böler (2× → yarı süre); kapalıda süre 0
@@ -392,6 +432,7 @@ function variables(
 const NOTHING = {
   color: '',
   radius: -1,
+  corner: '',
   background: '',
   font: '',
   density: '',
@@ -433,6 +474,9 @@ function load(kit: ThemeKit): ThemeSettings {
     // Seçeneği kaldırılmış değer (ör. eski bir zemin) varsayılana döner
     const valid: Partial<Record<keyof ThemeSettings, readonly unknown[]>> = {
       color: COLORS.map((c) => c.id),
+      // Yarıçap üç boydan biri (kaydırıcıdan kalan ara değerler varsayılana döner)
+      radius: RADII,
+      corner: ['round', 'squircle'],
       background: BACKGROUND_IDS,
       font: FONTS.map((x) => x.id),
       density: Object.keys(DENSITIES),

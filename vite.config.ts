@@ -14,6 +14,7 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    allowedHosts: ['.trycloudflare.com'],
   },
   // Derlemeyi Cloudflare hızlı tüneliyle paylaşmak için (`vite preview` + `cloudflared tunnel`)
   preview: {

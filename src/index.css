@@ -48,6 +48,8 @@
   --radius-2xl: calc(var(--radius) * 2);
   --radius-3xl: calc(var(--radius) * 3);
   --radius-4xl: calc(var(--radius) * 4);
+  /* `rounded-full` de köşe yuvarlaklığını izler (tema dosyası / tema paneli `--pill-radius`) */
+  --radius-full: var(--pill-radius);
 }
 
 /*
@@ -125,7 +127,6 @@
     from {
       opacity: 0;
       translate: 0 calc(0.3em * var(--motion-shift, 1));
-      filter: blur(2px);
     }
   }
   @keyframes pop {
@@ -180,6 +181,9 @@
  * Kenarlık rengi (tüm uygulama): `border` sınıfları ayrıca renk vermeden tema konturunu alır
  * (Tailwind'in varsayılanı yazı rengidir).
  *
+ * Köşe biçimi (tüm uygulama, antd dahil, daire ve haplar da): tema panelinin yazdığı
+ * `--corner-shape` (squircle); desteklemeyen tarayıcı kuralı yok sayar, köşeler yuvarlak kalır.
+ *
  * Kaydırma çubukları (tüm uygulama): ince, yalnızca tutamak; iz görünmez. Renk yazı renginden
  * türer (açık / koyu temaya kendiliğinden uyar); üzerine gelince biraz koyulaşır.
  */
@@ -191,11 +195,45 @@
   ::file-selector-button {
     border-color: var(--border, currentColor);
   }
+  /* Köşe biçimi (tema paneli › Köşe yuvarlaklığı): istisnasız her öğe; yazılmamışsa yuvarlak */
+  *,
+  ::after,
+  ::before {
+    corner-shape: var(--corner-shape, round);
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--foreground) 20%, transparent) transparent;
   }
   *:hover {
     scrollbar-color: color-mix(in oklab, var(--foreground) 34%, transparent) transparent;
+  }
+}
+
+/*
+ * antd'nin daire / hap biçimleri de köşe yuvarlaklığını izler (`--pill-radius`; Tailwind
+ * `rounded-full` ile aynı): en büyük boyda daire / hap, daha azında köşeli. antd stillerinin
+ * (`@layer antd`) üstündeki katmanda; Tailwind sınıfları yine üstün.
+ */
+@layer components {
+  .ant-avatar-circle,
+  .ant-btn-circle,
+  .ant-btn-round,
+  .ant-switch,
+  .ant-switch-inner,
+  .ant-slider-handle::after,
+  .ant-slider-dot,
+  .ant-radio-inner,
+  .ant-steps-item-icon,
+  .ant-badge-count,
+  .ant-badge-dot,
+  .ant-float-btn-circle,
+  .ant-skeleton-avatar-circle,
+  .ant-skeleton-button-round {
+    border-radius: var(--pill-radius);
+  }
+  /* Anahtarın tutamağı yuvasıyla eşmerkezli (yuvanın iç boşluğu kadar küçük) */
+  .ant-switch-handle::before {
+    border-radius: max(0px, calc(var(--pill-radius) - 2px));
   }
 }

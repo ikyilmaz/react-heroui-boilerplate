@@ -127,7 +127,14 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     title: 'Asistan',
     description: 'Uygulama hakkında soru sorun',
     icon: Sparkles,
-    sizes: [size('m', 'Orta', 4, 5), size('tall', 'Uzun', 4, 7), size('wide', 'Geniş', 6, 5)],
+    // Dar: iş akışlarının (en az 9 sütun) yanına sığan 3 sütun; altında 9 × 7'nin yanında 3 × 2,
+    // 9 × 9'un yanında 3 × 4 kalır (karşılama / saat / takvim tam oturur)
+    sizes: [
+      size('m', 'Orta', 4, 5),
+      size('narrow', 'Dar', 3, 5),
+      size('tall', 'Uzun', 4, 7),
+      size('wide', 'Geniş', 6, 5),
+    ],
   },
   calendar: {
     kind: 'calendar',

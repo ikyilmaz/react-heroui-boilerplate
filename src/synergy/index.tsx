@@ -263,7 +263,7 @@ function crumbIcon(key: string | undefined): LucideIcon | undefined {
  * - bulunulan yer değişince eski bölümün adı solarak büzülür, zemini birincil renkten yüzeye döner
  *   (yukarı çıkınca tersi: ad açılır, zemin dolar);
  * - aynı sıradaki konum değişince (ör. başka süreç) hap yerinde kalır, yalnızca ikon ve ad kısa bir
- *   bulanık solmayla yenilenir (ilk kurulumda değil; girişi `Crumbs` oynatır).
+ *   solmayla yenilenir (ilk kurulumda değil; girişi `Crumbs` oynatır).
  */
 function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
   const Icon = crumbIcon(c.icon)
@@ -443,7 +443,7 @@ const NO_CRUMBS: Crumb[] = []
 /**
  * Üstteki ince konum çubuğu (Gezinme › İkisi de): sol kolonun yanından başlar, logoyla aynı hizada;
  * geri / ileri ve konum (`Crumbs`: önceki seviyeler ikon, bulunulan yer adıyla, girip çıkan
- * seviyeler animasyonlu). Arkasında sayfa renginde bulanık şerit: kaydırılan içerik altında
+ * seviyeler animasyonlu). Arkasında sayfa renginde şerit: kaydırılan içerik altında
  * karışmasın. Yalnızca 32px boy; içerik 44px aşağıdan başlar (`CHROME_SPACE.both`). Sol kolonun
  * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
  * yapışkan öğeleri (`z-30`) çubuğun altında.
@@ -452,7 +452,7 @@ function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <Flex
       align="center"
-      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-8 min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background/85 before:backdrop-blur-md before:content-[''] sm:flex"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-8 min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:content-[''] sm:flex"
     >
       <Flex className="pointer-events-auto min-w-0">
         <Crumbs crumbs={crumbs} />
@@ -1216,8 +1216,8 @@ function Chrome({
     )
   return (
     // Üç sütun: solda logo + geri / ileri + konum, ortada raf (hep tam ortada), sağda eylemler
-    // Arkada sayfa renginde bulanık şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil)
-    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background/85 before:backdrop-blur-md before:content-[''] sm:grid">
+    // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil)
+    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:content-[''] sm:grid">
       <Flex align="center" className="pointer-events-auto min-w-0 gap-3 overflow-hidden ps-1">
         {logo}
         {/* Konum rafta (aktif uygulamanın yanında) ve başlat kutusunda; burada yalnızca geri / ileri */}

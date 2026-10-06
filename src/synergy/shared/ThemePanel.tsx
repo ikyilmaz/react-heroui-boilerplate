@@ -6,6 +6,8 @@ import {
   COLORS,
   DENSITIES,
   FONTS,
+  RADII,
+  SQUIRCLE_SUPPORTED,
   backgroundSwatch,
   lookVars,
   presetOf,
@@ -13,6 +15,7 @@ import {
   useIsDark,
   type Background,
   type CardStyle,
+  type CornerShape,
   type Density,
   type MotionLevel,
   type Shadow,
@@ -24,9 +27,9 @@ import {
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
 
 /* -------------------------------------------------------------------------------------------------
- * Tema paneli (sağdan çekmece): birincil renk, köşe yuvarlaklığı, zemin, yazı tipi, yoğunluk,
- * gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında uygulanır ve
- * saklanır (`themeSettings.ts`); varsayılan `theme.ts`'ten gelir (`kit`).
+ * Tema paneli (sağdan çekmece): birincil renk, köşe yuvarlaklığı ve biçimi, zemin, yazı tipi,
+ * yoğunluk, gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında uygulanır
+ * ve saklanır (`themeSettings.ts`); varsayılan `theme.ts`'ten gelir (`kit`).
  * ------------------------------------------------------------------------------------------------- */
 
 /** Zeminler; son dördü birincil renge göre uyumlu tonlar (`themeSettings.ts` › `HARMONY`). */
@@ -40,6 +43,50 @@ const BACKGROUNDS: { id: Background; label: string }[] = [
   { id: 'triadic', label: 'Üçlü' },
   { id: 'complement', label: 'Zıt' },
 ]
+
+type Radius = (typeof RADII)[number]
+
+const RADIUS_LABELS: Record<Radius, string> = { 0.25: 'Az', 0.5: 'Orta', 1: 'Çok' }
+
+/**
+ * Köşe önizlemesi (14px'lik kutunun sol üst köşesi): seçeneğin yarıçapı ölçekli, squircle'da
+ * büyütülmüş (sayfadaki gibi); biçim sınıfta, sayfanın o anki biçiminden bağımsız. Sabit metin
+ * (Tailwind görsün).
+ */
+const GLYPH: Record<CornerShape, Record<Radius, string>> = {
+  round: {
+    0.25: 'rounded-ss-[4px] [corner-shape:round]',
+    0.5: 'rounded-ss-[7px] [corner-shape:round]',
+    1: 'rounded-ss-[14px] [corner-shape:round]',
+  },
+  squircle: {
+    0.25: 'rounded-ss-[6px] [corner-shape:squircle]',
+    0.5: 'rounded-ss-[11px] [corner-shape:squircle]',
+    1: 'rounded-ss-[14px] [corner-shape:squircle]',
+  },
+}
+
+/** Köşe yuvarlaklığı: üst sıra yuvarlak, alt sıra squircle; her sırada az / orta / çok. */
+const CORNERS = (['round', 'squircle'] as const).flatMap((corner) =>
+  RADII.map((radius) => ({
+    id: `${corner}:${radius}`,
+    corner,
+    radius,
+    label: RADIUS_LABELS[radius],
+    hint: corner === 'squircle' ? ', squircle' : ', yuvarlak',
+    icon: (
+      <Flex
+        component="span"
+        aria-hidden
+        className={cn(
+          'block size-3.5 shrink-0 border-s-2 border-t-2 border-current',
+          GLYPH[corner][radius],
+        )}
+      />
+    ),
+    disabled: corner === 'squircle' && !SQUIRCLE_SUPPORTED,
+  })),
+)
 
 const DENSITY_OPTIONS: { id: Density; label: string }[] = [
   { id: 'tight', label: 'Sıkı' },
@@ -134,8 +181,19 @@ function Segments<T extends string | number>({
 }: {
   label: string
   value: T
-  /** `dot`: seçeneğin önünde renk örneği (ör. zeminin rengi; birincil renge göre değişir). */
-  options: { id: T; label: string; dot?: string }[]
+  /**
+   * `dot`: seçeneğin önünde renk örneği (ör. zeminin rengi; birincil renge göre değişir); `icon`:
+   * önünde küçük bir önizleme; `hint`: yalnızca ekran okuyucuda, adın ardından (aynı adlı
+   * seçenekleri ayırır). Izgarada.
+   */
+  options: {
+    id: T
+    label: string
+    dot?: string
+    icon?: ReactNode
+    hint?: string
+    disabled?: boolean
+  }[]
   onChange: (v: T) => void
   /** Tek satıra sığmayınca bu kadar sütunlu ızgara. */
   grid?: keyof typeof GRID_COLS
@@ -152,23 +210,33 @@ function Segments<T extends string | number>({
         optionType="button"
         value={String(value)}
         onChange={(e) => pick(e.target.value)}
-        options={options.map((o) => ({
-          value: String(o.id),
-          label: o.dot ? (
-            <Flex component="span" align="center" justify="center" gap={6}>
-              <Flex
-                component="span"
-                aria-hidden
-                // Renk çalışma anında hesaplanır (birincil renk, açık / koyu)
-                style={{ background: o.dot }}
-                className="block size-2.5 shrink-0 rounded-full ring-1 ring-border"
-              />
-              {o.label}
-            </Flex>
+        options={options.map((o) => {
+          const mark = o.dot ? (
+            <Flex
+              component="span"
+              aria-hidden
+              // Renk çalışma anında hesaplanır (birincil renk, açık / koyu)
+              style={{ background: o.dot }}
+              className="block size-2.5 shrink-0 rounded-full ring-1 ring-border"
+            />
           ) : (
-            o.label
-          ),
-        }))}
+            o.icon
+          )
+          return {
+            value: String(o.id),
+            disabled: o.disabled,
+            label:
+              mark || o.hint ? (
+                <Flex component="span" align="center" justify="center" gap={6}>
+                  {mark}
+                  {o.label}
+                  {o.hint && <Text className="sr-only">{o.hint}</Text>}
+                </Flex>
+              ) : (
+                o.label
+              ),
+          }
+        })}
         className={cn(GRID_SEGMENT, GRID_COLS[grid])}
       />
     )
@@ -349,15 +417,25 @@ export function ThemePanel({
         </Flex>
       </Section>
 
-      <Section title="Köşe yuvarlaklığı" value={`${Math.round(settings.radius * 16)}px`}>
-        <Range
+      <Section
+        title="Köşe yuvarlaklığı"
+        value={settings.corner === 'squircle' ? 'Squircle' : 'Yuvarlak'}
+      >
+        <Segments
           label="Köşe yuvarlaklığı"
-          value={settings.radius}
-          min={0}
-          max={1.25}
-          step={0.125}
-          onChange={(radius) => set({ radius })}
+          value={`${settings.corner}:${settings.radius}`}
+          options={CORNERS}
+          onChange={(id) => {
+            const hit = CORNERS.find((o) => o.id === id)
+            if (hit) set({ corner: hit.corner, radius: hit.radius })
+          }}
+          grid={3}
         />
+        <Text type="secondary" className="text-xs">
+          {SQUIRCLE_SUPPORTED
+            ? 'Üst sıra yuvarlak, alt sıra squircle köşe.'
+            : 'Üst sıra yuvarlak köşe; bu tarayıcı squircle çizemiyor.'}
+        </Text>
       </Section>
 
       <Section title="Zemin">
