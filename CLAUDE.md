@@ -103,10 +103,11 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   viewport wide (min 44rem) when it is on top; its İş Akış Yönetimi section is the Başlangıç İş
   Akışları widget (`WorkBlock` from `StartPage.tsx`, in its own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
   back / forward | centered dock | actions / profile; "İkisi de" = the left column without back /
-  forward plus a slim 32px top bar (`CrumbBar`, aligned with the logo, page-colour strip
-  behind) holding back / forward and the animated `Crumbs` (earlier levels icon-only, current level
-  named); the dock then shows only the active app's pill (`DockPath appOnly`, links to the app when
-  deeper); content starts 56px down (`CHROME_SPACE.both`, `--chrome-top: 56px`). The breadcrumb lives in the dock as nested pills
+  forward plus a slim top bar (`CrumbBar`, a logo-high 34px box with the 28px pills centred in it,
+  page-colour strip behind) holding compact back / forward and the animated `Crumbs` (earlier levels
+  icon-only, current level named, `ChevronRight` separators; Başlangıç shows its home pill too); the dock
+  is then fixed (`DockPath still`: no path pills, every app stays a circle in place; only the accent fill
+  moves to the active app's circle, Başlangıç filled only on Başlangıç); content starts 56px down (`CHROME_SPACE.both`, `--chrome-top: 56px`). The breadcrumb lives in the dock as nested pills
   growing out of the Başlangıç circle (`DockPath`: Başlangıç › active app › sub-levels, each pill tucked
   under the previous one, the other apps after the path) and in full in the start menu ("Buradasınız"); the chrome height
   reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +

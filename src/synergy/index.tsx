@@ -280,7 +280,7 @@ function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
     <Flex
       align="center"
       className={cn(
-        'h-8 min-w-0 rounded-full px-2 text-sm whitespace-nowrap transition-[background-color,color,box-shadow] duration-[calc(240ms*var(--motion-time,1))] ease-out',
+        'h-7 min-w-0 rounded-full px-1.75 text-sm whitespace-nowrap transition-[background-color,color,box-shadow] duration-[calc(240ms*var(--motion-time,1))] ease-out',
         current
           ? 'bg-accent font-semibold text-accent-foreground'
           : cn(
@@ -294,7 +294,7 @@ function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
         align="center"
         className={cn('min-w-0', swapped.current && 'animate-crumb-swap')}
       >
-        {Icon && <Icon {...IC} size={16} className="shrink-0" />}
+        {Icon && <Icon {...IC} size={14} className="shrink-0" />}
         <Flex
           className={cn(
             'grid min-w-0 transition-[grid-template-columns] duration-[calc(300ms*var(--motion-time,1))] ease-[cubic-bezier(0.22,1,0.36,1)]',
@@ -344,16 +344,19 @@ function CrumbPart({ c, current }: { c: Crumb; current: boolean }) {
 const CRUMB_OUT_MS = 180
 
 /**
- * Konum çubuğu: ayrı küçük haplar, aralarında eğik çizgi; tüm konum hep görünür (önceki konumlar
- * ikon). Animasyonlar:
- * - yeni bölüm (derine inince) çizgisiyle birlikte soldan hafifçe kayıp büyüyerek belirir;
+ * Konum çubuğu: ayrı küçük haplar (28px), aralarında sağ ok; tüm konum hep görünür (önceki
+ * konumlar ikon). Animasyonlar:
+ * - yeni bölüm (derine inince) okuyla birlikte soldan hafifçe kayıp büyüyerek belirir;
  * - çıkan bölüm (yukarı çıkınca) kısa süre yerinde küçülerek solar, sonra kalkar; sondan çıktığı
  *   için diğer bölümler kıpırdamaz;
  * - bölümlerin kendi değişimleri `CrumbPart`'ta (ad büzülmesi, renk, yenilenme).
  * Kademeli (stagger) giriş yok; animasyon kapalıyken hepsi anında.
  */
-/** Breadcrumb'ın başında geri / ileri: yalnızca uygulamanın rota geçmişine göre. */
-function HistoryButtons({ className }: { className?: string }) {
+/**
+ * Breadcrumb'ın başında geri / ileri: yalnızca uygulamanın rota geçmişine göre. `compact`: konum
+ * çubuğundaki haplarla aynı boy (28px); kabukta 32px.
+ */
+function HistoryButtons({ className, compact }: { className?: string; compact?: boolean }) {
   const navigate = useNavigate()
   const { canBack, canForward } = useRouteHistory()
   return (
@@ -374,8 +377,11 @@ function HistoryButtons({ className }: { className?: string }) {
             aria-label={label}
             disabled={!on}
             onClick={() => navigate(go)}
-            icon={<Icon {...IC} size={16} />}
-            className="size-7 min-w-7 rounded-full p-0 text-muted enabled:hover:bg-surface-secondary enabled:hover:text-foreground disabled:opacity-50"
+            icon={<Icon {...IC} size={compact ? 14 : 16} />}
+            className={cn(
+              'rounded-full p-0 text-muted enabled:hover:bg-surface-secondary enabled:hover:text-foreground disabled:opacity-50',
+              compact ? 'size-6 min-w-6' : 'size-7 min-w-7',
+            )}
           />
         </Tip>
       ))}
@@ -385,14 +391,13 @@ function HistoryButtons({ className }: { className?: string }) {
 
 function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
   const look = useLook()
-  // Tek bölüm bulunulan sayfanın kendisi (ör. Başlangıç); göstermeye gerek yok
-  const shown = crumbs.length < 2 ? NO_CRUMBS : crumbs
-  const key = JSON.stringify(shown)
-  const [state, setState] = useState({ key, list: shown, tail: NO_CRUMBS })
+  // Tek bölüm de gösterilir (Başlangıç: ev ikonlu bulunulan yer); derine inince ikona büzülür
+  const key = JSON.stringify(crumbs)
+  const [state, setState] = useState({ key, list: crumbs, tail: NO_CRUMBS })
   if (state.key !== key) {
     // Sondan düşen bölümler solarak çıksın diye kısa süre tutulur
-    const tail = state.list.length > shown.length ? state.list.slice(shown.length) : NO_CRUMBS
-    setState({ key, list: shown, tail })
+    const tail = state.list.length > crumbs.length ? state.list.slice(crumbs.length) : NO_CRUMBS
+    setState({ key, list: crumbs, tail })
   }
   const tail = state.tail
   useEffect(() => {
@@ -403,13 +408,13 @@ function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
   }, [tail, look.motion, look.speed])
 
   const items = [
-    ...shown.map((c) => ({ c, leaving: false })),
+    ...crumbs.map((c) => ({ c, leaving: false })),
     ...tail.map((c) => ({ c, leaving: true })),
   ]
   return (
     <Flex role="navigation" aria-label="Konum" align="center" className="min-w-0">
       {/* Geri / ileri her zaman görünür (tek bölümlü sayfada da) */}
-      <HistoryButtons />
+      <HistoryButtons compact />
       <Flex role="list" align="center" className="min-w-0 flex-nowrap">
         {items.map(({ c, leaving }, i) => (
           // Sıraya göre anahtarlı: bölüm yerinde kalır; yalnızca yeni sıra girer, düşen sıra çıkar
@@ -421,16 +426,12 @@ function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
             className={cn(
               'origin-left',
               // Bulunulan yer (son bölüm) dar alanda kısalır; öncekiler ikon, küçülmez
-              i === shown.length - 1 ? 'min-w-0 shrink' : 'shrink-0',
+              i === crumbs.length - 1 ? 'min-w-0 shrink' : 'shrink-0',
               leaving ? 'pointer-events-none animate-crumb-out' : 'animate-crumb-in',
             )}
           >
-            {i > 0 && (
-              <Typography.Text aria-hidden className="mx-1.5 text-sm text-muted/50 select-none">
-                /
-              </Typography.Text>
-            )}
-            <CrumbPart c={c} current={!leaving && i === shown.length - 1} />
+            {i > 0 && <ChevronRight {...IC} size={14} className="mx-0.5 shrink-0 text-muted/60" />}
+            <CrumbPart c={c} current={!leaving && i === crumbs.length - 1} />
           </Flex>
         ))}
       </Flex>
@@ -444,7 +445,8 @@ const NO_CRUMBS: Crumb[] = []
  * Üstteki ince konum çubuğu (Gezinme › İkisi de): sol kolonun yanından başlar, logoyla aynı hizada;
  * geri / ileri ve konum (`Crumbs`: önceki seviyeler ikon, bulunulan yer adıyla, girip çıkan
  * seviyeler animasyonlu). Arkasında sayfa renginde şerit: kaydırılan içerik altında
- * karışmasın. Yalnızca 32px boy; içerik 44px aşağıdan başlar (`CHROME_SPACE.both`). Sol kolonun
+ * karışmasın. Kutu logo boyunda (34px, üstten 12px), 28px haplar içinde dikeyde ortalı: logoyla
+ * aynı hizada; içerik 56px aşağıdan başlar (`CHROME_SPACE.both`). Sol kolonun
  * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
  * yapışkan öğeleri (`z-30`) çubuğun altında.
  */
@@ -452,7 +454,7 @@ function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <Flex
       align="center"
-      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-8 min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:content-[''] sm:flex"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-2.5 before:-z-10 before:bg-background before:content-[''] sm:flex"
     >
       <Flex className="pointer-events-auto min-w-0">
         <Crumbs crumbs={crumbs} />
@@ -822,6 +824,8 @@ const TRAIL_STYLE: Record<
 /** Raftaki sıradan uygulama dairesi. */
 const APP_CIRCLE =
   'flex size-[40px] shrink-0 items-center justify-center rounded-full text-foreground/70 no-underline transition-colors duration-200 hover:bg-surface-secondary hover:text-foreground'
+/** Dolu daire: yolun başı Başlangıç; sabit rafta bulunulan uygulama. */
+const APP_ACTIVE = 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground'
 
 /**
  * Raftaki konum: yol hep Başlangıç'tan başlar. Dolu daire Başlangıç; ardından her seviye (aktif
@@ -829,7 +833,9 @@ const APP_CIRCLE =
  * üstünde (`z-index` azalır; solda yukarıdan aşağıya) ve her hap bir öncekinin altına kendi boyu
  * kadar girer: görünen birleşim öncekinin yuvarlak ucudur, çizilen köşe ya da boşluk yoktur. Diğer
  * uygulamalar yolun ardından sıradan daire; aktif uygulama rafta ayrı daire olarak değil yolun ilk
- * hapı olarak durur. Üstte bulunulan yerin adı da yazar (geniş ekranda); adlar ipucunda.
+ * hapı olarak durur. Üstte bulunulan yerin adı da yazar (geniş ekranda); adlar ipucunda. Gezinme ›
+ * İkisi de: raf sabit (`still`; yol hapı yok, aktif uygulama da dairesiyle yerinde ve yalnızca o
+ * dolu renkte; Başlangıç da yalnızca kendisindeyken), konum üstteki konum çubuğunda.
  *
  * Animasyonlar (hepsi rafın yayı `DOCK_SPRING` ile; hız ve düzey `useTransition`):
  * - yeni seviye bir öncekinin altından kayarak çıkar (altta olduğu için onun içinden doğar gibi),
@@ -841,6 +847,8 @@ const APP_CIRCLE =
  */
 /** Rafın düzen imzası: hapların sayısı, ikonları, bulunulan yerin adı, aktif uygulama, yerleşim. */
 function dockLayoutKey(crumbs: Crumb[], current: string | undefined, left: boolean, both: boolean) {
+  // Sabit raf (İkisi de): konum ve aktif uygulama rafı değiştirmez, hiç yeniden ölçülmez
+  if (both) return JSON.stringify([left, both])
   return JSON.stringify([crumbs.map((c) => [c.label, c.icon, !!c.href]), current, left, both])
 }
 
@@ -848,7 +856,7 @@ function DockPath({
   crumbs,
   current,
   left,
-  appOnly = false,
+  still = false,
   layoutKey,
 }: {
   crumbs: Crumb[]
@@ -856,10 +864,10 @@ function DockPath({
   current: string | undefined
   left: boolean
   /**
-   * Yalnızca aktif uygulamanın hapı (alt seviyeler üstteki konum çubuğunda; Gezinme › İkisi de).
-   * Daha derindeyken hap uygulamanın kendisine götürür.
+   * Sabit raf (Gezinme › İkisi de; konum üstteki konum çubuğunda): yol hapı yok, aktif uygulama da
+   * diğerleri gibi dairesiyle yerinde; gezinince yalnızca dolu renk bulunulan uygulamaya geçer.
    */
-  appOnly?: boolean
+  still?: boolean
   /** Rafın düzen imzası: hapların yeri yalnızca bu değişince ölçülür. */
   layoutKey: string
 }) {
@@ -869,13 +877,14 @@ function DockPath({
   const tip = left ? 'right' : 'bottom'
   // Seviyenin saklı konumu: bir öncekinin altında (solda yukarıda, üstte solda)
   const hidden = left ? { y: -24 } : { x: -24 }
-  // Yol: Başlangıç'tan sonraki seviyeler; Başlangıç'ın kendisinde boş
-  const trail = crumbs.length > 1 ? crumbs.slice(1, appOnly ? 2 : undefined) : NO_TRAIL
-  // Uygulamanın içinde daha derin bir yerde (yalnızca uygulama hapı gösterilirken)
-  const deeper = appOnly && crumbs.length > 2
+  // Yol: Başlangıç'tan sonraki seviyeler; Başlangıç'ın kendisinde ve sabit rafta boş
+  const trail = !still && crumbs.length > 1 ? crumbs.slice(1) : NO_TRAIL
   const home = dockEntries.find((e) => e.id === 'baslangic')!
+  // Başlangıç dairesi yolun başı olarak hep dolu; sabit rafta yalnızca Başlangıç'tayken
+  const homeActive = !still || current === home.id
+  // Aktif uygulama yolun ilk hapı olur (sabit rafta dairesi yerinde kalır)
   const others = dockEntries.filter(
-    (e) => e.id !== 'geri' && e.id !== 'baslangic' && e.id !== current,
+    (e) => e.id !== 'geri' && e.id !== 'baslangic' && (still || e.id !== current),
   )
 
   const levels = trail.map((c, i) => {
@@ -921,7 +930,7 @@ function DockPath({
         className={cn('relative flex shrink-0', first ? pill.wrapFirst : pill.wrap)}
       >
         <Tip label={c.label} placement={tip}>
-          {(isCurrent && !deeper) || !c.href ? (
+          {isCurrent || !c.href ? (
             <Flex
               aria-current={isCurrent ? 'page' : undefined}
               aria-label={c.label}
@@ -941,6 +950,8 @@ function DockPath({
 
   const apps = others.map((e) => {
     const Icon = e.icon
+    // Sabit rafta bulunulan uygulama dolu renkte
+    const active = still && e.id === current
     return (
       <MotionFlex
         key={`app-${e.id}`}
@@ -954,7 +965,12 @@ function DockPath({
       >
         <Tip label={e.label} placement={tip}>
           {e.href ? (
-            <Link to={e.href} aria-label={e.label} className={APP_CIRCLE}>
+            <Link
+              to={e.href}
+              aria-label={e.label}
+              aria-current={active || undefined}
+              className={cn(APP_CIRCLE, active && APP_ACTIVE)}
+            >
               <Icon {...IC} size={18} className="shrink-0" />
             </Link>
           ) : (
@@ -970,17 +986,14 @@ function DockPath({
 
   return (
     <Flex role="list" aria-label="Konum" className={cn('flex items-center', left && 'flex-col')}>
-      {/* Başlangıç: yolun başı; hep dolu renk ve hapların üstünde */}
+      {/* Başlangıç: yolun başı; dolu renk (sabit rafta yalnızca kendisindeyken) ve hapların üstünde */}
       <Flex role="listitem" className="relative z-10 flex shrink-0">
         <Tip label={home.label} placement={tip}>
           <Link
             to={BASE}
             aria-label={home.label}
-            aria-current={trail.length ? undefined : 'page'}
-            className={cn(
-              'flex size-[40px] shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground no-underline hover:text-accent-foreground',
-              style.home,
-            )}
+            aria-current={crumbs.length > 1 ? undefined : 'page'}
+            className={cn(APP_CIRCLE, homeActive && cn(APP_ACTIVE, style.home))}
           >
             <House {...IC} size={18} className="shrink-0" />
           </Link>
@@ -1161,7 +1174,7 @@ function Chrome({
             crumbs={crumbs}
             current={current}
             left={left}
-            appOnly={both}
+            still={both}
             layoutKey={dockKey}
           />
         </>

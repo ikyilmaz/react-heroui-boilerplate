@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "share": "bash scripts/share.sh",
     "build:design": "vite build --config design/vite.config.ts"
   },
   "dependencies": {

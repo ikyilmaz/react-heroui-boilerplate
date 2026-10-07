@@ -65,7 +65,7 @@ import {
   useBriefPending,
   type GroupSort,
 } from '@/synergy/shared/startLabels'
-import { boxLink, k, requestLink, useFrame } from '@/synergy/paths'
+import { START_CRUMB, boxLink, k, requestLink, useFrame } from '@/synergy/paths'
 import {
   useBand,
   CellValue,
@@ -211,7 +211,8 @@ function Refresh({
 
 export function StartPage() {
   const [refreshing, refreshAll] = useBriefPending()
-  useFrame([{ label: 'Başlangıç' }])
+  // Konum çubuğunda (İkisi de) Başlangıç'ta da ev ikonlu bölüm görünür
+  useFrame([START_CRUMB])
   return (
     <Dashboard
       render={(kind, size) => {

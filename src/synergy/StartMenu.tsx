@@ -133,7 +133,7 @@ export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
   // Kabuk 12px içeride, 52px; aradaki boşluk 12px
   left: 'sm:ps-[76px] sm:pt-3',
   top: 'sm:pt-[76px]',
-  // Solda kolon, üstte 32px konum çubuğu (12px içeride; altında 12px)
+  // Solda kolon, üstte logo boyunda (34px) konum çubuğu, 28px haplar (12px içeride; altında 10px)
   both: 'sm:ps-[76px] sm:pt-14',
 }
 
