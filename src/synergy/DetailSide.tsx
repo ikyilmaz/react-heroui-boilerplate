@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from 'react'
 import {
   AnimatePresence,
@@ -23,7 +24,7 @@ import {
   type Variants,
 } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
-import { Files, History, Info, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Files, History, Info, PanelRightClose, PanelRightOpen, PanelTopClose } from 'lucide-react'
 import { Button, Card, Divider, Flex, Segmented, Typography } from 'antd'
 import { DOCUMENT_LABELS } from '@/synergy/shared/workflowData'
 import { useMediaQuery } from '@/synergy/shared/hooks'
@@ -37,9 +38,12 @@ import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
  * göre seçilir:
  * - Sütun (bölme en az 52rem): formun sağında üçte bir; kaydırırken yapışık kalır, ekrana sığmazsa
  *   kendi içinde kayar. Katlanınca dar bir rafa iner; tercih saklanır.
- * - Çekmece (daha dar bölme; ör. panel boyutu 1 olan child): form tam genişliğini korur, sağda raf
- *   durur. Açılınca kartlar formun üstüne sağdan kayan bir çekmecede gelir; form soluklaşır,
- *   dışarı basınca, Esc ile ya da formda bir şey gösterilince kapanır. Her açılışta katlı başlar.
+ * - Sayfa (daha dar bölme; ör. yan yana bölünen form ya da panel boyutu 1 olan child): raf yok, form
+ *   tam genişlikte. Formun başlığındaki (ve kaydırınca şeritteki) bilgi düğmesi (DetailPage.tsx)
+ *   kartları form kartının yerini alan, yukarıdan aşağı açılan bir sayfada gösterir: form kartı
+ *   gizlenir (bağlı kalır, girilen değerler gitmez), arkada kayan bir şey kalmaz. Düğmeyle, sayfadaki
+ *   kapatma düğmesiyle, Esc ile ya da formda bir şey gösterilince kapanır; form kaldığı kaydırma
+ *   yerine döner. Her açılışta kapalı başlar.
  * - Telefon: kartlar formun altında, katlama yok.
  * ------------------------------------------------------------------------------------------------- */
 
@@ -47,7 +51,7 @@ export type SideTab = 'props' | 'history'
 /** Raftan açılan yer: Dokümanlar kartı ya da sekmeli kartın bir sekmesi. */
 export type SideTarget = SideTab | 'docs'
 
-type Mode = 'stack' | 'column' | 'drawer'
+type Mode = 'stack' | 'column' | 'sheet'
 
 /** Sütunun sığdığı en dar bölme (rem): form ~34rem, sütun (üçte bir) ~17rem. */
 const COLUMN_MIN = 52
@@ -80,14 +84,18 @@ const RAIL: { id: SideTarget; label: string; icon: LucideIcon }[] = [
   { id: 'history', label: 'Tarihçe', icon: History },
 ]
 
+/** Dar bölmedeki bilgi düğmesinin adı (başlıkta ve şeritte; DetailPage.tsx). */
+export const SIDE_LABEL = `${DOCUMENT_LABELS.title}, Özellikler ve Tarihçe`
+
 export interface SideState {
   mode: Mode
   open: boolean
-  setOpen: (open: boolean) => void
-  /** Çekmece açıksa kapatır (formda bir şey gösterilince). */
+  /** `from`: sayfayı açan öğe (kapanınca odak ona döner; yoksa o anki odak). */
+  setOpen: (open: boolean, from?: HTMLElement) => void
+  /** Sayfayı açan öğe (bilgi düğmesi). */
+  opener: RefObject<HTMLElement | null>
+  /** Sayfa açıksa kapatır (formda bir şey gösterilince). */
   dismiss: () => void
-  /** Çekmecenin tepsisi: formun altındaki zeminin rengi (sekmelerde sayfa kabı, yoksa sayfa). */
-  tray: string
   style: CSSProperties
   /** Formun kaydırma kabı (sekmeler açıkken bölme; yoksa `null`: pencere). */
   scroller: HTMLElement | null
@@ -110,7 +118,7 @@ export function useSidePanel(
     if (!box) return
     const measure = () => {
       // Gizli form sekmesinde (display: none) kutu yok: yerleşim olduğu gibi kalır (gizlenip
-      // görününce çekmeceye dönüp geri gelmesin, form yeniden çizilmesin)
+      // görününce sayfaya dönüp geri gelmesin, form yeniden çizilmesin)
       if (!box.getClientRects().length) return
       // Tema paneli › Ölçek kök yazı boyunu değiştirir: rem her ölçümde yeniden okunur
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
@@ -128,26 +136,47 @@ export function useSidePanel(
     }
   }, [box, scroller])
 
-  const mode: Mode = phone ? 'stack' : roomy ? 'column' : 'drawer'
+  const mode: Mode = phone ? 'stack' : roomy ? 'column' : 'sheet'
   const [folded, setFolded] = useState(loadFolded)
-  const [drawer, setDrawer] = useState(false)
-  const open = mode === 'stack' || (mode === 'column' ? !folded : drawer)
+  const [sheet, setSheet] = useState(false)
+  // Bölme genişleyip sayfa yerleşiminden çıkınca sayfa kapanır (geri daralınca kapalı başlar)
+  if (sheet && mode !== 'sheet') setSheet(false)
+  const opener = useRef<HTMLElement | null>(null)
+  const open = mode === 'stack' || (mode === 'column' ? !folded : sheet)
 
-  // Çekmece Esc ile kapanır
+  // Sayfa açıkken form gizli, kap kısalır ve kaydırma başa döner: formun kaydırma yeri açılırken
+  // saklanır, kapanınca (form yeniden yerinde, boyamadan önce) geri gelir
+  const saved = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (sheet || saved.current === null) return
+    const top = saved.current
+    saved.current = null
+    ;(scroller ?? window).scrollTo({ top })
+  }, [sheet, scroller])
+
+  // Sayfa Esc ile kapanır
   useEffect(() => {
-    if (mode !== 'drawer' || !drawer) return
+    if (mode !== 'sheet' || !sheet) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawer(false)
+      if (e.key === 'Escape') setSheet(false)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [mode, drawer])
+  }, [mode, sheet])
 
   const state: SideState = {
     mode,
     open,
-    setOpen: (v) => {
-      if (mode === 'drawer') setDrawer(v)
+    setOpen: (v, from) => {
+      if (mode === 'sheet') {
+        // Tıklanan düğme her tarayıcıda odak almaz (Safari): açan öğe açıkça saklanır
+        if (v && !sheet) {
+          const active = document.activeElement
+          opener.current = from ?? (active instanceof HTMLElement ? active : null)
+          saved.current = scroller ? scroller.scrollTop : window.scrollY
+        }
+        setSheet(v)
+      }
       if (mode !== 'column') return
       setFolded(!v)
       try {
@@ -156,8 +185,8 @@ export function useSidePanel(
         // Depolama kapalıysa tercih yalnızca bu oturumda
       }
     },
-    dismiss: () => setDrawer(false),
-    tray: scroller ? 'bg-(--tab-bg)' : 'bg-background',
+    opener,
+    dismiss: () => setSheet(false),
     style: (viewH === null ? {} : { '--view-h': `${viewH}px` }) as CSSProperties,
     scroller,
   }
@@ -180,32 +209,43 @@ function useAttach(set: (el: HTMLElement) => void) {
 
 /* --- Hareket ------------------------------------------------------------------------------------ */
 
-/** Kartlar raftan (sağdan) kısa kayıp belirir; kap sırayı yönetir (`stagger`). */
-const cardVariants = (enter: Transition, exit: Transition): Variants => ({
-  hidden: { opacity: 0, x: 24, transition: exit },
-  shown: { opacity: 1, x: 0, transition: enter },
+/** Kartlar raftan (sağdan) ya da sayfada yukarıdan kısa kayıp belirir; kap sırayı yönetir (`stagger`). */
+const cardVariants = (enter: Transition, exit: Transition, sheet: boolean): Variants => ({
+  hidden: { opacity: 0, ...(sheet ? { y: -16 } : { x: 24 }), transition: exit },
+  shown: { opacity: 1, x: 0, y: 0, transition: enter },
 })
 
 /**
- * Kartların kabı: girişte kartlar sırayla (önce Dokümanlar), çıkışta ters sırayla. Çekmecede kabın
- * kendisi (tepsi) de sağdan kayarak gelir.
+ * Sayfanın perdesi: alt kenarı üstten aşağı iner. Kenarlar (açıkken alt kenar da) kutudan %10 taşar:
+ * kartların halkası ve gölgesi kesilmez. Tek birim (%): Motion ara değerleri hesaplayabilsin.
  */
-function useStack(tray: boolean) {
+const WIPE_HIDDEN = 'inset(-10% -10% 100% -10%)'
+const WIPE_SHOWN = 'inset(-10% -10% -10% -10%)'
+
+/**
+ * Kartların kabı: girişte kartlar sırayla (önce Dokümanlar), çıkışta ters sırayla. Sayfada kabın
+ * kendisi (tepsi) de belirir ve yukarıdan aşağı açılır (perde; "Az"da yalnızca solma: `clipPath`
+ * dönüşüm değil, MotionConfig kapatmaz).
+ */
+function useStack(sheet: boolean) {
   const { motion: level, speed } = useLook()
   const enter = useTransition({ duration: 0.36, ease: [0.22, 1, 0.36, 1] })
   const exit = useTransition({ duration: 0.16, ease: [0.4, 0, 1, 1] })
   const off = level === 'off'
+  const wipe = sheet && level === 'full'
   const stack: Variants = {
     hidden: {
-      ...(tray && { opacity: 0, x: 16 }),
+      ...(sheet && { opacity: 0 }),
+      ...(wipe && { clipPath: WIPE_HIDDEN }),
       transition: { ...exit, delayChildren: off ? 0 : stagger(0.04 / speed, { from: 'last' }) },
     },
     shown: {
-      ...(tray && { opacity: 1, x: 0 }),
+      ...(sheet && { opacity: 1 }),
+      ...(wipe && { clipPath: WIPE_SHOWN }),
       transition: { ...enter, delayChildren: off ? 0 : stagger(0.07 / speed) },
     },
   }
-  return { stack, card: cardVariants(enter, exit), fade: enter }
+  return { stack, card: cardVariants(enter, exit, sheet), fade: enter }
 }
 
 /** Sekme içeriği: değişimin yönünden gelir, ters yöne kısa çıkar (`mode="wait"`). */
@@ -220,13 +260,14 @@ const MotionCard = motion.create(Card)
 /* --- Yan bilgiler -------------------------------------------------------------------------------- */
 
 /**
- * Yan bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı; yerleşime göre sütun, raf +
- * çekmece ya da formun altında. Formla aynı kabın (`useSidePanel` ile ölçülen) çocuğudur. Sütunda
- * ve çekmecede iki kart kabı yarı yarıya paylaşır, taşan içerik kartın içinde kayar.
+ * Yan bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı; yerleşime göre sütun, form kartını
+ * örten sayfa ya da formun altında. Formla aynı kabın (`useSidePanel` ile ölçülen) çocuğudur.
+ * Sütunda ve sayfada iki kart kabı yarı yarıya paylaşır, taşan içerik kartın içinde kayar.
  *
- * Hareket (Motion): panel açılınca kartlar sırayla raftan kayarak gelir, katlanınca ters sırayla
+ * Hareket (Motion): sütun açılınca kartlar sırayla raftan kayarak gelir, katlanınca ters sırayla
  * çıkar (`AnimatePresence`, `stagger`); sütunun genişliği tek adımda değişir, form kartı Motion düzen
- * animasyonuyla daralır / genişler (DetailPage.tsx). Sekmeler arasında alt çizgi kayar (`layoutId`),
+ * animasyonuyla daralır / genişler (DetailPage.tsx). Sayfa yukarıdan aşağı açılır, kartlar
+ * yukarıdan sırayla gelir; kapanırken tersi. Sekmeler arasında alt çizgi kayar (`layoutId`),
  * içerik yönünden gelir. Kaydırılabilen kartın kenarları içerik taştıkça solar (`useScroll`).
  */
 export function SidePanel({
@@ -256,11 +297,36 @@ export function SidePanel({
   const container = useMemo(() => ({ current: side.scroller }), [side.scroller])
   const { scrollY } = useScroll(side.scroller ? { container } : undefined)
   const sticky = { ...side.style, '--scrolled': useMotionTemplate`${scrollY}px` } as MotionStyle
-  const drawer = mode === 'drawer'
-  const foldLabel = drawer ? 'Paneli kapat' : 'Paneli katla'
-  const { stack: stackVariants, card, fade } = useStack(drawer)
+  const foldLabel = 'Paneli katla'
+  const { stack: stackVariants, card, fade } = useStack(mode === 'sheet')
 
-  // `fill`: kartlar kabı yarı yarıya paylaşır ve içleri kayar (sütun, çekmece); telefonda doğal boy
+  // Sayfa açılınca odak kapatma düğmesine geçer; kapanınca (odak sayfadaysa) açan öğeye döner. Açan
+  // öğe kalktıysa (şeritteki düğme: sayfa açılınca kaydırma başa döner, şerit gizlenir) formun bilgi
+  // düğmesine (`data-side-opener`, görünümün kabında: `data-side-scope`)
+  const sheetBox = useRef<HTMLElement | null>(null)
+  const sheetOpen = mode === 'sheet' && open
+  const { opener } = side
+  useEffect(() => {
+    // Sayfa bu çizimde kuruldu (bağı bağlı); kapanırken çıkış animasyonu boyunca yerinde kalır
+    const box = sheetBox.current
+    // Açan öğe açılırken saklandı (`setOpen`), bu çizimden önce
+    const back = opener.current
+    if (!sheetOpen || !box) return
+    const frame = requestAnimationFrame(() =>
+      box.querySelector<HTMLElement>('[data-sheet-close]')?.focus({ preventScroll: true }),
+    )
+    return () => {
+      cancelAnimationFrame(frame)
+      const lost = document.activeElement
+      if (lost !== document.body && !box.contains(lost)) return
+      const target = back?.isConnected
+        ? back
+        : box.closest('[data-side-scope]')?.querySelector<HTMLElement>('[data-side-opener]')
+      target?.focus({ preventScroll: true })
+    }
+  }, [sheetOpen, opener])
+
+  // `fill`: kartlar kabı yarı yarıya paylaşır ve içleri kayar (sütun, sayfa); telefonda doğal boy
   const cards = (fill: boolean) => (
     <>
       <MotionCard
@@ -276,7 +342,7 @@ export function SidePanel({
           <Typography.Title level={2} className="m-0 font-display text-base font-semibold">
             {DOCUMENT_LABELS.title}
           </Typography.Title>
-          {/* Sütunda katlama kartta; çekmecede kapatma raftaki düğmede */}
+          {/* Sütunda katlama, sayfada kapatma kartta */}
           {mode === 'column' && (
             <Tip label={foldLabel} placement="left">
               <Button
@@ -285,6 +351,19 @@ export function SidePanel({
                 aria-label={foldLabel}
                 aria-expanded
                 icon={<PanelRightClose {...IC} size={18} />}
+                onClick={() => setOpen(false)}
+                className="text-muted"
+              />
+            </Tip>
+          )}
+          {mode === 'sheet' && (
+            <Tip label="Paneli kapat" placement="bottom">
+              <Button
+                type="text"
+                size="small"
+                aria-label="Paneli kapat"
+                data-sheet-close
+                icon={<PanelTopClose {...IC} size={18} />}
                 onClick={() => setOpen(false)}
                 className="text-muted"
               />
@@ -310,7 +389,7 @@ export function SidePanel({
       </Flex>
     )
 
-  // Raf: katlı sütun ya da çekmecenin kapısı; ikonlar kartları / sekmeleri açar
+  // Raf: katlı sütun; ikonlar kartları / sekmeleri açar
   const rail = (
     <Card
       className={cn(CARD, 'w-14 shrink-0', warning && !open && 'ring-2 ring-warning')}
@@ -343,10 +422,11 @@ export function SidePanel({
     </Card>
   )
 
-  // Kartların kabı: ekrana sığan boyda (kartlar yarı yarıya); kartlar sırayla gelir / gider
-  const stack = (key: string, className: string, label?: string) => (
+  // Kartların kabı (boyu çağırandan; kartlar yarı yarıya); kartlar sırayla gelir / gider
+  const stack = (key: string, className: string, label?: string, ref?: Ref<HTMLElement>) => (
     <MotionFlex
       key={key}
+      ref={ref}
       vertical
       role={label ? 'dialog' : undefined}
       aria-label={label}
@@ -354,7 +434,7 @@ export function SidePanel({
       initial="hidden"
       animate="shown"
       exit="hidden"
-      className={cn('gap-3', FILL, className)}
+      className={cn('gap-3', className)}
     >
       {cards(true)}
     </MotionFlex>
@@ -376,7 +456,7 @@ export function SidePanel({
       >
         <AnimatePresence initial={false} mode="popLayout" anchorX="right">
           {open ? (
-            stack('cards', 'w-full')
+            stack('cards', cn(FILL, 'w-full'))
           ) : (
             <MotionFlex
               key="rail"
@@ -392,40 +472,13 @@ export function SidePanel({
       </MotionFlex>
     )
 
-  // Çekmece: raf yerinde kalır, kartlar onun solunda formun üstüne kayar; form soluklaşır. Kartlar
-  // zemin renginde bir tepside: aralarından alttaki form görünmesin
+  // Sayfa: form kartının yerini alır (form kartı gizli, DetailPage.tsx), kabın kalanını doldurur
+  // (`--fill-h`; çok kısa ekranda en az 24rem); kartlar yarı yarıya, içleri kayar. Kapanırken akıştan
+  // çıkar (`popLayout`: bento `relative`) ve yeniden beliren formun üstünde yukarı toplanır
   return (
-    <>
-      <AnimatePresence>
-        {open && (
-          <MotionFlex
-            key="dim"
-            aria-hidden
-            onClick={() => setOpen(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={fade}
-            className="absolute inset-0 z-10 block rounded-3xl bg-background/60"
-          />
-        )}
-      </AnimatePresence>
-      <MotionFlex style={sticky} className={cn(STICKY, 'z-20 shrink-0 self-start')}>
-        {rail}
-        <AnimatePresence>
-          {open &&
-            stack(
-              'drawer',
-              cn(
-                // Köşe içindeki kartlarla eşmerkezli: kart yarıçapı + iç boşluk
-                'absolute end-[calc(100%+0.25rem)] -top-2 w-[min(25rem,calc(100cqw-4.5rem))] rounded-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--spacing)*2)] p-2',
-                side.tray,
-              ),
-              'Yan bilgiler',
-            )}
-        </AnimatePresence>
-      </MotionFlex>
-    </>
+    <AnimatePresence mode="popLayout">
+      {open && stack('sheet', 'h-(--fill-h) min-h-96 min-w-0 flex-1', 'Yan bilgiler', sheetBox)}
+    </AnimatePresence>
   )
 }
 

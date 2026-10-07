@@ -445,8 +445,10 @@ const NO_CRUMBS: Crumb[] = []
  * Üstteki ince konum çubuğu (Gezinme › İkisi de): sol kolonun yanından başlar, logoyla aynı hizada;
  * geri / ileri ve konum (`Crumbs`: önceki seviyeler ikon, bulunulan yer adıyla, girip çıkan
  * seviyeler animasyonlu). Arkasında sayfa renginde şerit: kaydırılan içerik altında
- * karışmasın. Kutu logo boyunda (34px, üstten 12px), 28px haplar içinde dikeyde ortalı: logoyla
- * aynı hizada; içerik 56px aşağıdan başlar (`CHROME_SPACE.both`). Sol kolonun
+ * karışmasın; şerit tam içeriğin başladığı yerde biter (14 birim, varsayılan yoğunlukta 56px;
+ * `CHROME_SPACE.both`): aynı birimle (`--spacing`), yoksa yoğunluk değişince kartların üst çizgisini
+ * örterdi. Kutu logo boyunda (34px, üstten 3 birim), 28px haplar içinde dikeyde ortalı: logoyla aynı
+ * hizada. Sol kolonun
  * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
  * yapışkan öğeleri (`z-30`) çubuğun altında.
  */
@@ -454,7 +456,7 @@ function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <Flex
       align="center"
-      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:-bottom-2.5 before:-z-10 before:bg-background before:content-[''] sm:flex"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:h-[calc(var(--spacing)*14)] before:-z-10 before:bg-background before:content-[''] sm:flex"
     >
       <Flex className="pointer-events-auto min-w-0">
         <Crumbs crumbs={crumbs} />
@@ -1361,7 +1363,8 @@ function Shell() {
                       : place === 'top'
                         ? '[--chrome-top:76px]'
                         : both
-                          ? '[--chrome-top:56px]'
+                          ? // İçeriğin başladığı yer (`CHROME_SPACE.both`, aynı birim)
+                            '[--chrome-top:calc(var(--spacing)*14)]'
                           : '[--chrome-top:0px]',
                     wide && place === 'top' && 'sm:ps-3',
                   )}

@@ -107,7 +107,8 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   page-colour strip behind) holding compact back / forward and the animated `Crumbs` (earlier levels
   icon-only, current level named, `ChevronRight` separators; Başlangıç shows its home pill too); the dock
   is then fixed (`DockPath still`: no path pills, every app stays a circle in place; only the accent fill
-  moves to the active app's circle, Başlangıç filled only on Başlangıç); content starts 56px down (`CHROME_SPACE.both`, `--chrome-top: 56px`). The breadcrumb lives in the dock as nested pills
+  moves to the active app's circle, Başlangıç filled only on Başlangıç); content starts 14 spacing units down (56px at default density; `CHROME_SPACE.both`, `--chrome-top`
+  and the bar's page-colour strip use the same unit, so the strip never covers a card's top line). The breadcrumb lives in the dock as nested pills
   growing out of the Başlangıç circle (`DockPath`: Başlangıç › active app › sub-levels, each pill tucked
   under the previous one, the other apps after the path) and in full in the start menu ("Buradasınız"); the chrome height
   reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +
@@ -137,14 +138,18 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `autoSize`: its layout-effect measuring looped into "Maximum update depth"); the breadcrumb ends
   with the form's name (`process.form`), not the code; the header band shows the process icon and
   name only (no project name, no status tag); the floating strip after scrolling has the events
-  at the far left and only the form's name at the far right; the form row reaches the bottom of
+  at the far left and only the form's name at the far right (event rows never wrap: band, strip and
+  the phone's bottom bar scroll sideways, `ACTIONS_SCROLL` / `ACTIONS_DOCK`); the form row reaches the bottom of
   its container (`useFillHeight` against the page or the form tab's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
-  card, each half of the side column / drawer with its own scrolling (`FadeScroll`: edges fade
+  card, each half of the side column / sheet with its own scrolling (`FadeScroll`: edges fade
   through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
-  folds to an icon rail (remembered), narrower (e.g. `panelSize` 1) the rail with the cards in a
-  drawer over the dimmed form (closes on outside click / Esc / showing a document), phones below
-  the form at natural height. Side motion (Motion): the cards enter one after the other from the
+  folds to an icon rail (remembered), narrower (a split pane, e.g. `panelSize` 1) no rail: an info
+  button in the header band (and the scrolled strip; `SideButton`) opens a sheet that takes the form
+  card's place (the card is hidden, stays mounted so typed values survive; nothing scrolls behind,
+  the scroll position is restored on close), wipes down from the top (`clipPath`, "Az" fades only),
+  closes with its button / Esc / showing a document; focus goes to its close button and back to the
+  info button. Phones below the form at natural height. Side motion (Motion): the cards enter one after the other from the
   rail side and leave in reverse (`AnimatePresence` + variants with `stagger`; column swap with the
   rail via `popLayout` + `anchorX="right"`); the column width switches in one step and the form card
   follows with a layout animation (`layout` + content `layout="position"`, px corner radius); the

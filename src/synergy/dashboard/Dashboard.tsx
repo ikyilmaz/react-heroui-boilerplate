@@ -160,15 +160,18 @@ export function Dashboard({
       <Flex
         ref={containerRef as Ref<HTMLElement>}
         className={cn(
-          // `block`: ızgara çizilmeden önce boş kalabilir (antd'de boş `Flex` gizlenir, ölçülemez)
-          '-m-3 block rounded-[calc(var(--radius-3xl)+0.75rem)] transition-colors duration-300',
+          // `block`: ızgara çizilmeden önce boş kalabilir (antd'de boş `Flex` gizlenir, ölçülemez).
+          // Izgaranın kenar boşluğu (`GAP`, px) kadar dışarı: kartlar her yoğunlukta diğer
+          // sayfaların içeriğiyle aynı yerde başlar (boşluk birimiyle kayar, konum çubuğunun
+          // şeridinin altına girerdi)
+          '-m-[12px] block rounded-[calc(var(--radius-3xl)+12px)] transition-colors duration-300',
           // Düzenleme modunda zemin hafifçe belirir (hücrelerin taşınabildiği alan)
           edit && 'bg-accent-soft/35',
         )}
       >
         {!mounted || (room === null && !narrow) ? null : narrow ? (
           // Dar ekran: yerleşim sırasıyla alt alta, satır sayısı kadar yükseklik
-          <Flex vertical gap={12} className="p-3">
+          <Flex vertical gap={12} className="p-[12px]">
             {[...items]
               .sort((a, b) => a.y - b.y || a.x - b.x)
               .map((p) => (

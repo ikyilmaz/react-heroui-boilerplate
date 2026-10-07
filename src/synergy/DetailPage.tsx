@@ -16,6 +16,7 @@ import {
   ChevronRight,
   FileText,
   History,
+  Info,
   Save,
   Send,
   Trash2,
@@ -116,7 +117,14 @@ import {
   appRoot,
 } from '@/synergy/shared/appForms'
 import { AppFormBody } from '@/synergy/AppForm'
-import { SidePanel, useSidePanel, type SideTab, type SideTarget } from '@/synergy/DetailSide'
+import {
+  SIDE_LABEL,
+  SidePanel,
+  useSidePanel,
+  type SideState,
+  type SideTab,
+  type SideTarget,
+} from '@/synergy/DetailSide'
 import {
   DocumentsList,
   FileBody,
@@ -447,7 +455,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
     else onClose()
   }
   const actions = (onStrip: boolean) => (
-    <Flex role="group" aria-label="Olaylar" className={ROW}>
+    <Flex role="group" aria-label="Olaylar" className={ACTIONS}>
       {APP_EVENTS[form.kind].map(({ id, label, icon: Icon, primary }) => (
         <Button
           key={id}
@@ -468,7 +476,8 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
   return (
     <Flex vertical gap={12} className={cn(phone && 'pb-24')}>
       {/* Kaydırınca: 64px yapışkan şerit (olaylar + formun adı; talep ayrıntısındaki gibi) */}
-      <Flex className="sticky top-[calc(var(--chrome-top,0px)+0.5rem)] z-30 -mb-3 block h-0">
+      {/* `-mb-[12px]`: kabın `gap`ini (12px) geri alır; boşluk birimiyle yoğunluğa göre kayardı */}
+      <Flex className="sticky top-[calc(var(--chrome-top,0px)+0.5rem)] z-30 -mb-[12px] block h-0">
         <Card
           aria-hidden={!scrolled}
           className={cn(
@@ -479,7 +488,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
           )}
           classNames={{ body: 'flex h-full items-center gap-4 px-6 py-0' }}
         >
-          {!phone && scrolled && <Flex className={cn(ROW, 'shrink-0')}>{actions(true)}</Flex>}
+          {!phone && scrolled && <Flex className={ACTIONS_SCROLL}>{actions(true)}</Flex>}
           <Typography.Text
             ellipsis
             title={app.caption}
@@ -514,7 +523,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
           <Flex
             {...({ inert: scrolled } as Record<string, unknown>)}
             aria-hidden={scrolled || undefined}
-            className={ROW}
+            className={ACTIONS_SCROLL}
           >
             {actions(solid)}
           </Flex>
@@ -535,7 +544,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
       {phone && (
         <Card
           className={cn(band, 'fixed inset-x-3 bottom-3 z-30 animate-rise')}
-          classNames={{ body: cn(ROW, 'p-3') }}
+          classNames={{ body: ACTIONS_DOCK }}
         >
           {actions(solid)}
         </Card>
@@ -580,6 +589,16 @@ const MotionCard = motion.create(Card)
 
 const TITLE = 'm-0 font-display text-lg font-semibold'
 const ROW = 'flex flex-wrap items-center gap-2'
+/** Olay düğmeleri tek satırda: sığmazsa alt satıra geçmez, satır sağa doğru kayar. */
+const ACTIONS = 'flex flex-nowrap items-center gap-2'
+/**
+ * Olay satırının kaydırma kabı (bant, şerit). Kap her yandan 0.75rem taşar, iç boşluğu aynı kadar:
+ * düğmeler yerinde durur, halkaları, gölgeleri, odak çerçeveleri ve karar etiketinin yayılan halkası
+ * kesilmez.
+ */
+const ACTIONS_SCROLL = cn(ACTIONS, '-m-3 min-w-0 overflow-x-auto overscroll-x-contain p-3')
+/** Telefonda altta sabit olay şeridinin gövdesi: kartın köşesiyle kırpılarak sağa kayar. */
+const ACTIONS_DOCK = cn(ACTIONS, 'overflow-x-auto overscroll-x-contain rounded-[inherit] p-3')
 const SPLIT = 'flex flex-wrap items-center justify-between gap-3'
 
 function Viewer({
@@ -620,7 +639,8 @@ function Viewer({
   const [historyOptions, setHistoryOptions] = useHistoryViewOptions()
   const phone = useMediaQuery('(max-width: 639px)')
   const scroller = useTabScroller()
-  // Yan bilgiler (DetailSide.tsx): bölme genişliğine göre sütun, raf + çekmece ya da formun altında
+  // Yan bilgiler (DetailSide.tsx): bölme genişliğine göre sütun, başlıktaki düğmeyle açılan sayfa
+  // (form kartının yerini alır) ya da formun altında
   const [side, attachSide] = useSidePanel(scroller)
   const openSide = (target: SideTarget) => {
     if (target !== 'docs') setSideTab(target)
@@ -640,8 +660,11 @@ function Viewer({
     },
     [attachSide, attachFill],
   )
-  // Form kartının yan sütunla birlikte hareketi (aşağıda)
-  const sideLayout = `${side.mode}:${side.open}`
+  // Form kartının yan sütunla birlikte hareketi (aşağıda); sayfa açılınca kart yalnızca gizlenir
+  // (düzen animasyonu yok, ölçülmez)
+  const sideLayout = side.mode === 'column' ? `column:${side.open}` : side.mode
+  // Sayfa açıkken yerini o alır: form kartı gizli (bağlı kalır; alanlara girilenler gitmez)
+  const formHidden = side.mode === 'sheet' && side.open
   const moveT = useTransition({ duration: 0.42, ease: [0.22, 1, 0.36, 1] })
   const cardRadius = useRadiusPx(CARD_RADIUS)
 
@@ -662,7 +685,7 @@ function Viewer({
     setActiveId(doc.id)
     setView('form')
     setDocsWarning(false)
-    // Çekmece formu örtüyor: gösterilen doküman görünsün
+    // Sayfa formun yerinde: gösterilen doküman görünsün
     side.dismiss()
   }
   const active = documents.find((d) => d.id === activeId) ?? form
@@ -720,10 +743,11 @@ function Viewer({
   }
 
   return (
-    <Flex vertical gap={12} className={cn(phone && hasActions && 'pb-24')}>
+    <Flex vertical gap={12} data-side-scope className={cn(phone && hasActions && 'pb-24')}>
       {/* Kaydırınca: 64px yapışkan şerit (başlık + olaylar) */}
       {/* Üst modda kabuğun altına (`--chrome-top`, kabuk verir) */}
-      <Flex className="sticky top-[calc(var(--chrome-top,0px)+0.5rem)] z-30 -mb-3 block h-0">
+      {/* `-mb-[12px]`: kabın `gap`ini (12px) geri alır; boşluk birimiyle yoğunluğa göre kayardı */}
+      <Flex className="sticky top-[calc(var(--chrome-top,0px)+0.5rem)] z-30 -mb-[12px] block h-0">
         <Card
           aria-hidden={!scrolled}
           className={cn(
@@ -736,7 +760,7 @@ function Viewer({
           classNames={{ body: 'flex h-full items-center gap-4 px-6 py-0' }}
         >
           {/* Olaylar en solda; formun adı (yalnızca ad, kod yok) en sağda, uzunsa kısalır */}
-          {!phone && scrolled && <Flex className={cn(ROW, 'shrink-0')}>{actions(true)}</Flex>}
+          {!phone && scrolled && <Flex className={ACTIONS_SCROLL}>{actions(true)}</Flex>}
           <Typography.Text
             ellipsis
             title={caption}
@@ -744,6 +768,10 @@ function Viewer({
           >
             {process.form}
           </Typography.Text>
+          {/* Dar bölmede yan bilgilerin düğmesi şeritte de (bant kaydırılınca görünmez) */}
+          {scrolled && side.mode === 'sheet' && (
+            <SideButton side={side} warning={docsWarning} onStrip />
+          )}
         </Card>
       </Flex>
 
@@ -773,27 +801,42 @@ function Viewer({
               {isDraft ? process.form : process.name}
             </Typography.Title>
           </Flex>
-          {isChild ? null : (
+          {(!isChild || side.mode === 'sheet') && (
             <Flex className={ROW}>
-              <NavButton
-                label={VIEWER_LABELS.prev}
-                icon={ChevronLeft}
-                onPress={prev}
-                onStrip={solid}
-              />
-              {/* `LayoutGroup` yalnızca izin çevresinde: çizgi Geri / İleri'de eski kökten yenisine
-                  kayar, gruplar birbirine karışmaz; formun diğer düzen öğeleri gruba girmez */}
-              {nav && nav.ids.length > 1 && (
-                <LayoutGroup id={nav.scope}>
-                  <NavTrail nav={nav} process={process} onStrip={solid} />
-                </LayoutGroup>
+              {!isChild && (
+                <>
+                  <NavButton
+                    label={VIEWER_LABELS.prev}
+                    icon={ChevronLeft}
+                    onPress={prev}
+                    onStrip={solid}
+                  />
+                  {/* `LayoutGroup` yalnızca izin çevresinde: çizgi Geri / İleri'de eski kökten
+                      yenisine kayar, gruplar birbirine karışmaz; formun diğer düzen öğeleri gruba
+                      girmez */}
+                  {nav && nav.ids.length > 1 && (
+                    <LayoutGroup id={nav.scope}>
+                      <NavTrail nav={nav} process={process} onStrip={solid} />
+                    </LayoutGroup>
+                  )}
+                  <NavButton
+                    label={VIEWER_LABELS.next}
+                    icon={ChevronRight}
+                    onPress={next}
+                    onStrip={solid}
+                  />
+                </>
               )}
-              <NavButton
-                label={VIEWER_LABELS.next}
-                icon={ChevronRight}
-                onPress={next}
-                onStrip={solid}
-              />
+              {/* Dar bölmede yan bilgiler (Dokümanlar, Özellikler, Tarihçe) bu düğmeyle açılan
+                  sayfada (DetailSide.tsx) */}
+              {side.mode === 'sheet' && (
+                <SideButton
+                  side={side}
+                  warning={docsWarning}
+                  onStrip={solid}
+                  className={cn(!isChild && 'ms-2')}
+                />
+              )}
             </Flex>
           )}
         </Flex>
@@ -803,7 +846,7 @@ function Viewer({
           <Flex
             {...({ inert: scrolled } as Record<string, unknown>)}
             aria-hidden={scrolled || undefined}
-            className={ROW}
+            className={ACTIONS_SCROLL}
           >
             {actions(solid)}
           </Flex>
@@ -834,6 +877,7 @@ function Viewer({
             CARD,
             'min-w-0 overflow-clip',
             side.mode !== 'stack' && 'min-h-(--fill-h) flex-1',
+            formHidden && 'hidden',
           )}
           classNames={{ body: 'p-6 sm:p-8' }}
         >
@@ -898,7 +942,7 @@ function Viewer({
       {phone && hasActions && (
         <Card
           className={cn(band, 'fixed inset-x-3 bottom-3 z-30 animate-rise')}
-          classNames={{ body: cn(ROW, 'p-3') }}
+          classNames={{ body: ACTIONS_DOCK }}
         >
           {actions(solid)}
         </Card>
@@ -999,7 +1043,7 @@ function Actions({
       </Button>
     )
   return (
-    <Flex role="group" aria-label="Olaylar" className={ROW}>
+    <Flex role="group" aria-label="Olaylar" className={ACTIONS}>
       {events.map(({ id, icon: Icon, kind, description, enable, default: isDefault }) => (
         <Button
           key={id}
@@ -1024,6 +1068,42 @@ function Actions({
         </Button>
       ))}
     </Flex>
+  )
+}
+
+/**
+ * Dar bölmede yan bilgilerin düğmesi (bantta ve kaydırınca şeritte): form kartını örten sayfayı
+ * açar / kapar. Açıkken basılı görünür; zorunlu doküman uyarısında (kapalıyken) halkalı.
+ */
+function SideButton({
+  side,
+  warning,
+  onStrip,
+  className,
+}: {
+  side: SideState
+  warning: boolean
+  onStrip?: boolean
+  className?: string
+}) {
+  return (
+    <Tip label={SIDE_LABEL} placement="bottom">
+      <Button
+        aria-label={SIDE_LABEL}
+        aria-expanded={side.open}
+        aria-haspopup="dialog"
+        data-side-opener
+        onClick={(e) => side.setOpen(!side.open, e.currentTarget)}
+        icon={<Info {...IC} size={18} />}
+        className={cn(
+          onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND,
+          'shrink-0',
+          side.open && (onStrip ? 'bg-accent-foreground/15!' : 'bg-surface-secondary!'),
+          warning && !side.open && 'ring-2 ring-warning',
+          className,
+        )}
+      />
+    </Tip>
   )
 }
 
