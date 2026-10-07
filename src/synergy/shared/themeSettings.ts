@@ -42,14 +42,19 @@ export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
  * kenar), tonlu (birincil rengin çok açık tonu), gri (zeminden koyu, gömme).
  */
 export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
-/** `glow`: birincil renkle tonlanmış yumuşak gölge (kart rengini zemine yayar). */
-export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep' | 'glow'
+export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
 /** Köşe biçimi: yuvarlak (daire yayı) ya da squircle (süperelips; CSS `corner-shape`). */
 export type CornerShape = 'round' | 'squircle'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
 /** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
 export type TrailStyle = 'soft' | 'solid'
+/**
+ * Zemin dokusu (zeminin üstünde, kartların arkasında): düz, nokta / çizgi ızgarası ya da birincil
+ * renkten geçişler (üstten, alttan, köşeden, tepeden ışık, çapraz iki köşe, aurora).
+ */
+export type Texture =
+  'none' | 'dots' | 'grid' | 'top' | 'bottom' | 'corner' | 'spot' | 'diagonal' | 'aurora'
 
 export interface ThemeSettings {
   /** Birincil renk (`COLORS`). */
@@ -59,6 +64,8 @@ export interface ThemeSettings {
   /** Köşe biçimi; tarayıcı squircle çizemiyorsa yuvarlak kalır (`SQUIRCLE_SUPPORTED`). */
   corner: CornerShape
   background: Background
+  /** Zemin dokusu; düzde hiçbir şey yazılmaz. */
+  texture: Texture
   /** Yazı tipi: başlıklar ve metin. */
   font: FontId
   /** Kök yazı boyutu (rem'e bağlı tüm ölçüler) ve boşluk birimi (Tailwind `--spacing`). */
@@ -173,6 +180,8 @@ const VARS = [
   '--surface-tertiary',
   '--overlay',
   '--field-background',
+  '--background-texture',
+  '--background-texture-size',
   '--default',
   '--radius',
   '--field-radius',
@@ -201,7 +210,7 @@ export const same = (a: ThemeSettings, b: ThemeSettings) =>
 const ok = (l: number, c: number, h: number, a?: number) =>
   `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)}${a == null ? '' : ` / ${a}`})`
 
-/** Birincil rengin saydam tonu (yüzde); renkli gölgeler için. */
+/** Birincil rengin saydam tonu (yüzde); zemin dokusunun geçişleri için. */
 const tint = (pct: number) => `color-mix(in oklab, var(--accent) ${pct}%, transparent)`
 
 /** Gölge katmanları; koyu zeminde gölge az görünür, opaklık artar. */
@@ -215,8 +224,6 @@ const SHADOWS: Record<Shadow, (dark: boolean) => string> = {
     `0 2px 4px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 14px 36px -10px ${ok(0, 0, 0, d ? 0.6 : 0.22)}`,
   deep: (d) =>
     `0 4px 8px -2px ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 28px 60px -12px ${ok(0, 0, 0, d ? 0.7 : 0.3)}`,
-  // Renkli: kartın altına birincil rengin yumuşak ışıması (gri gölge yerine)
-  glow: (d) => `0 1px 2px 0 ${tint(d ? 25 : 12)}, 0 12px 32px -12px ${tint(d ? 55 : 38)}`,
 }
 
 /** Yükseltilmiş kartın kabarık kenarı: üstte ışık, altta koyu bir dudak. */
@@ -237,7 +244,6 @@ const FIELD_SHADOWS: Record<Shadow, (dark: boolean) => string> = {
     `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 3px 8px -3px ${ok(0, 0, 0, d ? 0.45 : 0.14)}`,
   deep: (d) =>
     `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 6px 14px -6px ${ok(0, 0, 0, d ? 0.55 : 0.2)}`,
-  glow: (d) => `0 1px 2px 0 ${tint(d ? 30 : 16)}, 0 4px 10px -5px ${tint(d ? 45 : 26)}`,
 }
 
 /** Yükseltilmiş kart stilinde alanların kabarık alt kenarı. */
@@ -321,6 +327,67 @@ export function backgroundSwatch(bg: Background, color: ColorId, dark: boolean) 
   return backgrounds(dark, h)[bg][0]
 }
 
+/**
+ * Zemin dokuları: `background-image` katmanları ve döşeme boyu (geçişlerde `auto`, kabın tamamı).
+ * Geçişler birincil rengin saydam tonundan; koyu zeminde ton az görünür, oran artar. Aurora birincil
+ * tonun iki yanındaki tonlardan (±40°). `mini`: tema panelindeki küçük örnek (döşeme küçük, ton
+ * koyu).
+ */
+const TEXTURES: Record<
+  Exclude<Texture, 'none'>,
+  (t: {
+    glow: (light: number, dark: number) => string
+    ink: (pct: number) => string
+    tile: (px: number) => string
+    hue: (off: number) => string
+  }) => [image: string, size?: string]
+> = {
+  dots: ({ ink, tile }) => [`radial-gradient(circle, ${ink(14)} 1px, transparent 1.5px)`, tile(18)],
+  grid: ({ ink, tile }) => [
+    `linear-gradient(to right, ${ink(6)} 1px, transparent 1px), linear-gradient(to bottom, ${ink(6)} 1px, transparent 1px)`,
+    tile(32),
+  ],
+  top: ({ glow }) => [`linear-gradient(to bottom, ${glow(14, 26)}, transparent 50%)`],
+  bottom: ({ glow }) => [`linear-gradient(to top, ${glow(14, 26)}, transparent 55%)`],
+  corner: ({ glow }) => [`radial-gradient(circle at 0 0, ${glow(18, 32)}, transparent 60%)`],
+  spot: ({ glow }) => [`radial-gradient(ellipse 75% 60% at 50% 0, ${glow(18, 32)}, transparent)`],
+  diagonal: ({ glow }) => [
+    `radial-gradient(circle at 0 0, ${glow(16, 30)}, transparent 50%), radial-gradient(circle at 100% 100%, ${glow(12, 24)}, transparent 50%)`,
+  ],
+  aurora: ({ glow, hue }) => [
+    `radial-gradient(ellipse 60% 55% at 10% 0, ${hue(-40)}, transparent), radial-gradient(ellipse 55% 50% at 90% 5%, ${hue(40)}, transparent), radial-gradient(ellipse 70% 50% at 50% 100%, ${glow(10, 20)}, transparent)`,
+  ],
+}
+
+export const TEXTURE_IDS = ['none', ...(Object.keys(TEXTURES) as Texture[])] as const
+
+/** Dokunun katmanları ve döşeme boyu (düzde `none`). */
+function textureLayer(texture: Texture, color: ColorId, dark: boolean, mini = false) {
+  if (texture === 'none') return { image: 'none', size: 'auto' }
+  const { h, c } = COLORS.find((x) => x.id === color) ?? COLORS[0]
+  // Küçük örnekte ton daha koyu (14px'lik kutuda yoksa seçilmez)
+  const k = mini ? 2.5 : 1
+  const pct = (n: number) => Math.min(100, Math.round(n * k))
+  const [image, size = 'auto'] = TEXTURES[texture]({
+    glow: (light, darkPct) => tint(pct(dark ? darkPct : light)),
+    ink: (n) => `color-mix(in oklab, var(--foreground) ${pct(n)}%, transparent)`,
+    tile: (px) => (mini ? '4px 4px' : `${px}px ${px}px`),
+    hue: (off) =>
+      ok(dark ? 0.55 : 0.78, c * 0.9, (h + off + 360) % 360, Math.min(1, (dark ? 0.36 : 0.24) * k)),
+  })
+  return { image, size }
+}
+
+/** Dokunun panel örneği (zeminin rengi ve dokunun küçültülmüşü). */
+export function textureSwatch(texture: Texture, bg: Background, color: ColorId, dark: boolean) {
+  const { image, size } = textureLayer(texture, color, dark, true)
+  return {
+    backgroundColor: backgroundSwatch(bg, color, dark),
+    backgroundImage: image,
+    backgroundSize: size,
+  }
+}
+
 /** Kartın dolgusu (`surface`: zeminin kendi yüzeyi); dolu kartta yok. */
 function cardFill(style: CardStyle, dark: boolean, surface: string): string | null {
   switch (style) {
@@ -367,6 +434,14 @@ function variables(
       '--field-background': surface,
       '--default': tertiary,
     })
+  }
+
+  // Doku: tema dosyasında yok; düz olmayan her doku yazılır, birincil renkten türediği için renk
+  // değişince de (önizlemede düz de yazılır, kökün dokusu kaba geçmesin)
+  if (s.texture !== 'none' || s.texture !== d.texture) {
+    const { image, size } = textureLayer(s.texture, s.color, dark)
+    out['--background-texture'] = image
+    out['--background-texture-size'] = size
   }
 
   // Kart stili: dolgu yüzeyin yerine geçer (kartın içindeki tablolar, düğmeler de ona uyar)
@@ -442,6 +517,7 @@ const NOTHING = {
   radius: -1,
   corner: '',
   background: '',
+  texture: '',
   font: '',
   density: '',
   cardStyle: '',
@@ -486,6 +562,7 @@ function load(kit: ThemeKit): ThemeSettings {
       radius: RADII,
       corner: ['round', 'squircle'],
       background: BACKGROUND_IDS,
+      texture: TEXTURE_IDS,
       font: FONTS.map((x) => x.id),
       density: Object.keys(DENSITIES),
       shadow: Object.keys(SHADOWS),

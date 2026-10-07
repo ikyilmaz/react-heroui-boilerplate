@@ -21,30 +21,10 @@ import {
 } from '@/synergy/shared/pipeline'
 
 /* -------------------------------------------------------------------------------------------------
- * Olay hattının pencereleri (`SoftModal`: antd `Modal` + Motion; mantık `shared/pipeline.ts`'te). Pencerelerin üstünde
- * olayın anlam renginde şerit (onay yeşil, ret / geri gönderme kırmızı).
+ * Olay hattının pencereleri (`SoftModal`: antd `Modal` + Motion; mantık `shared/pipeline.ts`'te).
  * ------------------------------------------------------------------------------------------------- */
 
 const TITLE = 'font-display text-lg font-semibold'
-
-const stripe: Record<Tone, string> = {
-  success: 'bg-success',
-  danger: 'bg-danger',
-  ink: 'bg-accent',
-}
-
-/** Pencere kabının sınıfları: şerit kabın üst kenarına oturur (kab zaten `relative`). */
-const CONTAINER = 'overflow-hidden pt-7'
-
-/** Pencerenin üst şeridi; pencere açılınca soldan sağa dolar. */
-function Stripe({ tone }: { tone: Tone }) {
-  return (
-    <Flex
-      aria-hidden
-      className={`absolute inset-x-0 top-0 block h-1.5 origin-left animate-grow-x [animation-delay:calc(120ms*var(--motion-time,1))] ${stripe[tone]}`}
-    />
-  )
-}
 
 export function useFlow(
   r: WorkRequest | undefined,
@@ -66,7 +46,6 @@ export function useFlow(
         {open?.stage === 'reason' && (
           <ReasonDialog
             key={key}
-            tone={toneOf(open.event.kind)}
             title={open.event.reasonTitle ?? REASON_TITLE}
             onOk={(reason) => proceed(reason)}
             onCancel={cancel}
@@ -89,7 +68,7 @@ export function useFlow(
 
 /* --- Pencereler -------------------------------------------------------------------------------- */
 
-/** "Uyarı" onayı (Evet / Hayır); taslak silmede de kullanılır (kırmızı şerit). */
+/** "Uyarı" onayı (Evet / Hayır); taslak silmede de kullanılır (kırmızı "Evet"). */
 export function ConfirmDialog({
   isOpen,
   message,
@@ -110,12 +89,9 @@ export function ConfirmDialog({
       width={400}
       centered
       title={<Typography.Text className={TITLE}>{FLOW_TEXT.warning}</Typography.Text>}
-      classNames={{ container: CONTAINER }}
       closable={false}
-      // Şerit alt bilgide: gövde / başlık kayarak girdiği için (dönüşüm) şerit kabın üstüne oturmazdı
       footer={
         <Flex justify="end" gap={8}>
-          <Stripe tone={tone} />
           <Button type="text" onClick={onNo}>
             {FLOW_TEXT.no}
           </Button>
@@ -138,13 +114,11 @@ export function ConfirmDialog({
 
 function FlowModal({
   title,
-  tone,
   children,
   onOk,
   onCancel,
 }: {
   title: string
-  tone: Tone
   children: ReactNode
   onOk: () => void
   onCancel: () => void
@@ -158,15 +132,12 @@ function FlowModal({
       title={<Typography.Text className={TITLE}>{title}</Typography.Text>}
       // Hattın sonraki adımı (sebep, yönlendirme): içerik yandan kayarak gelir
       classNames={{
-        container: CONTAINER,
         header: 'animate-slide-in',
         body: 'animate-slide-in [animation-delay:calc(60ms*var(--motion-time,1))]',
       }}
       closable={false}
-      // Şerit alt bilgide: gövde / başlık kayarak girdiği için (dönüşüm) şerit kabın üstüne oturmazdı
       footer={
         <Flex justify="end" gap={8}>
-          <Stripe tone={tone} />
           <Button type="text" onClick={onCancel}>
             {FLOW_TEXT.cancel}
           </Button>
@@ -186,12 +157,10 @@ function FlowModal({
 /** Sebep: boşken "Tamam" kapatmaz, REASON_EMPTY gösterir. */
 function ReasonDialog({
   title,
-  tone,
   onOk,
   onCancel,
 }: {
   title: string
-  tone: Tone
   onOk: (reason: string) => void
   onCancel: () => void
 }) {
@@ -202,7 +171,6 @@ function ReasonDialog({
   return (
     <FlowModal
       title={title}
-      tone={tone}
       onCancel={onCancel}
       onOk={() => {
         setTried(true)
@@ -240,7 +208,6 @@ function ForwardDialog({
   return (
     <FlowModal
       title={FLOW_TEXT.forwardTitle}
-      tone="ink"
       onCancel={onCancel}
       onOk={() => {
         setTried(true)

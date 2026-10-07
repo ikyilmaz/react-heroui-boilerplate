@@ -12,6 +12,7 @@ import {
   lookVars,
   presetOf,
   same,
+  textureSwatch,
   useIsDark,
   type Background,
   type CardStyle,
@@ -19,6 +20,7 @@ import {
   type Density,
   type MotionLevel,
   type Shadow,
+  type Texture,
   type ThemeKit,
   type ThemeSettings,
   type TrailStyle,
@@ -27,9 +29,9 @@ import {
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
 
 /* -------------------------------------------------------------------------------------------------
- * Tema paneli (sağdan çekmece): birincil renk, köşe yuvarlaklığı ve biçimi, zemin, yazı tipi,
- * yoğunluk, gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında uygulanır
- * ve saklanır (`themeSettings.ts`); varsayılan `theme.ts`'ten gelir (`kit`).
+ * Tema paneli (sağdan çekmece): birincil renk, köşe yuvarlaklığı ve biçimi, zemin ve dokusu, yazı
+ * tipi, yoğunluk, gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında
+ * uygulanır ve saklanır (`themeSettings.ts`); varsayılan `theme.ts`'ten gelir (`kit`).
  * ------------------------------------------------------------------------------------------------- */
 
 /** Zeminler; son dördü birincil renge göre uyumlu tonlar (`themeSettings.ts` › `HARMONY`). */
@@ -42,6 +44,19 @@ const BACKGROUNDS: { id: Background; label: string }[] = [
   { id: 'square', label: 'Dörtlü' },
   { id: 'triadic', label: 'Üçlü' },
   { id: 'complement', label: 'Zıt' },
+]
+
+/** Zemin dokuları: düz, iki desen, birincil renkten altı geçiş (`themeSettings.ts` › `TEXTURES`). */
+const TEXTURES: { id: Texture; label: string }[] = [
+  { id: 'none', label: 'Düz' },
+  { id: 'dots', label: 'Nokta' },
+  { id: 'grid', label: 'Kareli' },
+  { id: 'top', label: 'Üstten' },
+  { id: 'bottom', label: 'Alttan' },
+  { id: 'corner', label: 'Köşe' },
+  { id: 'spot', label: 'Işık' },
+  { id: 'diagonal', label: 'Çapraz' },
+  { id: 'aurora', label: 'Aurora' },
 ]
 
 type Radius = (typeof RADII)[number]
@@ -109,7 +124,6 @@ const SHADOWS: { id: Shadow; label: string }[] = [
   { id: 'soft', label: 'Hafif' },
   { id: 'strong', label: 'Belirgin' },
   { id: 'deep', label: 'Derin' },
-  { id: 'glow', label: 'Renkli' },
 ]
 
 const BORDERS: { id: number; label: string }[] = [
@@ -284,7 +298,8 @@ function Range({
 
 /**
  * Hazır temanın küçük önizlemesi: temanın bütün değişkenleri bu kaba yazılır (`lookVars`), içi o
- * temayla çizilir: zemin, kart (dolgu, kontur, gölge, köşe), başlık yazı tipi, birincil renk.
+ * temayla çizilir: zemin ve dokusu, kart (dolgu, kontur, gölge, köşe), başlık yazı tipi, birincil
+ * renk.
  */
 function PresetPreview({ look, dark }: { look: ThemeSettings; dark: boolean }) {
   return (
@@ -293,7 +308,7 @@ function PresetPreview({ look, dark }: { look: ThemeSettings; dark: boolean }) {
       vertical
       // Değişkenler çalışma anında hesaplanır (temanın ayarları, açık / koyu)
       style={lookVars(look, dark) as CSSProperties}
-      className="h-24 w-full gap-1.5 rounded-xl bg-background p-2 font-sans text-foreground ring-1 ring-border"
+      className="h-24 w-full gap-1.5 rounded-xl bg-background bg-(image:--background-texture) bg-size-(--background-texture-size) p-2 font-sans text-foreground ring-1 ring-border"
     >
       {/* Üstte ince bir şerit: birincil renkli nokta ve iki çizgi */}
       <Flex align="center" gap={4} className="px-0.5">
@@ -454,6 +469,30 @@ export function ThemePanel({
         </Text>
       </Section>
 
+      <Section title="Zemin dokusu">
+        <Segments
+          label="Zemin dokusu"
+          value={settings.texture}
+          options={TEXTURES.map((t) => ({
+            ...t,
+            icon: (
+              <Flex
+                component="span"
+                aria-hidden
+                // Örnek çalışma anında hesaplanır (zemin, birincil renk, açık / koyu)
+                style={textureSwatch(t.id, settings.background, settings.color, dark)}
+                className="block size-3.5 shrink-0 rounded-[4px] ring-1 ring-border"
+              />
+            ),
+          }))}
+          onChange={(texture) => set({ texture })}
+          grid={3}
+        />
+        <Text type="secondary" className="text-xs">
+          Kartların arkasında; geçişler birincil renkten.
+        </Text>
+      </Section>
+
       <Separator />
 
       <Section title="Yazı tipi">
@@ -523,7 +562,6 @@ export function ThemePanel({
           value={settings.shadow}
           options={SHADOWS}
           onChange={(shadow) => set({ shadow })}
-          grid={3}
         />
       </Section>
 

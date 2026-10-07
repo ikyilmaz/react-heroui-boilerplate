@@ -207,7 +207,7 @@ export function StartDock({
         aria-label={START_LABELS.start}
         aria-expanded={false}
         onClick={openStart}
-        icon={<Search {...IC} size={18} />}
+        icon={<LayoutDashboard {...IC} size={18} />}
         className="size-[40px] min-w-[40px] shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90"
       />
     </Tip>

@@ -1,6 +1,7 @@
 import type { ThemeKit } from '@/synergy/shared/themeSettings'
 
-/* Tema paneli: varsayılan (Karo; `src/themes/synergy.css`'in karşılığı) ve dört hazır tema */
+/* Tema paneli: varsayılan (Karo; `src/themes/synergy.css`'in karşılığı, düz zemin) ve dört hazır
+   tema */
 
 export const APP_THEME: ThemeKit = {
   storageKey: 'synergy-v2-theme',
@@ -10,6 +11,7 @@ export const APP_THEME: ThemeKit = {
     radius: 0.5,
     corner: 'squircle',
     background: 'cool',
+    texture: 'none',
     font: 'jakarta',
     density: 'compact',
     cardStyle: 'filled',
@@ -33,16 +35,17 @@ export const APP_THEME: ThemeKit = {
    */
   presets: [
     {
-      // Editoryal, sakin: mürekkep rengi tek renk, krem zemin, zemin renginde çizgili kartlar
-      id: 'kagit',
-      label: 'Kâğıt',
-      description: 'Mürekkep, krem zemin, ince çizgiler',
+      // Teknik çizim masası: kareli zemin, çerçeveli kartlar, keskin köşe
+      id: 'atolye',
+      label: 'Atölye',
+      description: 'Turuncu, kareli zemin, çerçeveli kartlar',
       look: {
-        color: 'graphite',
+        color: 'orange',
         radius: 0.25,
-        background: 'warm',
-        font: 'figtree',
-        density: 'normal',
+        background: 'neutral',
+        texture: 'grid',
+        font: 'geist',
+        density: 'compact',
         cardStyle: 'outlined',
         shadow: 'none',
         border: 1,
@@ -50,54 +53,57 @@ export const APP_THEME: ThemeKit = {
       },
     },
     {
-      // Yumuşak: lavanta zemin üstünde mor ışımalı, çok yuvarlak beyaz kartlar
-      id: 'bulut',
-      label: 'Bulut',
-      description: 'Lavanta zemin, mor ışıltı, yuvarlak',
+      // Sakin ve ışıltılı: turkuazın iki yanındaki tonlardan aurora, yuvarlak çerçevesiz kartlar
+      id: 'kuzey-isigi',
+      label: 'Kuzey Işığı',
+      description: 'Turkuaz, aurora zemin, yuvarlak kartlar',
       look: {
-        color: 'purple',
+        color: 'teal',
         radius: 1,
-        background: 'analogous',
-        font: 'outfit',
-        density: 'normal',
+        background: 'cool',
+        texture: 'aurora',
+        font: 'synergy',
+        density: 'compact',
         cardStyle: 'filled',
-        shadow: 'glow',
+        shadow: 'soft',
         border: 0,
         trail: 'soft',
       },
     },
     {
-      // Hassas, yoğun (geliştirici araçları gibi): beyaz zemin, kıl çizgiler, sıkı ölçek
-      id: 'keskin',
-      label: 'Keskin',
-      description: 'Zümrüt, beyaz zemin, kıl çizgiler',
+      // Sıcak ve yumuşak: tepeden süzülen gül rengi ışık, kabarık kartlar
+      id: 'safak',
+      label: 'Şafak',
+      description: 'Gül, tepeden ışık, kabarık kartlar',
       look: {
-        color: 'emerald',
-        radius: 0.25,
-        background: 'white',
-        font: 'geist',
+        color: 'rose',
+        radius: 0.5,
+        background: 'warm',
+        texture: 'spot',
+        font: 'figtree',
         density: 'compact',
-        cardStyle: 'filled',
+        cardStyle: 'elevated',
         shadow: 'subtle',
-        border: 0.5,
+        border: 0,
         trail: 'solid',
       },
     },
     {
-      // Sıcak ve ifadeli: mercanın tamamlayıcısı serin zemin, kabarık kartlar, karakterli yazı
-      id: 'gun-batimi',
-      label: 'Gün Batımı',
-      description: 'Mercan, serin zemin, kabarık kartlar',
+      // Derin ve canlı: çapraz iki köşeden çivit ışıltı, tonlu kartlar, yumuşak gölge
+      id: 'lacivert',
+      label: 'Lacivert',
+      description: 'Çivit, çapraz ışıltı, tonlu kartlar',
       look: {
-        color: 'coral',
-        radius: 1,
-        background: 'complement',
-        font: 'bricolage',
-        density: 'normal',
-        cardStyle: 'elevated',
+        color: 'indigo',
+        radius: 0.5,
+        background: 'white',
+        texture: 'diagonal',
+        font: 'outfit',
+        density: 'compact',
+        cardStyle: 'tinted',
         shadow: 'soft',
-        border: 0,
-        trail: 'solid',
+        border: 0.5,
+        trail: 'soft',
       },
     },
   ],

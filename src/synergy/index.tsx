@@ -448,7 +448,8 @@ const NO_CRUMBS: Crumb[] = []
  * karışmasın; şerit tam içeriğin başladığı yerde biter (14 birim, varsayılan yoğunlukta 56px;
  * `CHROME_SPACE.both`): aynı birimle (`--spacing`), yoksa yoğunluk değişince kartların üst çizgisini
  * örterdi. Kutu logo boyunda (34px, üstten 3 birim), 28px haplar içinde dikeyde ortalı: logoyla aynı
- * hizada. Sol kolonun
+ * hizada. Şeridin zemin dokusu görüntü alanına sabit (`bg-fixed`): sayfanın doku katmanıyla aynı
+ * hizada, ek görünmez. Sol kolonun
  * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
  * yapışkan öğeleri (`z-30`) çubuğun altında.
  */
@@ -456,7 +457,7 @@ function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <Flex
       align="center"
-      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:h-[calc(var(--spacing)*14)] before:-z-10 before:bg-background before:content-[''] sm:flex"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:h-[calc(var(--spacing)*14)] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:flex"
     >
       <Flex className="pointer-events-auto min-w-0">
         <Crumbs crumbs={crumbs} />
@@ -1255,8 +1256,9 @@ function Chrome({
     )
   return (
     // Üç sütun: solda logo + geri / ileri + konum, ortada raf (hep tam ortada), sağda eylemler
-    // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil)
-    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:content-[''] sm:grid">
+    // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil);
+    // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada
+    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
       <Flex align="center" className="pointer-events-auto min-w-0 gap-3 overflow-hidden ps-1">
         {logo}
         {/* Konum rafta (aktif uygulamanın yanında) ve başlat kutusunda; burada yalnızca geri / ileri */}
@@ -1329,7 +1331,12 @@ function Shell() {
           {/* antd bileşenlerinin teması (form sayfası; kabuğun tema değişkenlerinden, ant/theme.tsx) */}
           <AntTheme>
             <FrameContext value={keepFrame}>
-              <Flex vertical className="min-h-screen bg-background text-foreground antialiased">
+              {/* Zemin dokusu (tema paneli): görüntü alanına sabit katman, içeriğin arkasında (kök
+                  kendi yığın bağlamı: katman kökün zemininin üstünde, içeriğin altında) */}
+              <Flex
+                vertical
+                className="isolate min-h-screen bg-background text-foreground antialiased before:pointer-events-none before:fixed before:inset-0 before:-z-10 before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:content-['']"
+              >
                 {wide ? (
                   <Chrome
                     place={place}

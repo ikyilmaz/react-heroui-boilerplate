@@ -75,7 +75,6 @@
   --animate-tick-up: tick-up calc(0.34s * var(--motion-time, 1)) cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-tick-down: tick-down calc(0.34s * var(--motion-time, 1)) cubic-bezier(0.22, 1, 0.36, 1)
     both;
-  --animate-grow-x: grow-x calc(0.6s * var(--motion-time, 1)) cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-draw: draw calc(0.6s * var(--motion-time, 1)) cubic-bezier(0.65, 0, 0.35, 1) 0.12s both;
   /* Konum çubuğu: bölüm girişi (soldan hafif kayarak büyür), çıkışı ve aynı yerde yenilenmesi */
   --animate-crumb-in: crumb-in calc(0.3s * var(--motion-time, 1)) cubic-bezier(0.22, 1, 0.36, 1)
@@ -145,11 +144,6 @@
     from {
       opacity: 0;
       translate: 0 calc(-0.6em * var(--motion-shift, 1));
-    }
-  }
-  @keyframes grow-x {
-    from {
-      scale: calc(1 - var(--motion-shift, 1)) 1;
     }
   }
   @keyframes draw {

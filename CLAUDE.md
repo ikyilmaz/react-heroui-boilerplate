@@ -42,8 +42,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
   squircle, Serin, Plus Jakarta Sans, Kompakt, Dolu, İnce shadow — the theme file's
   `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
-  positions and four presets in `theme.ts`): presets (Kâğıt, Bulut, Keskin, Gün Batımı; each sets
-  the look keys only, never nav / corner shape / motion; cards with a live preview drawn by writing
+  positions and four presets in `theme.ts`): presets (Atölye, Kuzey Işığı, Şafak, Lacivert; each sets
+  the look keys only (texture included), never nav / corner shape / motion; cards with a live preview drawn by writing
   `lookVars()` onto the preview box; "Özel" when nothing matches), primary colour (swatches only,
   `COLORS`, incl. Mercan and Zümrüt), Köşe yuvarlaklığı (one 3-column grid of six options with a
   corner preview each: Az / Orta / Çok (`RADII` 0.25 / 0.5 / 1rem, presets use these too) on the
@@ -56,10 +56,15 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
   written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), background
   (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
-  +120°, Zıt +180° (`HARMONY`); options show a colour dot), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
+  +120°, Zıt +180° (`HARMONY`); options show a colour dot), background texture (Zemin dokusu: Düz —
+  the default, writes nothing — / Nokta / Kareli and six gradients from the primary colour: Üstten,
+  Alttan, Köşe, Işık, Çapraz, Aurora (hue ±40°); `TEXTURES`, written as `--background-texture` /
+  `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
+  (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
+  on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
   `useLook().trail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
-  Gri), card shadow (`--surface-shadow`, 6 levels incl. Renkli = accent-tinted glow, never `none`: it shares one `box-shadow` list with
+  Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation level /
   speed. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
