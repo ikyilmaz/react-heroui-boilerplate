@@ -106,8 +106,10 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
   `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left, 55 % of the
   viewport wide (min 44rem) when it is on top; its İş Akış Yönetimi section is the Başlangıç İş
-  Akışları widget (`WorkBlock` from `StartPage.tsx`, in its own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: logo +
-  back / forward | centered dock | actions / profile; "İkisi de" = the left column without back /
+  Akışları widget (`WorkBlock` from `StartPage.tsx`, in its own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: corner
+  handle + back / forward + logo | centered dock | actions / profile (the handle — added on explicit
+  request, a trial — is `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the
+  "Tüm uygulamalar" panel floating 12px in from the edges, `AllAppsPanel floating`); "İkisi de" = the left column without back /
   forward plus a slim top bar (`CrumbBar`, a logo-high 34px box with the 28px pills centred in it,
   page-colour strip behind) holding compact back / forward and the animated `Crumbs` (earlier levels
   icon-only, current level named, `ChevronRight` separators; Başlangıç shows its home pill too); the dock

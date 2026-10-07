@@ -1,6 +1,14 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { AppWindow, ArrowDownAZ, ArrowLeft, ChevronRight, ListOrdered, Search } from 'lucide-react'
+import {
+  AppWindow,
+  ArrowDownAZ,
+  ArrowLeft,
+  ChevronRight,
+  GripVertical,
+  ListOrdered,
+  Search,
+} from 'lucide-react'
 import { Button, Drawer, Flex, Tag, Typography } from 'antd'
 import { useBoxCounts } from '@/synergy/shared/decisions'
 import { readJson, writeJson } from '@/synergy/shared/grid'
@@ -224,12 +232,26 @@ export function useAppTree(onPicked: () => void) {
 
 export { Highlight }
 
+/**
+ * Yüzen panelin kutusu: raf ve başlat kutusuyla aynı yüzey ve köşe (StartMenu › `CHROME_PANEL`).
+ * Kutu, kenardan 12px boşluklu şeffaf kabın içinde: kayarak çıkarken boşlukla birlikte tamamen
+ * ekran dışına gider; boşluğa tıklamak paneli kapatır.
+ */
+const FLOATING = {
+  wrapper: 'p-3 shadow-none',
+  section:
+    'rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] border border-border bg-surface shadow-(--overlay-shadow)',
+}
+
 export function AllAppsPanel({
   isOpen,
   onOpenChange,
+  floating = false,
 }: {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  /** Gezinme › Üstte: sol kenardan içeride yüzen kutu (köşedeki tutamaçtan açılır). */
+  floating?: boolean
 }) {
   // Arama panel kapanınca korunur (orijinaldeki gibi); geri düğmesi temizleyerek kapatır
   const { query, setQuery, changeSort, sortLabel, SortIcon, list } = useAppTree(() =>
@@ -241,9 +263,13 @@ export function AllAppsPanel({
       onClose={() => onOpenChange(false)}
       placement="left"
       closable={false}
-      size="min(23.75rem, 100vw)"
+      size={floating ? 'min(calc(23.75rem + 1.5rem), 100vw)' : 'min(23.75rem, 100vw)'}
       aria-label={MENU_LABELS.allApps}
-      classNames={{ section: 'bg-background', body: 'flex flex-col p-0' }}
+      classNames={
+        floating
+          ? { ...FLOATING, mask: 'bg-foreground/10', body: 'flex flex-col p-0' }
+          : { section: 'bg-background', body: 'flex flex-col p-0' }
+      }
     >
       {/* Başlık satırı: geri, başlık, sıralama */}
       <Flex align="center" className="gap-1 px-4 pt-4 pb-3">
@@ -317,6 +343,41 @@ export function AllAppsButton({ expanded, onPress }: { expanded: boolean; onPres
   ) : (
     <Tip label={MENU_LABELS.allApps} placement="right">
       {button}
+    </Tip>
+  )
+}
+
+/**
+ * Gezinme › Üstte: ekranın sol üst köşesinde, sol kenara yapışık tutamaç (içinde noktalar); basınca
+ * tüm uygulamalar paneli soldan yüzerek açılır. Sol çizgisi ekranın dışında kalır (kenardan çıkan
+ * dil gibi); üzerine gelince biraz dışarı çekilir. Konumu kabuktan (`className`).
+ */
+export function AllAppsHandle({
+  open,
+  onPress,
+  className,
+}: {
+  open: boolean
+  onPress: () => void
+  className?: string
+}) {
+  return (
+    <Tip label={MENU_LABELS.allApps} placement="right">
+      <Button
+        type="text"
+        aria-label={MENU_LABELS.allApps}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={onPress}
+        className={cn(
+          // Piksel ölçüler: kabuk gibi temanın boşluk ölçeğinden bağımsız
+          'h-[44px] w-[20px] min-w-0 rounded-s-none rounded-e-[min(calc(20px*var(--corner-scale,1)),calc(var(--radius)*2))] bg-surface p-0 ps-px text-muted shadow-(--overlay-shadow) transition-[width,color] duration-[calc(200ms*var(--motion-time,1))] ease-out hover:w-[26px] hover:bg-surface! hover:text-foreground!',
+          open && 'w-[26px] text-foreground',
+          className,
+        )}
+      >
+        <GripVertical {...IC} size={16} />
+      </Button>
     </Tip>
   )
 }

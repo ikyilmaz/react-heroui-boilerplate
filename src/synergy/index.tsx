@@ -56,7 +56,7 @@ import { APP_THEME } from '@/synergy/theme'
 import { PARENTS, findModule } from '@/synergy/hr/modules'
 import { MotionScope, PageTransition, useTransition } from '@/synergy/motion'
 import { AnimatePresence } from 'framer-motion'
-import { AllAppsButton, AllAppsPanel } from '@/synergy/AllApps'
+import { AllAppsButton, AllAppsHandle, AllAppsPanel } from '@/synergy/AllApps'
 import {
   CHROME_SPACE,
   DOCK_SPRING,
@@ -1114,7 +1114,8 @@ function PanelLocation({ crumbs }: { crumbs: Crumb[] }) {
  * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller.
  * - Solda: sol kenarda alt alta: üstte logo ve yan yana geri / ileri (konum yok), ortada raf
  *   (StartMenu: başlat ve uygulamalar), altta sohbet / duyurular, tema, kullanıcı.
- * - Üstte: solda yatay raf, yanında header (logo, geri / ileri, konum, eylemler, kullanıcı).
+ * - Üstte: ortada yatay raf; solda köşedeki tutamaç (tüm uygulamalar paneli soldan yüzerek açılır),
+ *   geri / ileri ve logo; sağda eylemler ve kullanıcı.
  * - İkisi de: solda aynı kolon (geri / ileri olmadan; rafta yalnızca aktif uygulamanın hapı),
  *   üstte ince konum çubuğu (`CrumbBar`: geri / ileri ve konumun tamamı).
  * Zemini olan panel yalnızca raf; diğerleri zeminsiz.
@@ -1128,6 +1129,8 @@ function Chrome({
   panel,
   onPanel,
   onTheme,
+  appsOpen,
+  onApps,
 }: {
   place: ChromePlace
   /** Gezinme › İkisi de (`place` sol). */
@@ -1138,6 +1141,9 @@ function Chrome({
   panel: 'news' | 'chat' | null
   onPanel: (p: 'news' | 'chat' | null) => void
   onTheme: () => void
+  /** Tüm uygulamalar paneli (üstteyken köşedeki tutamaç açar). */
+  appsOpen: boolean
+  onApps: () => void
 }) {
   const left = place === 'left'
   const dark = useIsDark()
@@ -1255,14 +1261,22 @@ function Chrome({
       </>
     )
   return (
-    // Üç sütun: solda logo + geri / ileri + konum, ortada raf (hep tam ortada), sağda eylemler
+    // Üç sütun: solda tutamaç + geri / ileri + logo, ortada raf (hep tam ortada), sağda eylemler
     // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil);
     // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada
     <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
-      <Flex align="center" className="pointer-events-auto min-w-0 gap-3 overflow-hidden ps-1">
-        {logo}
+      {/* Köşedeki tutamaç: ekranın sol kenarına yapışık (çubuk kenardan 3 birim içeride, sol çizgisi
+          ekran dışında), çubukta dikeyde ortalı; sütunun taşma kırpmasının dışında */}
+      <AllAppsHandle
+        open={appsOpen}
+        onPress={onApps}
+        className="pointer-events-auto absolute -start-[calc(var(--spacing)*3+1px)] top-[4px]"
+      />
+      {/* Tutamacın yanından (dışarı çekilmiş hâlinden de) başlar */}
+      <Flex align="center" className="pointer-events-auto min-w-0 gap-3 overflow-hidden ps-[24px]">
         {/* Konum rafta (aktif uygulamanın yanında) ve başlat kutusunda; burada yalnızca geri / ileri */}
         <HistoryButtons className="me-0" />
+        {logo}
       </Flex>
       {dock}
       <Flex justify="flex-end" className="pointer-events-auto min-w-0 pe-1">
@@ -1347,6 +1361,8 @@ function Shell() {
                     panel={panel}
                     onPanel={setPanel}
                     onTheme={() => setThemeOpen(true)}
+                    appsOpen={appsOpen}
+                    onApps={() => setAppsOpen(true)}
                   />
                 ) : (
                   <TopBar
@@ -1428,7 +1444,12 @@ function Shell() {
                   </Flex>
                 </Drawer>
 
-                <AllAppsPanel isOpen={appsOpen} onOpenChange={setAppsOpen} />
+                {/* Üstteyken köşedeki tutamaçtan yüzen kutu; dar ekranda çekmeceden, kenara yapışık */}
+                <AllAppsPanel
+                  isOpen={appsOpen}
+                  onOpenChange={setAppsOpen}
+                  floating={wide && place === 'top'}
+                />
 
                 <ThemePanel
                   kit={APP_THEME}
