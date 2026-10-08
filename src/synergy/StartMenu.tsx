@@ -140,7 +140,7 @@ export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
   // Üstte kabuk 12px içeride, 44px (kompakt); aradaki boşluk 12px
   top: 'sm:pt-[68px]',
   // Solda kolon, üstte logo boyunda (34px) konum çubuğu, 28px haplar; içerik 14 birim aşağıda (şerit
-  // de orada biter, `CrumbBar`)
+  // 1 birim üstünde biter, kartların konturu görünsün; `CrumbBar`)
   both: 'sm:ps-[76px] sm:pt-14',
 }
 

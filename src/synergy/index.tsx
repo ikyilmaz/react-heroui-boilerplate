@@ -445,10 +445,10 @@ const NO_CRUMBS: Crumb[] = []
  * Üstteki ince konum çubuğu (Gezinme › İkisi de): sol kolonun yanından başlar, logoyla aynı hizada;
  * geri / ileri ve konum (`Crumbs`: önceki seviyeler ikon, bulunulan yer adıyla, girip çıkan
  * seviyeler animasyonlu). Arkasında sayfa renginde şerit: kaydırılan içerik altında
- * karışmasın; şerit tam içeriğin başladığı yerde biter (14 birim, varsayılan yoğunlukta 56px;
- * `CHROME_SPACE.both`): aynı birimle (`--spacing`), yoksa yoğunluk değişince kartların üst çizgisini
- * örterdi. Kutu logo boyunda (34px, üstten 3 birim), 28px haplar içinde dikeyde ortalı: logoyla aynı
- * hizada. Şeridin zemin dokusu görüntü alanına sabit (`bg-fixed`): sayfanın doku katmanıyla aynı
+ * karışmasın; şerit içeriğin başladığı yerin (14 birim, `CHROME_SPACE.both`) 1 birim üstünde biter:
+ * kartın konturu (`ring`) ve gölgesi kutunun dışına çizilir, tam başlangıçta bitseydi kartların üst
+ * çizgisini örterdi. Aynı birimle (`--spacing`), yoksa yoğunluk değişince yine örterdi. Kutu logo
+ * boyunda (34px, üstten 3 birim), 28px haplar içinde dikeyde ortalı: logoyla aynı hizada. Şeridin zemin dokusu görüntü alanına sabit (`bg-fixed`): sayfanın doku katmanıyla aynı
  * hizada, ek görünmez. Sol kolonun
  * (`z-50`) altında (`z-40`): başlat kutusu açılınca karartma ve kutu çubuğun da üstünde; sayfanın
  * yapışkan öğeleri (`z-30`) çubuğun altında.
@@ -457,7 +457,7 @@ function CrumbBar({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <Flex
       align="center"
-      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:h-[calc(var(--spacing)*14)] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:flex"
+      className="pointer-events-none fixed start-[76px] end-3 top-3 z-40 hidden h-[34px] min-w-0 before:absolute before:-start-3 before:-end-3 before:-top-3 before:h-[calc(var(--spacing)*13)] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:flex"
     >
       <Flex className="pointer-events-auto min-w-0">
         <Crumbs crumbs={crumbs} />
@@ -1295,9 +1295,10 @@ function Chrome({
   return (
     // Üç sütun: solda tutamaç + geri / ileri + logo, ortada raf (hep tam ortada), sağda eylemler
     // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil);
-    // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada
+    // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada. İçeriğin başladığı yerin
+    // 1 birim üstünde biter: kartların dışa çizilen konturunu ve gölgesini örtmesin
     // Kompakt: 44px (raf 36px dairelerle), içerik 68px'ten başlar (`CHROME_SPACE.top`)
-    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[44px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
+    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[44px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:h-[calc(68px-var(--spacing))] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
       {/* Köşedeki tutamaç: ekranın sol kenarına yapışık (çubuk kenardan 3 birim içeride, sol çizgisi
           ekran dışında), çubukta dikeyde ortalı (36px, rafın daireleri boyunda); sütunun taşma
           kırpmasının dışında */}
