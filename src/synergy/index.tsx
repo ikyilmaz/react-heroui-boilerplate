@@ -535,6 +535,7 @@ function BarButton({
   placement,
   popupClassName,
   content,
+  compact = false,
 }: {
   label: string
   icon: LucideIcon
@@ -544,6 +545,8 @@ function BarButton({
   placement: 'bottomRight' | 'rightBottom'
   popupClassName: string
   content: ReactNode
+  /** Kompakt üst çubuk (Gezinme › Üstte): 32px düğme. */
+  compact?: boolean
 }) {
   return (
     <Tip label={label} placement={tip}>
@@ -563,8 +566,11 @@ function BarButton({
             type="text"
             aria-label={label}
             aria-expanded={open}
-            icon={<Icon {...IC} size={20} />}
-            className="size-10 text-muted hover:text-foreground"
+            icon={<Icon {...IC} size={compact ? 18 : 20} />}
+            className={cn(
+              'text-muted hover:text-foreground',
+              compact ? 'size-[32px] min-w-[32px]' : 'size-10',
+            )}
           />
         </Popover>
       </Flex>
@@ -599,6 +605,7 @@ function PanelButton({
   isOpen,
   onOpenChange,
   side = 'top',
+  compact,
 }: {
   label: string
   icon: LucideIcon
@@ -607,11 +614,13 @@ function PanelButton({
   onOpenChange: (open: boolean) => void
   /** Kabuğun konumu: sol rayda panel sağa, üst çubukta aşağı açılır. */
   side?: 'top' | 'left'
+  compact?: boolean
 }) {
   return (
     <BarButton
       label={label}
       icon={icon}
+      compact={compact}
       tip={side === 'left' ? 'right' : 'bottom'}
       open={isOpen}
       onOpenChange={onOpenChange}
@@ -778,18 +787,25 @@ function ThemeButton({ onPress }: { onPress: () => void }) {
 const NO_TRAIL: Crumb[] = []
 
 /**
- * Hap ölçüleri. Üstte 32px boy, solda 34px en. Sonraki hap öncekinin altına kendi boyu kadar girer
- * (`wrap`: eksi kenar boşluğu), içerik bu gizli kısımdan sonra başlar (`inner`). İlk hap Başlangıç
- * dairesinin altına 28px girer.
+ * Raftaki daire ve hap ölçüleri (px; temanın boşluk ölçeğinden bağımsız). Solda 40px daireler, 34px
+ * enli haplar; üstte kompakt çubuk (44px): 36px daireler, 28px boylu haplar. Sonraki hap öncekinin
+ * altına kendi boyu kadar girer (`wrap`: eksi kenar boşluğu), içerik bu gizli kısımdan sonra başlar
+ * (`inner`). İlk hap Başlangıç dairesinin altına dairenin 12px eksiği kadar girer.
  */
-const TRAIL_PILL = {
+const DOCK_SIZE = {
   top: {
-    wrap: '-ms-[32px]',
-    wrapFirst: '-ms-[28px]',
-    inner: 'h-[32px] ps-[40px] pe-3',
-    innerFirst: 'h-[32px] ps-[36px] pe-3',
+    circle: 'size-[36px]',
+    icon: 16,
+    pillIcon: 14,
+    wrap: '-ms-[28px]',
+    wrapFirst: '-ms-[24px]',
+    inner: 'h-[28px] ps-[36px] pe-2.5',
+    innerFirst: 'h-[28px] ps-[32px] pe-2.5',
   },
   left: {
+    circle: 'size-[40px]',
+    icon: 18,
+    pillIcon: 15,
     wrap: '-mt-[34px]',
     wrapFirst: '-mt-[28px]',
     inner: 'w-[34px] pt-[42px] pb-2',
@@ -824,9 +840,9 @@ const TRAIL_STYLE: Record<
   },
 }
 
-/** Raftaki sıradan uygulama dairesi. */
+/** Raftaki sıradan uygulama dairesi (boyu `DOCK_SIZE`). */
 const APP_CIRCLE =
-  'flex size-[40px] shrink-0 items-center justify-center rounded-full text-foreground/70 no-underline transition-colors duration-200 hover:bg-surface-secondary hover:text-foreground'
+  'flex shrink-0 items-center justify-center rounded-full text-foreground/70 no-underline transition-colors duration-200 hover:bg-surface-secondary hover:text-foreground'
 /** Dolu daire: yolun başı Başlangıç; sabit rafta bulunulan uygulama. */
 const APP_ACTIVE = 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground'
 
@@ -876,7 +892,7 @@ function DockPath({
 }) {
   const spring = useTransition(DOCK_SPRING)
   const style = TRAIL_STYLE[useLook().trail]
-  const pill = TRAIL_PILL[left ? 'left' : 'top']
+  const size = DOCK_SIZE[left ? 'left' : 'top']
   const tip = left ? 'right' : 'bottom'
   // Seviyenin saklı konumu: bir öncekinin altında (solda yukarıda, üstte solda)
   const hidden = left ? { y: -24 } : { x: -24 }
@@ -898,12 +914,12 @@ function DockPath({
     const appId = first ? current : undefined
     const shape = cn(
       'relative flex shrink-0 items-center justify-center gap-1.5 rounded-full no-underline transition-colors duration-300',
-      first ? pill.innerFirst : pill.inner,
+      first ? size.innerFirst : size.inner,
       isCurrent ? style.current : cn(style.item, c.href && style.hover),
     )
     const body = (
       <>
-        <Icon {...IC} size={15} className="shrink-0" />
+        <Icon {...IC} size={size.pillIcon} className="shrink-0" />
         {!left && isCurrent && (
           <Typography.Text className="hidden max-w-56 truncate text-sm text-current lg:inline">
             {c.label}
@@ -930,7 +946,7 @@ function DockPath({
             : { opacity: 0, ...hidden, transition: { duration: 0.16, ease: 'easeIn' } }
         }
         transition={spring}
-        className={cn('relative flex shrink-0', first ? pill.wrapFirst : pill.wrap)}
+        className={cn('relative flex shrink-0', first ? size.wrapFirst : size.wrap)}
       >
         <Tip label={c.label} placement={tip}>
           {isCurrent || !c.href ? (
@@ -972,14 +988,19 @@ function DockPath({
               to={e.href}
               aria-label={e.label}
               aria-current={active || undefined}
-              className={cn(APP_CIRCLE, active && APP_ACTIVE)}
+              className={cn(APP_CIRCLE, size.circle, active && APP_ACTIVE)}
             >
-              <Icon {...IC} size={18} className="shrink-0" />
+              <Icon {...IC} size={size.icon} className="shrink-0" />
             </Link>
           ) : (
             // Sayfası olmayan uygulama gezinmez (pasif)
-            <Flex role="link" aria-disabled aria-label={e.label} className={cn(APP_CIRCLE, 'opacity-45')}>
-              <Icon {...IC} size={18} className="shrink-0" />
+            <Flex
+              role="link"
+              aria-disabled
+              aria-label={e.label}
+              className={cn(APP_CIRCLE, size.circle, 'opacity-45')}
+            >
+              <Icon {...IC} size={size.icon} className="shrink-0" />
             </Flex>
           )}
         </Tip>
@@ -996,9 +1017,9 @@ function DockPath({
             to={BASE}
             aria-label={home.label}
             aria-current={crumbs.length > 1 ? undefined : 'page'}
-            className={cn(APP_CIRCLE, homeActive && cn(APP_ACTIVE, style.home))}
+            className={cn(APP_CIRCLE, size.circle, homeActive && cn(APP_ACTIVE, style.home))}
           >
-            <House {...IC} size={18} className="shrink-0" />
+            <House {...IC} size={size.icon} className="shrink-0" />
           </Link>
         </Tip>
       </Flex>
@@ -1149,6 +1170,12 @@ function Chrome({
   const dark = useIsDark()
   const tip = left ? 'right' : 'bottom'
   const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
+  // Üstte kompakt çubuk (44px): logo, düğmeler ve kullanıcı da küçük
+  const actionButton = cn(
+    'text-muted hover:text-foreground',
+    left ? 'size-10' : 'size-[32px] min-w-[32px]',
+  )
+  const actionIcon = left ? 20 : 18
 
   const logo = (
     <Link
@@ -1156,8 +1183,8 @@ function Chrome({
       aria-label="Bimser Synergy"
       className="flex shrink-0 items-center gap-2.5 no-underline"
     >
-      <LogoMark />
-      {!left && <Wordmark height={18} className="hidden lg:block" />}
+      <LogoMark size={left ? 34 : 30} />
+      {!left && <Wordmark height={16} className="hidden lg:block" />}
     </Link>
   )
 
@@ -1177,7 +1204,7 @@ function Chrome({
           {start}
           <Divider
             orientation={left ? 'horizontal' : 'vertical'}
-            className={left ? 'my-1 w-6 min-w-0' : 'top-0 mx-1 h-6'}
+            className={left ? 'my-1 w-6 min-w-0' : 'top-0 mx-0.5 h-5'}
           />
           <DockPath
             crumbs={crumbs}
@@ -1198,6 +1225,7 @@ function Chrome({
         label="Sohbet"
         icon={MessageCircle}
         side={place}
+        compact={!left}
         isOpen={panel === 'chat'}
         onOpenChange={(o) => onPanel(o ? 'chat' : null)}
       />
@@ -1205,6 +1233,7 @@ function Chrome({
         label="Duyurular"
         icon={Megaphone}
         side={place}
+        compact={!left}
         isOpen={panel === 'news'}
         onOpenChange={(o) => onPanel(o ? 'news' : null)}
       />
@@ -1213,8 +1242,8 @@ function Chrome({
           type="text"
           aria-label="Tema ayarları"
           onClick={onTheme}
-          icon={<Palette {...IC} size={20} />}
-          className="size-10 text-muted hover:text-foreground"
+          icon={<Palette {...IC} size={actionIcon} />}
+          className={actionButton}
         />
       </Tip>
       <Tip label={themeLabel} placement={tip}>
@@ -1222,12 +1251,15 @@ function Chrome({
           type="text"
           aria-label={themeLabel}
           onClick={() => setColorMode(dark ? 'light' : 'dark')}
-          icon={dark ? <Sun {...IC} size={20} /> : <Moon {...IC} size={20} />}
-          className="size-10 text-muted hover:text-foreground"
+          icon={dark ? <Sun {...IC} size={actionIcon} /> : <Moon {...IC} size={actionIcon} />}
+          className={actionButton}
         />
       </Tip>
       <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement={tip}>
-        <UserAvatar size={36} className={cn('text-sm', left ? 'mt-1' : 'ms-1')} />
+        <UserAvatar
+          size={left ? 36 : 32}
+          className={cn(left ? 'mt-1 text-sm' : 'ms-1 text-[0.8125rem]')}
+        />
       </Tip>
     </Flex>
   )
@@ -1264,18 +1296,24 @@ function Chrome({
     // Üç sütun: solda tutamaç + geri / ileri + logo, ortada raf (hep tam ortada), sağda eylemler
     // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil);
     // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada
-    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[52px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
+    // Kompakt: 44px (raf 36px dairelerle), içerik 68px'ten başlar (`CHROME_SPACE.top`)
+    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[44px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:-bottom-3 before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
       {/* Köşedeki tutamaç: ekranın sol kenarına yapışık (çubuk kenardan 3 birim içeride, sol çizgisi
-          ekran dışında), çubukta dikeyde ortalı; sütunun taşma kırpmasının dışında */}
+          ekran dışında), çubukta dikeyde ortalı (36px, rafın daireleri boyunda); sütunun taşma
+          kırpmasının dışında */}
       <AllAppsHandle
         open={appsOpen}
         onPress={onApps}
         className="pointer-events-auto absolute -start-[calc(var(--spacing)*3+1px)] top-[4px]"
       />
       {/* Tutamacın yanından (dışarı çekilmiş hâlinden de) başlar */}
-      <Flex align="center" className="pointer-events-auto min-w-0 gap-3 overflow-hidden ps-[24px]">
-        {/* Konum rafta (aktif uygulamanın yanında) ve başlat kutusunda; burada yalnızca geri / ileri */}
-        <HistoryButtons className="me-0" />
+      <Flex
+        align="center"
+        className="pointer-events-auto min-w-0 gap-2.5 overflow-hidden ps-[24px]"
+      >
+        {/* Konum rafta (aktif uygulamanın yanında) ve başlat kutusunda; burada yalnızca geri / ileri
+            (konum çubuğundaki gibi küçük) */}
+        <HistoryButtons compact className="me-0" />
         {logo}
       </Flex>
       {dock}
@@ -1384,7 +1422,7 @@ function Shell() {
                     !wide
                       ? '[--chrome-top:0px]'
                       : place === 'top'
-                        ? '[--chrome-top:76px]'
+                        ? '[--chrome-top:68px]'
                         : both
                           ? // İçeriğin başladığı yer (`CHROME_SPACE.both`, aynı birim)
                             '[--chrome-top:calc(var(--spacing)*14)]'

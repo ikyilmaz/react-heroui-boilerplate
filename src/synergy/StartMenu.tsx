@@ -110,19 +110,24 @@ export const CHROME_PANEL = cn(
   SHELL,
 )
 
-/** Rafın içi ve açılan kutunun konumu. */
-const PLACE: Record<ChromePlace, { shell: string; panel: string }> = {
+/** Rafın içi, başlat düğmesi ve açılan kutunun konumu. */
+const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
   // Pay ve düğme boyu piksel: temanın boşluk ölçeği (kompakt / geniş) rafın oranını bozmasın
   // Solda kutu dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
   // ekranın %85'i boyunda
   left: {
     shell: 'flex-col items-center p-[6px]',
+    start: 'size-[40px] min-w-[40px]',
+    icon: 18,
     panel: 'start-3 inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
   },
   // Üstte raf ortada; kutu da ortadan açılır (dönüşüm transform kullandığı için ortalama `mx-auto` ile),
-  // ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki widget'a yer; en az 44rem)
+  // ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki widget'a yer; en az 44rem). Kompakt: 44px
+  // (36px daireler, 4px pay)
   top: {
-    shell: 'h-[52px] flex-row items-center p-[6px]',
+    shell: 'h-[44px] flex-row items-center p-[4px]',
+    start: 'size-[36px] min-w-[36px]',
+    icon: 16,
     panel:
       'inset-x-0 top-3 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]',
   },
@@ -132,7 +137,8 @@ const PLACE: Record<ChromePlace, { shell: string; panel: string }> = {
 export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
   // Kabuk 12px içeride, 52px; aradaki boşluk 12px
   left: 'sm:ps-[76px] sm:pt-3',
-  top: 'sm:pt-[76px]',
+  // Üstte kabuk 12px içeride, 44px (kompakt); aradaki boşluk 12px
+  top: 'sm:pt-[68px]',
   // Solda kolon, üstte logo boyunda (34px) konum çubuğu, 28px haplar; içerik 14 birim aşağıda (şerit
   // de orada biter, `CrumbBar`)
   both: 'sm:ps-[76px] sm:pt-14',
@@ -207,8 +213,11 @@ export function StartDock({
         aria-label={START_LABELS.start}
         aria-expanded={false}
         onClick={openStart}
-        icon={<LayoutDashboard {...IC} size={18} />}
-        className="size-[40px] min-w-[40px] shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90"
+        icon={<LayoutDashboard {...IC} size={p.icon} />}
+        className={cn(
+          'shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90',
+          p.start,
+        )}
       />
     </Tip>
   )

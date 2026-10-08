@@ -371,7 +371,7 @@ export function AllAppsHandle({
         onClick={onPress}
         className={cn(
           // Piksel ölçüler: kabuk gibi temanın boşluk ölçeğinden bağımsız
-          'h-[44px] w-[20px] min-w-0 rounded-s-none rounded-e-[min(calc(20px*var(--corner-scale,1)),calc(var(--radius)*2))] bg-surface p-0 ps-px text-muted shadow-(--overlay-shadow) transition-[width,color] duration-[calc(200ms*var(--motion-time,1))] ease-out hover:w-[26px] hover:bg-surface! hover:text-foreground!',
+          'h-[36px] w-[20px] min-w-0 rounded-s-none rounded-e-[min(calc(20px*var(--corner-scale,1)),calc(var(--radius)*2))] bg-surface p-0 ps-px text-muted shadow-(--overlay-shadow) transition-[width,color] duration-[calc(200ms*var(--motion-time,1))] ease-out hover:w-[26px] hover:bg-surface! hover:text-foreground!',
           open && 'w-[26px] text-foreground',
           className,
         )}
