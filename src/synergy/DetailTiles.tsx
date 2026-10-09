@@ -61,7 +61,8 @@ import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
 import { CARD, cn, IC, StatusTag, TintIcon, Tip } from '@/synergy/ant/ui'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { FormField, LongField } from '@/synergy/FormFields'
-import { useOpenChild } from '@/synergy/tabs/context'
+import { useOpenChild, useTabScroller } from '@/synergy/tabs/context'
+import { useFillHeight } from '@/synergy/shared/hooks'
 
 /* Flow Viewer karoları (antd): form (ve child form bağlantıları), ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
 
@@ -310,10 +311,13 @@ export function FormLoading() {
 /**
  * Form sunucudan gelene kadar (maket: form sekmeleri yeni giren formu bir süre bekletir) yerinde
  * duran iskelet: talep ayrıntısının yerleşimi — başlık bandı, form alanları ve bölme yeterince
- * genişse yan bilgiler. Genişlik bölmeye göre (kap sorgusu). Animasyon kapalıysa parıltı yok.
+ * genişse yan bilgiler. Genişlik bölmeye göre (kap sorgusu). Form gibi kabın altına kadar uzanır
+ * (`--fill-h`, aynı ölçüm). Animasyon kapalıysa parıltı yok.
  */
 export function FormSkeleton() {
   const active = useLook().motion !== 'off'
+  const scroller = useTabScroller()
+  const attachFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   return (
     <Flex vertical gap={12} role="status" aria-busy aria-label="Form yükleniyor">
       {/* Başlık bandı: süreç ikonu, proje ve süreç adı, olaylar */}
@@ -342,9 +346,12 @@ export function FormSkeleton() {
         </Flex>
       </Card>
       {/* Form ve yan bilgiler (yan bilgiler sütun yerleşimindeki gibi 52rem'den geniş bölmede) */}
-      <Flex className="flex flex-col gap-3 @[52rem]:flex-row @[52rem]:items-start">
+      <Flex
+        ref={attachFill}
+        className="flex flex-col gap-3 @[52rem]:flex-row @[52rem]:items-stretch"
+      >
         <Card
-          className={cn(CARD, 'min-w-0 flex-1')}
+          className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1 [--fill-h:inherit]')}
           classNames={{ body: 'flex flex-col gap-6 p-6 @xl:p-8' }}
         >
           <BoneField active={active} />
@@ -370,7 +377,7 @@ export function FormSkeleton() {
               />
             ))}
           </Card>
-          <Card className={CARD} classNames={{ body: 'flex flex-col gap-3 p-5' }}>
+          <Card className={cn(CARD, 'flex-1')} classNames={{ body: 'flex flex-col gap-3 p-5' }}>
             <Bone active={active} className="[&_.ant-skeleton-button]:h-8!" />
             {Array.from({ length: 6 }, (_, i) => (
               <Bone key={i} active={active} className="[&_.ant-skeleton-button]:h-4!" />
