@@ -42,6 +42,7 @@ export const MENU_TREE: MenuNode[] = [
     leaf('satin-alma-talebi', 1),
     leaf('tedarikci-listesi', 2),
     leaf('stok-raporu', 3),
+    leaf('sozlesme-talebi', 4),
   ]),
   folder('insan-kaynaklari', 'İnsan Kaynakları', Users, 4, [
     // İK modülünün sayfası (Kullanıcılar)
@@ -60,6 +61,7 @@ export const MENU_TREE: MenuNode[] = [
   folder('idari-isler', 'İdari İşler', FolderOpen, 6, [
     leaf('arac-tahsis', 1),
     leaf('toplanti-odasi', 2),
+    leaf('ziyaretci-kaydi', 3),
   ]),
   folder('kalite', 'Kalite Yönetim Sistemi', ShieldCheck, 7, [leaf('kalite-dokumanlari', 1)]),
 ]

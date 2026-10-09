@@ -40,7 +40,7 @@ import {
   initials,
   menuApps,
 } from '@/synergy/shared/workflowData'
-import { BASE, FrameContext, k, type Crumb, type Frame } from '@/synergy/paths'
+import { BASE, FrameContext, useOpenApp, type Crumb, type Frame } from '@/synergy/paths'
 import { useMediaQuery, useRouteHistory } from '@/synergy/shared/hooks'
 import {
   LookContext,
@@ -52,6 +52,7 @@ import {
   type TrailStyle,
 } from '@/synergy/shared/themeSettings'
 import { ThemePanel } from '@/synergy/shared/ThemePanel'
+import { FormDeck } from '@/synergy/FormDeck'
 import { APP_THEME } from '@/synergy/theme'
 import { PARENTS, findModule } from '@/synergy/hr/modules'
 import { MotionScope, PageTransition, useTransition } from '@/synergy/motion'
@@ -169,7 +170,7 @@ function Wordmark({ height, className }: { height: number; className?: string })
 
 /** Uygulama araması (orijinal modules/search): menü uygulamalarında arar, "Uygulamalar" altında. */
 function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?: () => void }) {
-  const navigate = useNavigate()
+  const openApp = useOpenApp()
   const [query, setQuery] = useState('')
   const q = fold(query.trim())
   const results = q ? menuApps.filter((a) => fold(a.caption).includes(q)) : []
@@ -183,7 +184,7 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
         if (!app) return
         setQuery('')
         onPick?.()
-        navigate(k(app.href))
+        openApp(app)
       }}
       showSearch={{ filterOption: false }}
       options={
@@ -1489,6 +1490,9 @@ function Shell() {
                   onOpenChange={setAppsOpen}
                   floating={wide && place === 'top'}
                 />
+
+                {/* Modal / drawer'da açılan formlar: sayfanın üstünde, deste */}
+                <FormDeck />
 
                 <ThemePanel
                   kit={APP_THEME}

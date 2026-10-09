@@ -154,9 +154,10 @@ export function ItemsTable({ items }: { items: LineItem[] }) {
 
 /**
  * Formun içindeki child form düğmesi (orijinalde form tasarımcısının koyduğu eylem düğmesi):
- * ilgili alanın hemen altında; basınca child talep açılır (`FormTabs.tsx`).
+ * ilgili alanın hemen altında; basınca child açılır (talepte `FormTabs.tsx`, modal / drawer
+ * formunda `FormDeck.tsx`).
  */
-function ChildButton({ link, onOpen }: { link: ChildLink; onOpen: (id: string) => void }) {
+export function ChildButton({ link, onOpen }: { link: ChildLink; onOpen: (id: string) => void }) {
   const Icon = link.action === 'add' ? FilePlus2 : SquareArrowOutUpRight
   return (
     <Button

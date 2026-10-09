@@ -21,8 +21,9 @@ import {
   type MenuNode,
   type MenuSort,
 } from '@/synergy/shared/menuTree'
-import { k } from '@/synergy/paths'
-import { IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { findApp } from '@/synergy/shared/workflowData'
+import { k, useOpenApp } from '@/synergy/paths'
+import { FLOATING_DRAWER, IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { EmptyNote, SearchField } from '@/synergy/ant/parts'
 
 /*
@@ -167,6 +168,7 @@ function activeLeaf(nodes: MenuNode[], pathname: string): string | undefined {
  */
 export function useAppTree(onPicked: () => void) {
   const navigate = useNavigate()
+  const openApp = useOpenApp()
   const { pathname } = useLocation()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<MenuSort>(() => readJson<MenuSort>(SORT_KEY, 'order'))
@@ -190,7 +192,10 @@ export function useAppTree(onPicked: () => void) {
       return next
     })
   const pick = (n: MenuNode) => {
-    if (n.href) navigate(k(n.href))
+    // Menü uygulaması (modal / drawer'da açılabilir) ya da sayfa (Başlangıç, İK)
+    const app = findApp(n.id)
+    if (app) openApp(app)
+    else if (n.href) navigate(k(n.href))
     onPicked()
   }
   const changeSort = () => {
@@ -232,17 +237,6 @@ export function useAppTree(onPicked: () => void) {
 
 export { Highlight }
 
-/**
- * Yüzen panelin kutusu: raf ve başlat kutusuyla aynı yüzey ve köşe (StartMenu › `CHROME_PANEL`).
- * Kutu, kenardan 12px boşluklu şeffaf kabın içinde: kayarak çıkarken boşlukla birlikte tamamen
- * ekran dışına gider; boşluğa tıklamak paneli kapatır.
- */
-const FLOATING = {
-  wrapper: 'p-3 shadow-none',
-  section:
-    'rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] border border-border bg-surface shadow-(--overlay-shadow)',
-}
-
 export function AllAppsPanel({
   isOpen,
   onOpenChange,
@@ -267,7 +261,7 @@ export function AllAppsPanel({
       aria-label={MENU_LABELS.allApps}
       classNames={
         floating
-          ? { ...FLOATING, mask: 'bg-foreground/10', body: 'flex flex-col p-0' }
+          ? { ...FLOATING_DRAWER, mask: 'bg-foreground/10', body: 'flex flex-col p-0' }
           : { section: 'bg-background', body: 'flex flex-col p-0' }
       }
     >

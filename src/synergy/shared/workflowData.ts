@@ -13,7 +13,9 @@ import {
   FolderOpen,
   Forward,
   GraduationCap,
+  Handshake,
   History,
+  IdCard,
   Inbox,
   Info,
   KeyRound,
@@ -1571,6 +1573,13 @@ export interface MenuApp {
   href: string
   /** Başlangıçta favori mi (sunucudaki pinned). Güncel değer için `useMenuApps`. */
   pinned: boolean
+  /**
+   * Formun açıldığı yer (orijinal menü öğesinin "Şurada aç" seçeneği, `openOnType`): yoksa panel
+   * (form grupları); modal ya da drawer'da bulunulan sayfanın üstünde, destede (`FormDeck.tsx`).
+   */
+  openOn?: 'modal' | 'drawer'
+  /** Modal / drawer'ın genişliği (orijinal menü öğesinin panel boyutu; `panelSizeToWidth`). */
+  panelSize?: PanelSize
 }
 
 const app = (id: string, caption: string, pinned: boolean, icon?: LucideIcon, href = `/uygulamalar/${id}`): MenuApp => ({
@@ -1584,6 +1593,9 @@ const app = (id: string, caption: string, pinned: boolean, icon?: LucideIcon, hr
 /** Son kullanılan menü öğeleri, en yeni önce (orijinal ilk 20'yi gösterir). */
 export const menuApps: MenuApp[] = [
   app('is-akis-yonetimi', 'İş Akış Yönetimi', true, Workflow, '/is-akislari'),
+  // Modal / drawer'da açılan formlar (açık istek üzerine eklenen maketler; adın yanında açıldığı yer)
+  { ...app('sozlesme-talebi', 'Sözleşme Talebi (Modal)', false, Handshake), openOn: 'modal', panelSize: 2 },
+  { ...app('ziyaretci-kaydi', 'Ziyaretçi Kaydı (Drawer)', false, IdCard), openOn: 'drawer', panelSize: 1 },
   app('satin-alma-talebi', 'Satın Alma Talebi', true, ShoppingCart),
   app('izin-talebi', 'Yıllık İzin Talebi', false, TreePalm),
   app('masraf-bildirimi', 'Masraf Bildirimi', true, Receipt),

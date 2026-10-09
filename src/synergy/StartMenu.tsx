@@ -27,6 +27,7 @@ import {
   historyBoxes,
   mainBoxes,
   pendingSentence,
+  type MenuApp,
 } from '@/synergy/shared/workflowData'
 import { Highlight, useAppTree } from '@/synergy/AllApps'
 import { useTransition } from '@/synergy/motion'
@@ -34,7 +35,7 @@ import { Indicator } from '@/synergy/ant/motion'
 import { EmptyNote, SearchField } from '@/synergy/ant/parts'
 import { CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
-import { boxLink, k } from '@/synergy/paths'
+import { boxLink, useOpenApp } from '@/synergy/paths'
 import { WorkBlock } from '@/synergy/StartPage'
 
 /*
@@ -406,6 +407,11 @@ function StartPanel({
     navigate(href)
     onClose()
   }
+  const openApp = useOpenApp()
+  const goApp = (app: MenuApp) => {
+    openApp(app)
+    onClose()
+  }
   const run = (fn: () => void) => {
     onClose()
     fn()
@@ -463,7 +469,7 @@ function StartPanel({
                 icon={a.icon}
                 label={a.caption}
                 query=""
-                onPress={() => go(k(a.href))}
+                onPress={() => goApp(a)}
               />
             ))}
           </Flex>
@@ -481,7 +487,7 @@ function StartPanel({
               <Button
                 key={a.id}
                 type="text"
-                onClick={() => go(k(a.href))}
+                onClick={() => goApp(a)}
                 icon={<Icon {...IC} size={14} className="text-muted" />}
                 className="h-8 gap-1.5 rounded-full bg-surface-secondary px-3 font-normal text-foreground hover:bg-surface-tertiary!"
               >

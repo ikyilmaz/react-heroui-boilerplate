@@ -222,12 +222,36 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   - "İptal" and "Kapat" close the group; the last group returns to Başlangıç.
 
   The breadcrumb is Başlangıç › app. Dates are relative to today.
+- Form deck (modal / drawer forms; added on explicit request). The original menu item's "Şurada aç"
+  (`openOnType`: panel / modal / drawer) is `MenuApp.openOn`, its panel size `MenuApp.panelSize`.
+  Two dummy apps use it, "Sözleşme Talebi (Modal)" and "Ziyaretçi Kaydı (Drawer)", each with two
+  levels of child forms (`CHILD_FORMS` in `shared/appForms.ts`).
+  - Opening: menu links go through `useOpenApp` (`paths.ts`), and the Başlangıç tile uses
+    `openDeck`. The deck opens over the current page. A child opens in the same place as its opener
+    (original `handleOpenChildForm`).
+  - State lives in `shared/formDeck.ts`: one deck, cards with `parent`, the front-to-back `order`
+    and `parked`. A card has one child at a time: a new child closes the previous one with its
+    children; the same form is raised instead. Closing a card closes its children; closing the
+    root closes the deck.
+  - Rendering (`FormDeck.tsx`, mounted in the shell): the whole deck is one antd `Modal`, used
+    directly rather than `SoftModal`. Mask, focus trap, Esc and scroll lock come from antd; focus
+    returns to the opener. Cards are Motion `Flex` boxes with `FLOATING_SURFACE`, so they use the
+    card radius and squircle. All cards share the root's width (`panelSizeToWidth`) and height.
+  - Behind cards are offset, shrunk and tinted toward the background, with their content `inert`
+    and at most three visible. In a modal they shift up from the top; in a drawer they shift left,
+    and cards slide in and out on the right.
+  - Hovering a behind card's visible edge lifts it (drawer: name in a tooltip), and clicking it
+    raises the card.
+  - Esc and a card's close button close the front card. Clicking outside parks the deck: it shrinks
+    to a faint 48px strip on the right edge, the mask, trap, Esc and scroll lock turn off, and the
+    page works. Hovering the strip peeks it out; clicking it brings the deck back.
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
   company admins and property relations have their own views (`HrSpecial.tsx`). Data and in-memory
   store in `shared/hrData.ts`.
 - `AllApps.tsx` ("Tüm uygulamalar" panel: search, order ↔ alphabetic sort, collapsible app tree from
-  `shared/menuTree.ts`; no menu editing), `AppForm.tsx` (menu app form body), `paths.ts`, `theme.ts`, `motion.tsx`
+  `shared/menuTree.ts`; no menu editing), `AppForm.tsx` (menu app form body, `APP_EVENTS`,
+  `useAppEvent`), `FormDeck.tsx` (form deck), `paths.ts`, `theme.ts`, `motion.tsx`
   (`MotionScope`, `useTransition`, `useLeaving`, `PageTransition`).
 - Brand (Bimser Synergy): `assets/brand/` — `icon.svg` / `icon-dark.svg` (four-colour mark; dark
   theme has a white centre) and `wordmark.svg` / `wordmark-light.svg` ("bimser synergy"), cut from
@@ -237,8 +261,9 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   antd's zoom off, the panel springs in from 96 % via `modalRender` + Motion and fades out before
   antd closes it, also when a parent unmounts it inside `AnimatePresence` (`usePresence`; a closed
   dialog releases at once, otherwise page transitions would wait forever); mask fades via
-  `starting:`), `ui.tsx` (`cn` (tailwind-merge), `IC`,
-  `MotionFlex`, `Tip`, `TintIcon`, `StatusTag`, `Scroll`, `CARD`), `parts.tsx` (`SearchField`,
+  `starting:`; the form deck is the one exception), `ui.tsx` (`cn` (tailwind-merge), `IC`,
+  `MotionFlex`, `Tip`, `TintIcon`, `StatusTag`, `Scroll`, `CARD`, `FLOATING_SURFACE` /
+  `FLOATING_DRAWER`), `parts.tsx` (`SearchField`,
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
@@ -289,7 +314,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
   forward → `decide()`; `flow.tsx` draws the dialogs), `formTabs.ts` (form tab / split state),
-  `formGroups.ts` (form groups), `appForms.ts` (menu app forms), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
+  `formGroups.ts` (form groups), `appForms.ts` (menu app forms), `formDeck.ts` (form deck), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
   `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.

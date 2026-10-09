@@ -17,8 +17,6 @@ import {
   FileText,
   History,
   Info,
-  Save,
-  Send,
   Trash2,
   X,
 } from 'lucide-react'
@@ -109,14 +107,8 @@ import {
   type GroupNav,
 } from '@/synergy/shared/formGroups'
 import { useNotify } from '@/synergy/ant/hr'
-import {
-  APP_FORM_TEXT,
-  appFormOf,
-  appIdOf,
-  appOfRoot,
-  appRoot,
-} from '@/synergy/shared/appForms'
-import { AppFormBody } from '@/synergy/AppForm'
+import { appFormOf, appIdOf, appOfRoot, appRoot } from '@/synergy/shared/appForms'
+import { APP_EVENTS, AppFormBody, useAppEvent } from '@/synergy/AppForm'
 import {
   SIDE_LABEL,
   SidePanel,
@@ -401,24 +393,6 @@ function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
   )
 }
 
-/** Menü formunun olayları (orijinal: akışın başlangıç olayları ya da uygulama formunun araç çubuğu). */
-type AppEvent = 'send' | 'draft' | 'cancel' | 'save' | 'close'
-
-const APP_EVENTS: Record<
-  'start' | 'form',
-  { id: AppEvent; label: string; icon: LucideIcon; primary?: boolean }[]
-> = {
-  start: [
-    { id: 'send', label: APP_FORM_TEXT.send, icon: Send, primary: true },
-    { id: 'draft', label: APP_FORM_TEXT.saveDraft, icon: Save },
-    { id: 'cancel', label: APP_FORM_TEXT.cancel, icon: X },
-  ],
-  form: [
-    { id: 'save', label: APP_FORM_TEXT.save, icon: Save, primary: true },
-    { id: 'close', label: APP_FORM_TEXT.close, icon: X },
-  ],
-}
-
 /**
  * Menü uygulamasının formu (maket, `shared/appForms.ts`): talep ayrıntısının bandı (ikon, ad,
  * olaylar; kaydırınca yapışkan şerit) ve form kartı; Geri / İleri, yan bilgiler, tarihçe yok (akış
@@ -430,7 +404,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
   const app = findApp(appId)
   // Maket değerler (bugüne göre tarihler) form kurulurken bir kez
   const [form] = useState(() => appFormOf(appId))
-  const notify = useNotify()
+  const run = useAppEvent(app?.caption ?? '', onClose)
   const phone = useMediaQuery('(max-width: 639px)')
   const scroller = useTabScroller()
   const scrolled = useScrolled(220, scroller)
@@ -446,14 +420,6 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
   }, [gone])
   if (gone) return null
 
-  const run = (id: AppEvent) => {
-    if (id === 'send') {
-      notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.sent(app.caption))
-      onClose()
-    } else if (id === 'draft') notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.draftSaved)
-    else if (id === 'save') notify.success(APP_FORM_TEXT.success, APP_FORM_TEXT.saved)
-    else onClose()
-  }
   const actions = (onStrip: boolean) => (
     <Flex role="group" aria-label="Olaylar" className={ACTIONS}>
       {APP_EVENTS[form.kind].map(({ id, label, icon: Icon, primary }) => (

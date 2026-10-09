@@ -112,6 +112,19 @@ export function Scroll({
 export const CARD = 'ring-(length:--border-width) ring-border shadow-(--surface-shadow)'
 
 /**
+ * Yüzen panelin yüzeyi (tüm uygulamalar paneli, form destesinin kartları): raf ve başlat kutusuyla
+ * aynı yüzey ve köşe (StartMenu › `CHROME_PANEL`; köşe tema panelinden, kartınkiyle aynı).
+ */
+export const FLOATING_SURFACE =
+  'rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] border border-border bg-surface shadow-(--overlay-shadow)'
+
+/**
+ * Yüzen drawer (antd `Drawer` `classNames`): kutu kenardan 12px boşluklu şeffaf kabın içinde;
+ * kayarak çıkarken boşlukla birlikte tamamen ekran dışına gider.
+ */
+export const FLOATING_DRAWER = { wrapper: 'p-3 shadow-none', section: FLOATING_SURFACE }
+
+/**
  * Kartın köşesi (CSS): AntTheme › Card `borderRadiusLG` ile aynı (temel yarıçapın 3 katı, en çok
  * 32px; squircle'da tavan da `--corner-scale` kadar büyür). Raf ve başlat kutusu da bunu kullanır.
  */

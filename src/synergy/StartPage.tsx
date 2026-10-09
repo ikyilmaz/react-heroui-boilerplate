@@ -66,6 +66,7 @@ import {
   type GroupSort,
 } from '@/synergy/shared/startLabels'
 import { START_CRUMB, boxLink, k, requestLink, useFrame } from '@/synergy/paths'
+import { openDeck } from '@/synergy/shared/formDeck'
 import {
   useBand,
   CellValue,
@@ -463,8 +464,14 @@ function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
       >
         {Icon ? undefined : initials(app.caption)}
       </Avatar>
+      {/* Modal / drawer'da açılan uygulama gidilmez, sayfanın üstünde destede açılır */}
       <Link
         to={k(app.href)}
+        onClick={(e) => {
+          if (!app.openOn) return
+          e.preventDefault()
+          openDeck(app)
+        }}
         className={cn(
           'static block w-full min-w-0 truncate text-center text-foreground no-underline hover:text-foreground hover:no-underline after:absolute after:inset-0',
           fill ? 'text-sm' : 'text-xs',

@@ -1,11 +1,14 @@
-import { createContext, startTransition, useContext, useEffect } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 import {
   boxHref,
   processHref,
   requestHref,
   type BoxId,
+  type MenuApp,
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
+import { openDeck } from '@/synergy/shared/formDeck'
 
 /* Adresler ve çerçeve bağlamı. Ortak yardımcılar zaten uygulama adreslerini döndürür; kök Başlangıç'a gider. */
 
@@ -16,6 +19,18 @@ export const k = (href: string) => (href === '/' ? BASE : href)
 export const boxLink = (box: BoxId) => k(boxHref(box))
 export const processLink = (box: BoxId, processId: string) => k(processHref(box, processId))
 export const requestLink = (r: WorkRequest) => k(requestHref(r))
+
+/**
+ * Menü uygulamasını açar: sayfası ya da paneli (form grubu) olana gidilir; modal / drawer'da
+ * açılan (`openOn`) bulunulan sayfanın üstünde, form destesinde açılır (`FormDeck.tsx`).
+ */
+export function useOpenApp() {
+  const navigate = useNavigate()
+  return useCallback(
+    (app: MenuApp) => (app.openOn ? openDeck(app) : navigate(k(app.href))),
+    [navigate],
+  )
+}
 
 export interface Crumb {
   label: string

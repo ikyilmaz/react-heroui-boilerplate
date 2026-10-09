@@ -1,4 +1,6 @@
-import { CURRENT_USER, findApp, type LineItem } from '@/synergy/shared/workflowData'
+import type { LucideIcon } from 'lucide-react'
+import { Building2, CarFront, UserRound, UserRoundPlus } from 'lucide-react'
+import { CURRENT_USER, findApp, type ChildLink, type LineItem } from '@/synergy/shared/workflowData'
 
 /* -------------------------------------------------------------------------------------------------
  * Menü uygulamalarının formları (maket). Orijinalde menü öğesi ya bir akış başlatır (StartAProcess:
@@ -37,6 +39,11 @@ export interface AppForm {
   table?: AppFormTable
   /** Açıklama alanı (çok satırlı). */
   note?: string
+  /**
+   * Child form düğmeleri (talep formlarındaki gibi `after` alanının ardında; `id` child formun
+   * kimliği, `CHILD_FORMS`). Yalnızca modal / drawer destesinde açılır (`FormDeck.tsx`).
+   */
+  children?: ChildLink[]
 }
 
 /** Menü formlarının metinleri (tr_TR). */
@@ -400,7 +407,185 @@ const FORMS: Record<string, () => AppForm> = {
       ],
     },
   }),
+  // Modal ya da drawer'da açılan iki form (açık istek üzerine eklenen maketler): her biri iki kat
+  // child açar (`CHILD_FORMS`); child'lar da açanın yerinde (modal ya da drawer) açılır
+  'sozlesme-talebi': (): AppForm => ({
+    kind: 'start',
+    sections: [
+      { title: 'Talep bilgileri', fields: requester() },
+      {
+        title: 'Sözleşme bilgileri',
+        fields: {
+          'Sözleşme türü': 'Hizmet sözleşmesi',
+          'Karşı taraf': 'Kuzey Temizlik Hizmetleri',
+          'Başlangıç tarihi': day(15),
+          'Bitiş tarihi': day(380),
+          'Sözleşme bedeli': '₺1.140.000',
+          'Ödeme koşulu': 'Aylık, 30 gün vadeli',
+          Yenileme: 'Otomatik yenilenmez',
+          'Fesih bildirimi': '30 gün önceden, yazılı',
+        },
+      },
+    ],
+    children: [
+      { id: 'karsi-taraf', label: 'Karşı Taraf Bilgileri', after: 'Karşı taraf', action: 'open' },
+    ],
+    note: 'Merkez ofis ve Ankara bölge müdürlüğü için bir yıllık temizlik hizmeti. Teklifler karşılaştırıldı; en uygun teklif Kuzey Temizlik Hizmetleri’nden geldi.',
+  }),
+  'ziyaretci-kaydi': (): AppForm => ({
+    kind: 'start',
+    sections: [
+      { title: 'Talep bilgileri', fields: requester() },
+      {
+        title: 'Ziyaret bilgileri',
+        fields: {
+          'Ziyaret zamanı': day(2, '10:00'),
+          'Ziyaret süresi': '2 saat',
+          'Toplantı yeri': 'Boğaziçi (12 kişilik)',
+          'Ziyaretçi firma': 'Delta Endüstriyel Makine',
+          'Ziyaretçi sayısı': '2',
+        },
+      },
+    ],
+    children: [
+      {
+        id: 'ziyaretci-bilgileri',
+        label: 'Ziyaretçi Ekle',
+        after: 'Ziyaretçi sayısı',
+        action: 'add',
+      },
+    ],
+    note: 'Yeni hat bakım sözleşmesi için teknik görüşme; ziyaretçiler üretim alanına girmeyecek.',
+  }),
+}
+
+/* --- Modal / drawer formlarının child'ları ------------------------------------------------------ */
+
+/** Child formlar (menüde yok): adı, ikonu ve maket içeriği. */
+const CHILD_FORMS: Record<string, { caption: string; icon: LucideIcon; form: () => AppForm }> = {
+  'karsi-taraf': {
+    caption: 'Karşı Taraf Bilgileri',
+    icon: Building2,
+    form: (): AppForm => ({
+      kind: 'form',
+      sections: [
+        {
+          title: 'Firma bilgileri',
+          fields: {
+            Unvan: 'Kuzey Temizlik Hizmetleri Ltd. Şti.',
+            'Vergi dairesi': 'Kozyatağı',
+            Telefon: '0216 574 18 30',
+            Adres: 'İçerenköy Mah. Değirmenyolu Cad. No: 28, Ataşehir / İstanbul',
+          },
+        },
+        {
+          title: 'Yetkili',
+          fields: { 'Yetkili kişi': 'Ece Polat', 'E-posta': 'ece.polat@ornek.com' },
+        },
+      ],
+      children: [
+        { id: 'yetkili-kisi', label: 'Yetkili Ekle', after: 'Yetkili kişi', action: 'add' },
+      ],
+      table: {
+        title: 'Önceki sözleşmeler',
+        columns: [
+          { title: 'Sözleşme no' },
+          { title: 'Konu' },
+          { title: 'Bitiş tarihi' },
+          { title: 'Bedel', num: true },
+        ],
+        rows: [
+          ['SZ-2024-031', 'Ofis temizliği', day(-410), '₺860.000'],
+          ['SZ-2025-008', 'Cam ve cephe temizliği', day(-120), '₺145.000'],
+        ],
+      },
+    }),
+  },
+  'yetkili-kisi': {
+    caption: 'Yetkili Kişi',
+    icon: UserRoundPlus,
+    form: (): AppForm => ({
+      kind: 'form',
+      sections: [
+        {
+          title: 'Kişi bilgileri',
+          fields: {
+            'Ad soyad': '',
+            Ünvan: '',
+            'E-posta': '',
+            Telefon: '',
+            'İmza yetkisi': 'Müştereken',
+            'Yetki bitiş tarihi': day(365),
+          },
+        },
+      ],
+    }),
+  },
+  'ziyaretci-bilgileri': {
+    caption: 'Ziyaretçi Bilgileri',
+    icon: UserRound,
+    form: (): AppForm => ({
+      kind: 'form',
+      sections: [
+        {
+          title: 'Ziyaretçi',
+          fields: {
+            'Ad soyad': 'Tolga Yılmaz',
+            Firma: 'Delta Endüstriyel Makine',
+            Ünvan: 'Satış Müdürü',
+            Telefon: '0532 611 47 05',
+            'Araçla gelecek': 'Evet',
+          },
+        },
+      ],
+      children: [
+        {
+          id: 'arac-bilgileri',
+          label: 'Araç Bilgisi Ekle',
+          after: 'Araçla gelecek',
+          action: 'add',
+        },
+      ],
+    }),
+  },
+  'arac-bilgileri': {
+    caption: 'Araç Bilgileri',
+    icon: CarFront,
+    form: (): AppForm => ({
+      kind: 'form',
+      sections: [
+        {
+          title: 'Araç',
+          fields: {
+            Plaka: '16 ABC 482',
+            'Marka / model': 'Volkswagen Passat',
+            Renk: 'Gri',
+            Otopark: 'Misafir otoparkı (B2)',
+            'Giriş zamanı': day(2, '09:45'),
+          },
+        },
+      ],
+    }),
+  },
 }
 
 /** Menü uygulamasının formu (yoksa `undefined`: sayfası olan uygulamalar, ör. İş Akış Yönetimi). */
 export const appFormOf = (appId: string): AppForm | undefined => FORMS[appId]?.()
+
+/** Destedeki formun adı ve ikonu: menü uygulaması (menüden) ya da child form. */
+export function deckTitleOf(id: string): { caption: string; icon?: LucideIcon } | undefined {
+  const app = findApp(id)
+  if (app) return { caption: app.caption, icon: app.icon }
+  const child = CHILD_FORMS[id]
+  return child && { caption: child.caption, icon: child.icon }
+}
+
+/**
+ * Destedeki formun adı, ikonu ve maket içeriği. İçerik her çağrıda yeniden kurulur (bugüne göre
+ * tarihler); çağıran bir kez alır.
+ */
+export function deckFormOf(id: string) {
+  const title = deckTitleOf(id)
+  const form = findApp(id) ? appFormOf(id) : CHILD_FORMS[id]?.form()
+  return title && form && { ...title, form }
+}
