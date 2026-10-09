@@ -58,7 +58,7 @@ import {
 } from '@/synergy/tabs/context'
 import { useTabMotion } from '@/synergy/tabs/motion'
 import { Divider, Pane, type Entered, type PaneSlot } from '@/synergy/tabs/Panes'
-import { GROUP_TONE, SHEET, SHEET_RING, STRIP_VARS, TAB_BG } from '@/synergy/tabs/shape'
+import { GROUP_TONE, ROUND_STRIP_VARS, SHEET, SHEET_RING, TAB_BG } from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabClose, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { encodeWorkspace } from '@/synergy/shared/workspaceUrl'
 import { ScreenRoutes, isFormPath, isValidPath, screenMeta } from '@/synergy/screens'
@@ -619,7 +619,7 @@ export function Workspace({
           <Flex
             className={cn(
               'relative z-10 -me-[calc(var(--tab-r)-4px)] h-[2.5rem] shrink-0 items-center pb-1',
-              STRIP_VARS,
+              ROUND_STRIP_VARS,
             )}
           >
             {start}
@@ -641,6 +641,8 @@ export function Workspace({
               : 'ps-[calc(var(--radius)*3+var(--tab-r))] pe-8'
           }
           onDelete={actions.remove}
+          // Squircle temada da yuvarlak köşeler (geri / ileri de: `ROUND_STRIP_VARS`)
+          round
           className="flex-1"
         >
           {units.map((u, i) => (

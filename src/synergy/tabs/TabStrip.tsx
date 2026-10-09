@@ -41,6 +41,8 @@ import {
   SEPARATOR,
   SHEET_MIDDLE,
   STRIP_VARS,
+  ROUND_STRIP_VARS,
+  ROUND_TAB_RADIUS,
   TAB_RADIUS,
 } from '@/synergy/tabs/shape'
 import {
@@ -180,6 +182,7 @@ export function TabStrip({
   inset,
   onDelete,
   end,
+  round = false,
   className,
   children,
 }: {
@@ -200,13 +203,15 @@ export function TabStrip({
   onDelete?: (tab: HTMLElement) => void
   /** Şeridin sonunda, kaymayan alan (ör. yan yana sekmenin düğmeleri). */
   end?: ReactNode
+  /** Squircle temada da yuvarlak köşeler (`ROUND_STRIP_VARS`; çalışma alanının şeridi). */
+  round?: boolean
   /** Kapsayıcının sınıfı (sekme boyu `--tab-h`, renk değişkenleri). */
   className?: string
   /** `TabGroup` öğeleri. */
   children: ReactNode
 }) {
   const motion = useTabMotion()
-  const radius = useRadiusPx(TAB_RADIUS)
+  const radius = useRadiusPx(round ? ROUND_TAB_RADIUS : TAB_RADIUS)
   const R = radius === undefined ? undefined : Math.round(radius)
   const scroller = useRef<HTMLElement | null>(null)
   const row = useRef<HTMLElement | null>(null)
@@ -705,7 +710,13 @@ export function TabStrip({
   }
 
   return (
-    <Flex className={cn('relative flex min-w-0 items-end', STRIP_VARS, className)}>
+    <Flex
+      className={cn(
+        'relative flex min-w-0 items-end',
+        round ? ROUND_STRIP_VARS : STRIP_VARS,
+        className,
+      )}
+    >
       <Flex
         ref={scroller}
         className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
@@ -1086,12 +1097,7 @@ export function TabButton({
       </Link>
     )
   return (
-    <Button
-      type="text"
-      icon={icon}
-      className={cn(TAB_BUTTON, tone, className)}
-      {...rest}
-    >
+    <Button type="text" icon={icon} className={cn(TAB_BUTTON, tone, className)} {...rest}>
       {text}
       {extra}
     </Button>

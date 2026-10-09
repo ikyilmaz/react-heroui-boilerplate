@@ -19,6 +19,14 @@ export const TAB_RADIUS = 'min(calc(var(--radius) * 2), calc(16px * var(--corner
 export const STRIP_VARS =
   '[--tab-r:min(calc(var(--radius)*2),calc(16px*var(--corner-scale,1)))] [--tab-h:2.5rem]'
 
+/**
+ * Yuvarlak şerit (çalışma alanının sekmeleri ve geri / ileri): squircle temada da daire yayı ve
+ * yuvarlak temadaki yarıçap (squircle'ın `--corner-scale` büyütmesi geri alınır); kavisler `scoop`.
+ */
+export const ROUND_TAB_RADIUS = 'min(calc(var(--radius) * 2 / var(--corner-scale, 1)), 16px)'
+export const ROUND_STRIP_VARS =
+  '[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] [--corner-shape:round] [--corner-concave:scoop]'
+
 /** Kabın (ve seçili yaprağın) rengi: birincil rengin zemine karışmış çok açık tonu. */
 export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
 

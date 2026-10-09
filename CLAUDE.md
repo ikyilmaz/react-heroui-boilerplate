@@ -62,7 +62,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   top row round, on the bottom row squircle; the radius drives **everything**: cards, the dock and
   start box (`CARD_RADIUS` in `ant/ui.tsx`, px via `useRadiusPx` for Motion), tabs and their flares
   (`TAB_RADIUS` in `tabs/shape.ts`: radius × 2, capped at 16px × `--corner-scale`, like the card's
-  32px cap), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
+  32px cap; the workspace strip and back / forward are always round, at the round theme's radius,
+  even in squircle: `TabStrip round`, `ROUND_STRIP_VARS` / `ROUND_TAB_RADIUS`), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
   `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (tab flares) and `--corner-scale`
   (radius and the radius caps — card 32px, field 14px… — × 1.6 so corners stay as full; caps read
   in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
@@ -393,7 +394,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     every render): threshold 16 × width / 256, swap when the leading edge crosses the neighbour's
     centre, one swap per move until the new order renders, auto-scroll within 48px of the edges,
     spring back on release; touch uses the context menu.
-  - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`, `TAB_BG`, `SHEET` / `SHEET_RING` /
+  - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`, `ROUND_TAB_RADIUS` / `ROUND_STRIP_VARS`
+    (round corners and flares in squircle too, `round` strips), `TAB_BG`, `SHEET` / `SHEET_RING` /
     `SHEET_ON_SURFACE`, caps and middle, `PILL`, `SEPARATOR`, `GROUP_TONE` / `GROUP_LINE` /
     `GROUP_DOT`). Flares: with `corner-shape` a `scoop` (squircle: `--corner-concave`) box whose ring is
     a real border; otherwise (Safari, Firefox) a transparent box with a convex corner, the ring as its
