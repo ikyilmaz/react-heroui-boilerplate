@@ -70,7 +70,7 @@ export function AgendaTabs({
         sheet={SHEET}
         // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`) + sekme kavisi: seçili sekmenin
         // kavisi kabın düz üst kenarına oturur
-        inset="ps-[calc(var(--radius)*3+var(--tab-r))] pe-8"
+        inset="ps-[calc(var(--radius)*3+var(--tab-f))] pe-8"
         className="shrink-0"
       >
         {blocks(tabs).map((b) => (

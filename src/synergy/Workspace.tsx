@@ -610,15 +610,18 @@ export function Workspace({
       {/* Şerit: hep görünür (yalnız Başlangıç açıkken de) */}
       <Flex ref={strip} className="flex shrink-0 items-end">
         {/*
-         * Eylemler sekmenin ortasından 4px, geri / ileri 2px yukarıda (`pb-2` / `pb-1`). Geri /
-         * ileri şeridin kavis payının üstüne biner (eksi kenar boşluğu): Başlangıç sekmesine 4px
-         * kalır, seçili sekmenin kavisi şeridin içinde kalır (kırpılmaz); üstte (`z-10`), tıklamayı
-         * şerit almaz
+         * Eylemler sekmenin ortasından 4px yukarıda (`pb-2`). Geri / ileri üzerine gelince çıkan
+         * hap gibi: kabın çizgisinden ve Başlangıç sekmesinden `--tab-gap` uzakta, üstü seçili
+         * sekmeyle aynı hizada (yüksekliği sekme − boşluk; düğmeler `--hb`, genişlik `--hw`); seçili sekmenin kavsiyle aynı merkezli,
+         * aradaki kanal her yerde eşit. Şeridin kavis payının üstüne biner (eksi kenar boşluğu;
+         * kabın köşesine yetmezse o kadar ileride), üstte (`z-10`), tıklamayı şerit almaz
          */}
         {start && (
           <Flex
             className={cn(
-              'relative z-10 -me-[calc(var(--tab-r)-4px)] h-[2.5rem] shrink-0 items-center pb-1',
+              'relative z-10 h-(--tab-h) shrink-0 items-end pb-(--tab-gap)',
+              '[--hb:calc(var(--tab-h)-var(--tab-gap)-4px)] [--hw:calc(var(--hb)*2+4px)]',
+              'me-[max(calc(var(--tab-gap)-var(--tab-f)),calc(var(--radius)*3-var(--hw)))]',
               ROUND_STRIP_VARS,
             )}
           >
@@ -632,14 +635,10 @@ export function Workspace({
             activeGroup ? cn(SHEET_RING, GROUP_TONE[activeGroup.color % GROUP_TONE.length]) : SHEET
           }
           layoutKey={stripKey}
-          // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`) + sekme kavisi: seçili
-          // sekmenin kavisi kabın düz üst kenarına oturur. Geri / ileri soldayken (68px, payın
-          // üstüne `--tab-r` − 4px biner) en az kavis kadar (kırpılmasın), köşeye yetmeyen kadar fazla
-          inset={
-            start
-              ? 'ps-[max(var(--tab-r),calc(var(--radius)*3+var(--tab-r)*2-72px))] pe-8'
-              : 'ps-[calc(var(--radius)*3+var(--tab-r))] pe-8'
-          }
+          // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`) + kavis: seçili sekmenin
+          // kavisi kabın düz üst kenarına oturur. Geri / ileri soldayken yalnızca kavis kadar
+          // (kırpılmasın; köşe payını geri / ileri sağlar)
+          inset={start ? 'ps-(--tab-f) pe-8' : 'ps-[calc(var(--radius)*3+var(--tab-f))] pe-8'}
           onDelete={actions.remove}
           // Squircle temada da yuvarlak köşeler (geri / ileri de: `ROUND_STRIP_VARS`)
           round

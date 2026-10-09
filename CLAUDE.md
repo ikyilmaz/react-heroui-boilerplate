@@ -139,11 +139,13 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   content; `CHROME_TIP`, `PLACE`). In both positions back / forward (`HistoryButtons`, two 32px buttons, 68px) sit in
   the tab strip's row left of the Başlangıç tab and the actions / profile (`ShellActions`: Sohbet,
   Duyurular, Tema ayarları, Koyu / Açık tema, avatar; 32px, tooltips and panels open downward) at
-  its right end, so they take no height (`Workspace` `start` / `end`); the actions sit 4px, back /
-  forward 2px above the tab centre. Back / forward look like part of the strip: no ring, the sheet's fill (`--tab-bg`) and
-  the tab radius (`--tab-r`); they overlap the strip's start inset (negative margin, `z-10`) and stay
-  4px from the Başlangıç tab, while the inset keeps at least `--tab-r` so the selected sheet's flare
-  isn't clipped by the strip's scroller (and whatever the container corner + tab radius still need). "Solda" = left column
+  its right end, so they take no height (`Workspace` `start` / `end`); the actions sit 4px above
+  the tab centre. Back / forward look like part of the strip: no ring, the sheet's fill
+  (`--tab-bg`), shaped like a hover pill (tab height − `--tab-gap`, top aligned with the selected sheet, corner `--tab-nr`, square
+  buttons `--hb`), `--tab-gap` above the container line and from the Başlangıç tab; they overlap the
+  strip's start inset (negative margin, `z-10`; further right only when the container corner needs
+  it), while the inset keeps `--tab-f` so the selected sheet's flare isn't clipped by the scroller.
+  "Solda" = left column
   with the logo (centred on the tab row) and the dock in the middle (three-row grid), the dock
   (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
   high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its İş
@@ -395,7 +397,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     centre, one swap per move until the new order renders, auto-scroll within 48px of the edges,
     spring back on release; touch uses the context menu.
   - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`, `ROUND_TAB_RADIUS` / `ROUND_STRIP_VARS`
-    (round corners and flares in squircle too, `round` strips), `TAB_BG`, `SHEET` / `SHEET_RING` /
+    (round corners and flares in squircle too, `round` strips), gap geometry: `--tab-gap` (3px),
+    `--tab-nr` (a neighbour pill's corner) and the flare radius `--tab-f` = `--tab-nr` + gap, so the
+    flare is concentric with a neighbouring hover pill or back / forward and the channel between them
+    is one width everywhere (hover pill inset by the gap at the sides and bottom, its top level with the selected sheet; strip insets use `--tab-f`), `TAB_BG`, `SHEET` / `SHEET_RING` /
     `SHEET_ON_SURFACE`, caps and middle, `PILL`, `SEPARATOR`, `GROUP_TONE` / `GROUP_LINE` /
     `GROUP_DOT`). Flares: with `corner-shape` a `scoop` (squircle: `--corner-concave`) box whose ring is
     a real border; otherwise (Safari, Firefox) a transparent box with a convex corner, the ring as its

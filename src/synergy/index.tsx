@@ -276,13 +276,16 @@ const ChromeNavContext = createContext<{ current: string | undefined; history: H
 /**
  * Geri / ileri: seçili sekmenin kendi geçmişinde (sekmeler tarayıcı sekmesi gibi); sekme şeridinin
  * solunda, Başlangıç sekmesinden hemen önce. Şeridin parçası gibi: çerçevesiz, sekme yaprağının
- * zemini (`--tab-bg`) ve sekmenin köşesi (`--tab-r`, şeridin değişkenleri sarmalayıcıda). 68px
- * genişlik (iki 32px düğme; şeridin içeri girme payı buna göre, `Workspace.tsx`).
+ * zemini (`--tab-bg`); üzerine gelince çıkan hapla aynı boy ve köşe (sekme − `--tab-gap`, üstü seçili sekmeyle aynı hizada,
+ * `--tab-nr`), düğmeler kare (`--hb`; değişkenler sarmalayıcıda, `Workspace.tsx`).
  */
 const HistoryButtons = memo(function HistoryButtons() {
   const nav = useContext(ChromeNavContext).history
   return (
-    <Flex align="center" className="shrink-0 rounded-(--tab-r) bg-(--tab-bg) p-0.5">
+    <Flex
+      align="center"
+      className="h-[calc(var(--tab-h)-var(--tab-gap))] shrink-0 rounded-(--tab-nr) bg-(--tab-bg) p-[2px]"
+    >
       {(
         [
           { label: 'Geri', icon: ChevronLeft, dir: -1, on: nav.back },
@@ -297,7 +300,7 @@ const HistoryButtons = memo(function HistoryButtons() {
             disabled={!on}
             onClick={() => nav.go(dir)}
             icon={<Icon {...IC} size={18} />}
-            className="size-8 min-w-8 rounded-[calc(var(--tab-r)-2px)] p-0 text-muted enabled:hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] enabled:hover:text-foreground disabled:opacity-50"
+            className="size-(--hb) min-w-(--hb) rounded-[calc(var(--tab-nr)-2px)] p-0 text-muted enabled:hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] enabled:hover:text-foreground disabled:opacity-50"
           />
         </Tip>
       ))}

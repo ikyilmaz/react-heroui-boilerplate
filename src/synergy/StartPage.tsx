@@ -655,7 +655,7 @@ function Categories({
       sheet={SHEET_ON_SURFACE}
       // İçeri girme payı = kartın köşe yarıçapı (en çok 32px, squircle'da `--corner-scale` katı) +
       // sekme kavisi: seçili sekmenin kavisi her temada kartın düz kenarına oturur
-      inset="min-w-184 px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-r))]"
+      inset="min-w-184 px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-f))]"
       // Kartın üstünde: seçili sekme kartın üst konturunu örter
       className="z-1 shrink-0 [--tab-h:4rem]"
     >

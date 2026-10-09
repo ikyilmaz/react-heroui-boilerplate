@@ -2,7 +2,12 @@
  * Sekme şeridinin biçimleri (Chrome'un sekme şeridi, Synergy derisi). Hepsi sabit sınıf metni
  * (Tailwind görsün); ölçüler şeridin satırındaki değişkenlerden:
  *   --tab-h   sekmenin boyu (çalışma alanı / ajanda `h-10`, Başlangıç kategorileri `h-16`)
- *   --tab-r   köşe ve kavis yarıçapı (`TAB_RADIUS`; yaprakta JS'in yuvarladığı px değeri)
+ *   --tab-r   sekmenin köşe yarıçapı (`TAB_RADIUS`; yaprakta JS'in yuvarladığı px değeri)
+ *   --tab-gap komşu parçalarla aradaki boşluk (üzerine gelince hap, geri / ileri): yaprağın
+ *             kenarından ve kabın çizgisinden hep bu kadar uzakta; üstleri seçili yaprakla aynı hizada
+ *   --tab-nr  komşu hapın köşesi (`--tab-r`, hap yüksekliğinin yarısını aşmaz)
+ *   --tab-f   kavis yarıçapı = komşunun köşesi + boşluk: kavis komşunun köşesiyle aynı merkezli,
+ *             aradaki kanal her yerde `--tab-gap` genişliğinde
  *   --sheet   seçili yaprağın dolgusu (kabın rengi ya da kartın yüzeyi)
  *   --ring / --ring-w   yaprağın çerçevesi (renkli grupta grubun rengi 2px, Başlangıç'ta kartın
  *             konturu; yoksa 0)
@@ -15,17 +20,19 @@
  */
 export const TAB_RADIUS = 'min(calc(var(--radius) * 2), calc(16px * var(--corner-scale, 1)))'
 
+/** Boşluk, komşu köşesi ve kavis (`--tab-gap` / `--tab-nr` / `--tab-f`, yukarıdaki açıklama). */
+const GAP_VARS =
+  '[--tab-gap:3px] [--tab-nr:min(var(--tab-r),calc((var(--tab-h)-var(--tab-gap))/2))] [--tab-f:calc(var(--tab-nr)+var(--tab-gap))]'
+
 /** Satırın değişkenleri: yarıçap (yaprak px değerini kendisi yazar) ve sekmenin boyu (`h-10`). */
-export const STRIP_VARS =
-  '[--tab-r:min(calc(var(--radius)*2),calc(16px*var(--corner-scale,1)))] [--tab-h:2.5rem]'
+export const STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2),calc(16px*var(--corner-scale,1)))] [--tab-h:2.5rem] ${GAP_VARS}`
 
 /**
  * Yuvarlak şerit (çalışma alanının sekmeleri ve geri / ileri): squircle temada da daire yayı ve
  * yuvarlak temadaki yarıçap (squircle'ın `--corner-scale` büyütmesi geri alınır); kavisler `scoop`.
  */
 export const ROUND_TAB_RADIUS = 'min(calc(var(--radius) * 2 / var(--corner-scale, 1)), 16px)'
-export const ROUND_STRIP_VARS =
-  '[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] [--corner-shape:round] [--corner-concave:scoop]'
+export const ROUND_STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] [--corner-shape:round] [--corner-concave:scoop] ${GAP_VARS}`
 
 /** Kabın (ve seçili yaprağın) rengi: birincil rengin zemine karışmış çok açık tonu. */
 export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
@@ -59,13 +66,13 @@ export const SHEET_ON_SURFACE =
  *   kenar yumuşatması, tam kenarlık kalınlığı; radial-gradient bantları yok.
  */
 const CAP =
-  "absolute top-0 start-0 block h-[calc(var(--tab-h)-var(--tab-r))] w-(--tab-r) border-t-(length:--ring-w) border-(--ring) bg-(--sheet) bg-clip-padding after:absolute after:inset-x-0 after:top-full after:block after:h-(--tab-r) after:bg-(--sheet) after:content-[''] before:pointer-events-none before:absolute before:-bottom-(--tab-r) before:block before:size-[calc(var(--tab-r)*2-var(--ring-w))] before:border-b-(length:--ring-w) before:border-(--ring) before:shadow-[0_0_0_var(--tab-r)_var(--sheet)] before:content-[''] supports-[corner-shape:scoop]:before:size-(--tab-r) supports-[corner-shape:scoop]:before:border-b-0 supports-[corner-shape:scoop]:before:border-t-(length:--ring-w) supports-[corner-shape:scoop]:before:bg-(--sheet) supports-[corner-shape:scoop]:before:bg-clip-padding supports-[corner-shape:scoop]:before:shadow-none supports-[corner-shape:scoop]:before:[clip-path:none] supports-[corner-shape:scoop]:before:[corner-shape:var(--corner-concave,scoop)]"
+  "absolute top-0 start-0 block h-[calc(var(--tab-h)-var(--tab-r))] w-(--tab-r) border-t-(length:--ring-w) border-(--ring) bg-(--sheet) bg-clip-padding after:absolute after:inset-x-0 after:top-full after:block after:h-(--tab-r) after:bg-(--sheet) after:content-[''] before:pointer-events-none before:absolute before:-bottom-(--tab-r) before:block before:size-[calc(var(--tab-f)*2-var(--ring-w))] before:border-b-(length:--ring-w) before:border-(--ring) before:shadow-[0_0_0_var(--tab-f)_var(--sheet)] before:content-[''] supports-[corner-shape:scoop]:before:size-(--tab-f) supports-[corner-shape:scoop]:before:border-b-0 supports-[corner-shape:scoop]:before:border-t-(length:--ring-w) supports-[corner-shape:scoop]:before:bg-(--sheet) supports-[corner-shape:scoop]:before:bg-clip-padding supports-[corner-shape:scoop]:before:shadow-none supports-[corner-shape:scoop]:before:[clip-path:none] supports-[corner-shape:scoop]:before:[corner-shape:var(--corner-concave,scoop)]"
 
 /** Başlangıç kapağı (sol): sol ve üst çerçeve, sol üst köşe; kavis solda. */
-export const CAP_START = `${CAP} rounded-tl-(--tab-rt) border-s-(length:--ring-w) before:end-full before:rounded-br-(--tab-r) before:border-e-(length:--ring-w) before:[clip-path:inset(calc(var(--tab-r)-var(--ring-w))_0_0_calc(var(--tab-r)-var(--ring-w)))] supports-[corner-shape:scoop]:before:rounded-br-none supports-[corner-shape:scoop]:before:border-e-0 supports-[corner-shape:scoop]:before:rounded-tl-[calc(var(--tab-r)-var(--ring-w))] supports-[corner-shape:scoop]:before:border-s-(length:--ring-w)`
+export const CAP_START = `${CAP} rounded-tl-(--tab-rt) border-s-(length:--ring-w) before:end-full before:rounded-br-(--tab-f) before:border-e-(length:--ring-w) before:[clip-path:inset(calc(var(--tab-f)-var(--ring-w))_0_0_calc(var(--tab-f)-var(--ring-w)))] supports-[corner-shape:scoop]:before:rounded-br-none supports-[corner-shape:scoop]:before:border-e-0 supports-[corner-shape:scoop]:before:rounded-tl-[calc(var(--tab-f)-var(--ring-w))] supports-[corner-shape:scoop]:before:border-s-(length:--ring-w)`
 
 /** Bitiş kapağı (sağ): sağ ve üst çerçeve, sağ üst köşe; kavis sağda. Konumu sağ kenar (`-translate-x-full`). */
-export const CAP_END = `${CAP} -translate-x-full rounded-tr-(--tab-rt) border-e-(length:--ring-w) before:start-full before:rounded-bl-(--tab-r) before:border-s-(length:--ring-w) before:[clip-path:inset(calc(var(--tab-r)-var(--ring-w))_calc(var(--tab-r)-var(--ring-w))_0_0)] supports-[corner-shape:scoop]:before:rounded-bl-none supports-[corner-shape:scoop]:before:border-s-0 supports-[corner-shape:scoop]:before:rounded-tr-[calc(var(--tab-r)-var(--ring-w))] supports-[corner-shape:scoop]:before:border-e-(length:--ring-w)`
+export const CAP_END = `${CAP} -translate-x-full rounded-tr-(--tab-rt) border-e-(length:--ring-w) before:start-full before:rounded-bl-(--tab-f) before:border-s-(length:--ring-w) before:[clip-path:inset(calc(var(--tab-f)-var(--ring-w))_calc(var(--tab-f)-var(--ring-w))_0_0)] supports-[corner-shape:scoop]:before:rounded-bl-none supports-[corner-shape:scoop]:before:border-s-0 supports-[corner-shape:scoop]:before:rounded-tr-[calc(var(--tab-f)-var(--ring-w))] supports-[corner-shape:scoop]:before:border-e-(length:--ring-w)`
 
 /** Orta parça: 100px, `scaleX` ile uzar (sol kenarından); üst çerçeve. */
 export const SHEET_MIDDLE =
@@ -76,7 +83,7 @@ export const SHEET_MIDDLE =
  * grupta grubun açık tonu.
  */
 export const PILL =
-  'pointer-events-none absolute inset-x-0.5 inset-y-1 z-0 block rounded-(--tab-r) bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] group-hover/tab:opacity-100 group-has-[:focus-visible]/tab:opacity-100 group-data-[selected]/tab:hidden'
+  'pointer-events-none absolute inset-x-(--tab-gap) top-0 bottom-(--tab-gap) z-0 block rounded-(--tab-nr) bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] group-hover/tab:opacity-100 group-has-[:focus-visible]/tab:opacity-100 group-data-[selected]/tab:hidden'
 /** Renkli grupta hap grubun renginde. */
 export const PILL_TONED = 'bg-[color-mix(in_oklab,var(--g)_14%,transparent)]'
 
