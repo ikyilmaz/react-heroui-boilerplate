@@ -34,7 +34,9 @@ export function Indicator({ id, className }: { id: string; className?: string })
  * (azalış) kayarak girer. Üst öğenin yazı tipini ve rengini alır.
  */
 export function Count({ value, className }: { value: number; className?: string }) {
-  const { motion: level, speed } = useLook()
+  const { speed, anim } = useLook()
+  // Tema paneli › Animasyon › Sayılar
+  const level = anim.counting ? 'full' : 'off'
   const [shown, setShown] = useState(level === 'full' ? 0 : value)
   const shownRef = useRef(shown)
   const counting = useRef(level === 'full')

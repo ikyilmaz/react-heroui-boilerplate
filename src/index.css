@@ -5,6 +5,9 @@
  */
 @layer theme, base, antd, components, utilities;
 
+/* antd'nin hazır bileşen stilleri (sıfır çalışma zamanı, `synergy/ant/theme.tsx`): kurallar yalnızca
+   `--ant-*` değişkenlerini okur; değişkenleri antd temamızdan çalışma zamanında yazar */
+@import 'antd/dist/antd.css' layer(antd);
 @import 'tailwindcss';
 @import './themes/synergy.css' layer(theme);
 

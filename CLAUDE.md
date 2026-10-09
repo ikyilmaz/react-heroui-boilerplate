@@ -9,7 +9,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   (`className`, semantic `classNames`). No `.css` files, `<style>` or `@apply` beyond the two files
   below; inline `style` only for truly dynamic numbers (e.g. a dragged splitter width).
   - `src/index.css`: the layer order `@layer theme, base, antd, components, utilities;` (antd's
-    CSS-in-JS goes into `@layer antd`, so Tailwind utilities always beat it), `@import 'tailwindcss'`,
+    styles live in `@layer antd`, so Tailwind utilities always beat them), antd's prebuilt component
+    CSS (`@import 'antd/dist/antd.css' layer(antd)`, zero runtime), `@import 'tailwindcss'`,
     the theme import, Tailwind `@theme` keys mapping the theme variables to colours / radii / shadows
     (`bg-accent`, `text-muted`, `ring-border`, `rounded-2xl`…) plus `font-display` (`font-mono` removed: `--font-mono: initial`), the
     animation keys (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`), base rules
@@ -28,7 +29,17 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
 - **antd theme.** `ant/theme.tsx` (`AntTheme`, mounted in the shell, wraps antd `App`) resolves the
   theme variables (`--accent`, `--surface*`, `--border`, `--radius`, fonts, root size) on every
   `<html>` class / style change and turns them into antd tokens, so the tema paneli drives antd too
-  (dark via `darkAlgorithm`, motion speed). Flat language: no shadows (overlays get a 1px ring), no
+  (dark via `darkAlgorithm`, motion speed). **Zero runtime**: `zeroRuntime: true` from the very
+  first render (antd freezes it per component at mount; `FIRST` before the variables resolve), the
+  component rules come from `antd/dist/antd.css` (in `@layer antd`, `src/index.css`); at runtime
+  antd only writes the `--ant-*` variables (global and component tokens, CSS variables mode
+  `cssVar: { key: 'synergy' }`, `.synergy` scope, `StyleProvider layer`) plus the small icon reset.
+  The prebuilt rules read only those variables, so theme changes (tema paneli, light / dark, our
+  component tokens) apply live, no reload; the prebuilt file's own variable blocks are scoped to its
+  build key (`.css-var-_R_0_`…) and never match. `hashed: false` (one antd, one theme; the prebuilt
+  selectors are unhashed too). `tokensOf` stays runtime-neutral (the design package uses it without
+  the prebuilt CSS). Checked by screenshot diff against runtime mode (pages, overlays, dark,
+  outlined fields, presets: identical) and a live panel change against a fresh load. Flat language: no shadows (overlays get a 1px ring), no
   wave, **no blur anywhere** (no `backdrop-blur` / `blur()`, opaque surfaces instead), `filled`
   fields, borderless cards; Turkish locale (`tr_TR`, dayjs `tr`). Component tokens only
   in `AntTheme`; everything else with Tailwind. Notifications through `App.useApp().notification`
@@ -65,8 +76,12 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position (Solda / Sağda / Üstte / Altta, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
-  the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation level /
-  speed. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
+  the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation: Animasyon Açık / Az / Kapalı ("Az"
+  and "Açık" are presets for the controls below; Kapalı hides them), Sekme içeriği Tam / Solma /
+  Kapalı (pane and `ContentSwitch` transitions, not the strip), Kayma ve büyüme / Sekme şeridi /
+  Sayılar Açık / Kapalı (what "Az" turns off: Motion transforms and CSS `--motion-shift`; sheet
+  slide and tab shift; count-up), Yüklenirken İskelet / Döner simge / Kapalı (`FormLoading`, the
+  work block's rows), speed; pages read the effective values from `useLook().anim`. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
@@ -108,7 +123,8 @@ renders the page routes with its own address (`screens.tsx`, `useRoutes(…, loc
 `RouteContext` and `LocationContext`:
 `/calisma-alani` (Başlangıç), `/is-akislari[/:box[/:processId[/:requestId]]]` (a request under a list
 opens over that list), `/talepler/:requestId` (a request in its own tab; child forms too),
-`/uygulamalar/:appId`, `/insan-kaynaklari/:module[/:recordId]`. The browser address is the selected
+`/uygulamalar/:appId`, `/insan-kaynaklari[/:module[/:recordId]]` (no module selected by default:
+the navigator and "Görüntülemek için bir öğe seçin"). The browser address is the selected
 tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
 
 - `index.tsx` › `AppShell`: `Shell` (theme settings, providers) › `Frame` (inside `AntTheme`: holds
@@ -334,9 +350,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
-  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`), `warmup.tsx` (`AntWarmup`: the
-  pages' antd components drawn once, hidden, at idle after start-up, so their styles are injected
-  then and not on the first open of a tab).
+  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`).
 - `tabs/`: the one tab system (every strip and content switch in the app):
   - `TabStrip.tsx`: `TabStrip` (scrolling row, WAI-ARIA tablist keyboard — arrows / Home / End move
     focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag),
@@ -402,7 +416,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
 
-## Performance rules (tab system; measured, see `docs/workspace-performance.md`)
+## Performance rules (tab system; measured: `scripts/perf/workspace-after.md`, `open-close-after*.md`)
 
 - Measure on the production build: `npm run build && npx vite preview --port 4173 --strictPort`, then
   `node scripts/perf/tabs.mjs --out <file>.json` (workspace scenarios A–Z: switches, child forms,
@@ -454,8 +468,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `line-clamp-*`); no `scroll.x` on `Table` (a measuring row on every reveal; wrap it in an
   `overflow-x-auto` box, table `w-max min-w-full`). rc-util's scrollbar measurement (every table
   mount inserted a stylesheet: full restyle and relayout) is replaced through a Vite alias by
-  `shared/scrollBarSize.ts` (measured once, at idle). Component styles are injected at idle after
-  start-up (`ant/warmup.tsx`): the first open of a page type no longer restyles the whole page.
+  `shared/scrollBarSize.ts` (measured once, at idle). No antd style is generated or injected at
+  runtime (zero runtime, see antd theme): the first open of a page type doesn't restyle the page.
 - `<Activity mode="hidden">` re-runs every mount effect (antd's measuring, Motion remounts with
   replayed entrance animations) on reveal: use it only for one-time pre-rendering (forms behind the
   skeleton, sleeping panes), not for switching.

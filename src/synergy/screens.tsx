@@ -47,7 +47,7 @@ const ROUTES: RouteObject[] = [
   // Menü uygulamalarının formları
   { path: '/uygulamalar/:appId', element: <AppPage /> },
   // İnsan Kaynakları: modül listesi ve kayıt düzenleme (orijinal modules/hr)
-  { path: '/insan-kaynaklari', element: <Navigate to="/insan-kaynaklari/kullanicilar" replace /> },
+  { path: '/insan-kaynaklari', element: <HrPage /> },
   { path: '/insan-kaynaklari/:module/:recordId?', element: <HrPage /> },
   { path: '*', element: <Gone /> },
 ]

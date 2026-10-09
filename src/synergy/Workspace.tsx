@@ -49,7 +49,7 @@ import {
 import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
 import { useNotify } from '@/synergy/ant/hr'
-import { FormSkeleton } from '@/synergy/DetailTiles'
+import { FormLoading } from '@/synergy/DetailTiles'
 import {
   OpenChildContext,
   ScreenContext,
@@ -98,11 +98,11 @@ type MenuItem = NonNullable<MenuProps['items']>[number]
 /** Yaprağın köşesi (`rounded-2xl`). */
 const SHEET_RADIUS = 'calc(var(--radius) * 2)'
 
-/** Form gelene kadar bölmede duran iskelet (sabit öğe: bölmeler yeniden çizilmesin). */
-const SKELETON = <FormSkeleton />
+/** Form gelene kadar bölmede duran (sabit öğe: bölmeler yeniden çizilmesin; türü tema panelinden). */
+const LOADING = <FormLoading />
 
-/** Başlangıç'ın sabit sekmesi: yalnızca ikon. */
-const PINNED = 'flex-none w-11 min-w-11 max-w-11'
+/** Başlangıç'ın sabit sekmesi: yalnızca ikon, ortada; genişliği rem (yoğunluğun boşluk biriminden değil). */
+const PINNED = 'flex-none w-[2.75rem] min-w-[2.75rem] max-w-[2.75rem]'
 
 /** Şeridin bir sırası: Başlangıç, bir grup ya da grupsuz bir sekme. */
 interface Unit {
@@ -698,7 +698,7 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
                 slide={wide}
                 radius={radius}
                 motion={motion}
-                placeholder={form ? SKELETON : undefined}
+                placeholder={form ? LOADING : undefined}
                 onFocus={focusPane}
               >
                 {nodes.get(key)?.node}
@@ -1079,7 +1079,7 @@ function ScreenLabel({
           labelClassName={start ? 'sr-only' : undefined}
           // Doğal genişliğin tavanı: tek ekranda 22rem, yan yana sekmede ekran başına 15rem
           className={cn(
-            start ? 'justify-center px-0' : lead && 'ps-4',
+            start ? 'flex-1 justify-center px-0' : lead && 'ps-4',
             paired ? 'max-w-[15rem]' : 'max-w-[22rem]',
           )}
         />

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Transition } from 'framer-motion'
-import { useLook, type MotionLevel } from '@/synergy/shared/themeSettings'
+import { useLook, type ContentMotion, type MotionLevel } from '@/synergy/shared/themeSettings'
 import { INSTANT, scaleTransition } from '@/synergy/shared/transition'
 
 /* -------------------------------------------------------------------------------------------------
@@ -47,17 +47,22 @@ export const TRAVEL = 30
 export type TabMotion = Record<keyof typeof TABLE, Transition> & {
   /** Tema paneli › Animasyon düzeyi (elle sürülen hareketler için). */
   level: MotionLevel
+  /** Sekme şeridinin hareketi (yaprak kayar, sekmeler kayarak yer değiştirir). */
+  strip: boolean
+  /** Sekme içeriğinin geçişi: kayarak, yalnızca solarak, hiç. */
+  content: ContentMotion
 }
 
 /** Zamanlama tablosu, düzeye ve hıza göre; aynı ayarda aynı nesne (memo bileşenlerine verilebilir). */
 export function useTabMotion(): TabMotion {
-  const { motion: level, speed } = useLook()
+  const { motion: level, speed, anim } = useLook()
+  const { strip, content } = anim
   return useMemo(() => {
-    const out = { level } as TabMotion
+    const out = { level, strip, content } as TabMotion
     for (const [key, t] of Object.entries(TABLE) as [keyof typeof TABLE, Transition][])
       out[key] = level === 'off' ? INSTANT : scaleTransition(t, speed)
     return out
-  }, [level, speed])
+  }, [level, speed, strip, content])
 }
 
 /** Değişimin yönü: sıra büyüdüyse 1 (sağdan gelir), küçüldüyse -1. Çizimde türetilir. */

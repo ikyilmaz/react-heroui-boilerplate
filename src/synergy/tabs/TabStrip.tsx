@@ -279,7 +279,7 @@ export function TabStrip({
         sw.jump(tw)
         return
       }
-      if (how === 'jump' || t.level !== 'full') {
+      if (how === 'jump' || !t.strip) {
         sx.jump(tx)
         sw.jump(tw)
         return
@@ -306,7 +306,7 @@ export function TabStrip({
       const v = view.current
       if (!sc || !s || !v.overflow) return
       const pad = (latest.current.R ?? 16) + 8
-      const behavior = latest.current.motion.level === 'full' ? 'smooth' : 'auto'
+      const behavior = latest.current.motion.strip ? 'smooth' : 'auto'
       if (s.x - pad < v.scroll) sc.scrollTo({ left: s.x - pad, behavior })
       else if (s.x + s.w + pad > v.scroll + v.width)
         sc.scrollTo({ left: s.x + s.w + pad - v.width, behavior })
@@ -439,7 +439,7 @@ export function TabStrip({
   const flip = useCallback(
     (before: Map<string, Slot>) => {
       const t = latest.current.motion
-      if (t.level !== 'full') return
+      if (!t.strip) return
       for (const [key, el] of [...groups, ...tabs]) {
         const old = before.get(key)
         const now = slots.get(key)

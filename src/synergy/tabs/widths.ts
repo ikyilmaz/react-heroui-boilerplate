@@ -37,9 +37,12 @@ export function fairShare(caps: number[], room: number) {
   return Infinity
 }
 
-/** Dar sekmede üst köşe küçülür: üstün en az üçte biri düz kalır (`clamp((w − 2R) / 3, 0, R)`). */
+/**
+ * Dar sekmede üst köşe küçülür: üstün en az üçte biri düz kalır (her köşe en çok genişliğin üçte
+ * biri; dar ve sabit Başlangıç sekmesi de yuvarlak kalır).
+ */
 export function topRadius(width: number, radius: number) {
-  return Math.round(Math.min(radius, Math.max(0, (width - 2 * radius) / 3)))
+  return Math.round(Math.min(radius, Math.max(0, width / 3)))
 }
 
 /** Sürüklemenin başlama eşiği (px): Chrome gibi sekmenin genişliğiyle orantılı, en az 3px. */

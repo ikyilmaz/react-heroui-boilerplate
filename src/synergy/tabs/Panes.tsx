@@ -167,7 +167,8 @@ export const Pane = memo(function Pane({
   /** Form (sabit öğe: bölme yeniden çizilse de form çizilmez). */
   children: ReactNode
 }) {
-  const { level } = motion
+  // Sekme içeriğinin geçişi (tema paneli › Animasyon › Sekme içeriği)
+  const level = motion.content
   // Kaydırma kabı bağlam için durumda (yalnızca öğe gelince yazılır), hareket için ref'te
   const [scroller, setScroller] = useState<HTMLElement | null>(null)
   const node = useRef<HTMLElement | null>(null)

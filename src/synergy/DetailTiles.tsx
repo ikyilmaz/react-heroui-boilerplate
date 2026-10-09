@@ -32,12 +32,13 @@ import {
   Menu,
   Popover,
   Skeleton,
+  Spin,
   Table,
+  type TableColumnsType,
   Tag,
   Timeline,
   Tooltip,
   Typography,
-  type TableColumnsType,
 } from 'antd'
 import {
   DOCS_REQUIRED,
@@ -279,6 +280,29 @@ function BoneField({ active, tall }: { active: boolean; tall?: boolean }) {
           tall ? '[&_.ant-skeleton-button]:h-24!' : '[&_.ant-skeleton-button]:h-9!',
         )}
       />
+    </Flex>
+  )
+}
+
+/**
+ * Form sunucudan gelene kadar (maket: yeni açılan form bir süre bekler) bölmede duran (tema paneli ›
+ * Animasyon › Yüklenirken): sade bir döner simge, iskelet ya da hiçbir şey.
+ */
+export function FormLoading() {
+  const { loading } = useLook().anim
+  if (loading === 'skeleton') return <FormSkeleton />
+  if (loading === 'off')
+    return <Flex role="status" aria-busy aria-label="Form yükleniyor" className="block" />
+  return (
+    <Flex
+      role="status"
+      aria-busy
+      aria-label="Form yükleniyor"
+      align="center"
+      justify="center"
+      className="min-h-64 py-24"
+    >
+      <Spin />
     </Flex>
   )
 }

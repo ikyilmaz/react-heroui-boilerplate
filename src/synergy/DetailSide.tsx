@@ -219,11 +219,12 @@ const WIPE_SHOWN = 'inset(-10% -10% -10% -10%)'
  * dönüşüm değil, MotionConfig kapatmaz).
  */
 function useStack(sheet: boolean) {
-  const { motion: level, speed } = useLook()
+  const { motion: level, speed, anim } = useLook()
   const enter = useTransition({ duration: 0.36, ease: [0.22, 1, 0.36, 1] })
   const exit = useTransition({ duration: 0.16, ease: [0.4, 0, 1, 1] })
   const off = level === 'off'
-  const wipe = sheet && level === 'full'
+  // Perde açılışı bir kayma: tema paneli › Animasyon › Kayma ve büyüme
+  const wipe = sheet && anim.movement
   const stack: Variants = {
     hidden: {
       ...(sheet && { opacity: 0 }),

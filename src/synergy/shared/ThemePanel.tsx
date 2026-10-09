@@ -6,6 +6,8 @@ import {
   COLORS,
   DENSITIES,
   FONTS,
+  FULL_MOTION,
+  MINIMAL_MOTION,
   RADII,
   SQUIRCLE_SUPPORTED,
   backgroundSwatch,
@@ -16,13 +18,16 @@ import {
   useIsDark,
   type Background,
   type CardStyle,
+  type ContentMotion,
   type CornerShape,
   type Density,
+  type LoadingStyle,
   type MotionLevel,
   type Shadow,
   type Texture,
   type ThemeKit,
   type ThemeSettings,
+  type Toggle,
 } from '@/synergy/shared/themeSettings'
 
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
@@ -134,9 +139,35 @@ const BORDERS: { id: number; label: string }[] = [
 ]
 
 const MOTIONS: { id: MotionLevel; label: string }[] = [
-  { id: 'full', label: 'Tam' },
+  { id: 'full', label: 'Açık' },
   { id: 'reduced', label: 'Az' },
   { id: 'off', label: 'Kapalı' },
+]
+
+/** Sekme içeriğinin geçişi (şerit değil, sekmenin içeriği). */
+const CONTENTS: { id: ContentMotion; label: string }[] = [
+  { id: 'full', label: 'Tam' },
+  { id: 'fade', label: 'Solma' },
+  { id: 'off', label: 'Kapalı' },
+]
+
+/** Form yüklenirken. */
+const LOADINGS: { id: LoadingStyle; label: string }[] = [
+  { id: 'skeleton', label: 'İskelet' },
+  { id: 'spinner', label: 'Döner simge' },
+  { id: 'off', label: 'Kapalı' },
+]
+
+const TOGGLES: { id: Toggle; label: string }[] = [
+  { id: 'on', label: 'Açık' },
+  { id: 'off', label: 'Kapalı' },
+]
+
+/** "Az"ın yönettiği hareketler: her biri ayrıca açılıp kapanır. */
+const MOVES: { key: 'movement' | 'stripMotion' | 'counting'; title: string }[] = [
+  { key: 'movement', title: 'Kayma ve büyüme' },
+  { key: 'stripMotion', title: 'Sekme şeridi' },
+  { key: 'counting', title: 'Sayılar' },
 ]
 
 const { Text } = Typography
@@ -369,6 +400,17 @@ export const ThemePanel = memo(function ThemePanel({
   reducedBySystem?: boolean
 }) {
   const set = (patch: Partial<ThemeSettings>) => onChange({ ...settings, ...patch })
+  /**
+   * Animasyonun alt ayarı: düzey ona uyar ("Az"ın hazır değerleriyle aynıysa Az, değilse Açık;
+   * kapalıyken alt ayarlar görünmez).
+   */
+  const setAnim = (patch: Partial<ThemeSettings>) => {
+    const next = { ...settings, ...patch }
+    const minimal = (Object.keys(MINIMAL_MOTION) as (keyof typeof MINIMAL_MOTION)[]).every(
+      (k) => next[k] === MINIMAL_MOTION[k],
+    )
+    onChange({ ...next, motion: minimal ? 'reduced' : 'full' })
+  }
   const dark = useIsDark()
   const preset = presetOf(kit, settings)
   const atDefault = same(settings, kit.defaults)
@@ -592,31 +634,69 @@ export const ThemePanel = memo(function ThemePanel({
               label="Animasyon"
               value={settings.motion}
               options={MOTIONS}
-              onChange={(motion) => set({ motion })}
+              // "Az" ve "Açık" alt ayarları hazır değerlerine getirir
+              onChange={(motion) =>
+                set({
+                  motion,
+                  ...(motion === 'reduced' ? MINIMAL_MOTION : motion === 'full' ? FULL_MOTION : {}),
+                })
+              }
             />
-            {settings.motion === 'full' && reducedBySystem && (
+            {settings.motion !== 'off' && reducedBySystem && (
               <Text type="secondary" className="text-xs">
-                Sistem hareketi azaltıyor; animasyonlar az düzeyde.
+                Sistem hareketi azaltıyor; kayma, şerit ve sayılar kapalı, içerik yalnızca solar.
               </Text>
             )}
           </Section>
-          <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
-            <Range
-              label="Animasyon hızı"
-              value={settings.motionSpeed}
-              min={0.1}
-              max={3}
-              step={0.1}
-              onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
-            />
-            <Flex justify="space-between">
-              {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
-                <Text key={t} type="secondary" className="text-[0.6875rem]">
-                  {t}
-                </Text>
+          {settings.motion !== 'off' && (
+            <>
+              <Section title="Sekme içeriği">
+                <Segments
+                  label="Sekme içeriği"
+                  value={settings.tabContent}
+                  options={CONTENTS}
+                  onChange={(tabContent) => setAnim({ tabContent })}
+                />
+              </Section>
+              {MOVES.map(({ key, title }) => (
+                <Section key={key} title={title}>
+                  <Segments
+                    label={title}
+                    value={settings[key]}
+                    options={TOGGLES}
+                    onChange={(v) => setAnim({ [key]: v })}
+                  />
+                </Section>
               ))}
-            </Flex>
+            </>
+          )}
+          <Section title="Yüklenirken">
+            <Segments
+              label="Yüklenirken"
+              value={settings.loading}
+              options={LOADINGS}
+              onChange={(loading) => set({ loading })}
+            />
           </Section>
+          {settings.motion !== 'off' && (
+            <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
+              <Range
+                label="Animasyon hızı"
+                value={settings.motionSpeed}
+                min={0.1}
+                max={3}
+                step={0.1}
+                onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
+              />
+              <Flex justify="space-between">
+                {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
+                  <Text key={t} type="secondary" className="text-[0.6875rem]">
+                    {t}
+                  </Text>
+                ))}
+              </Flex>
+            </Section>
+          )}
         </>
       )}
 

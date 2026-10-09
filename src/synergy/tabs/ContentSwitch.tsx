@@ -7,8 +7,9 @@ import { TRAVEL, useTabMotion, type TabMotion } from '@/synergy/tabs/motion'
  * Yön bilgili içerik geçişi: bütün sekme içerikleri için tek parça ve tek zamanlama (`motion.ts`).
  * Yeni içerik değişimin yönünden kısa kayarak (30px) solarak gelir, eskisi yerinde söner. Ajanda
  * sekmeleri, Geri / İleri ve İK bölümleri bunu kullanır; form sekmelerinin bölmeleri DOM'da kalıcı
- * olduğundan aynı hareketi `Panes.tsx`'te MotionValue'larla yapar. Azaltılmış animasyonda
- * yalnızca solma (MotionScope dönüşümü kapatır), kapalıyken anında; ilk açılışta oynamaz.
+ * olduğundan aynı hareketi `Panes.tsx`'te MotionValue'larla yapar. Tema paneli › Animasyon › Sekme
+ * içeriği: "Solma"da yalnızca solma, "Kapalı"da anında (kayma ve büyüme kapalıyken de MotionScope
+ * dönüşümü kapatır); ilk açılışta oynamaz.
  * ------------------------------------------------------------------------------------------------- */
 
 const variants = (t: TabMotion, slide: boolean): Variants => ({
@@ -42,6 +43,13 @@ export function ContentSwitch({
   children: ReactNode
 }) {
   const t = useTabMotion()
+  // Sekme içeriğinin geçişi kapalı: içerik hemen değişir
+  if (t.content === 'off')
+    return (
+      <MotionFlex key={id} vertical={vertical} role={role} className={className}>
+        {children}
+      </MotionFlex>
+    )
   return (
     <AnimatePresence initial={false} mode="popLayout" custom={dir}>
       <MotionFlex
@@ -49,7 +57,7 @@ export function ContentSwitch({
         vertical={vertical}
         role={role}
         custom={dir}
-        variants={variants(t, mode === 'slide')}
+        variants={variants(t, mode === 'slide' && t.content === 'full')}
         initial="enter"
         animate="center"
         exit="exit"

@@ -5,7 +5,6 @@ import trTR from 'antd/locale/tr_TR'
 import dayjs from 'dayjs'
 import 'dayjs/locale/tr'
 import { useIsDark, useLook } from '@/synergy/shared/themeSettings'
-import { AntWarmup } from '@/synergy/ant/warmup'
 
 dayjs.locale('tr')
 
@@ -21,8 +20,12 @@ dayjs.locale('tr')
  * yerine çerçeve rengi. Form alanları ve çerçeveli düğmeler kartlar gibi tema paneli › kart stili /
  * gölge / kontura uyar (`--field-*`): konturlu temada çerçeveli, konturu yoksa dolgulu alanlar.
  *
- * Stiller `@layer antd` içine basılır (`src/index.css` katman sırası: base < antd < components <
- * utilities); Tailwind sınıfları antd'nin varsayılanlarını her zaman ezer.
+ * Sıfır çalışma zamanı: bileşen stilleri antd'nin hazır CSS'i (`antd/dist/antd.css`, `src/index.css`
+ * içinde `@layer antd`'ye alınır); antd çalışma zamanında yalnızca tema değişkenlerini (`--ant-*`,
+ * genel ve bileşen tokenları, `.synergy` kapsamında) yazar. Hazır kurallar renkleri, ölçüleri ve
+ * süreleri hep bu değişkenlerden okur, bu yüzden tema paneli ve açık / koyu sayfayı yenilemeden
+ * antd'ye de ulaşır. Katman sırası: base < antd < components < utilities; Tailwind sınıfları antd'nin
+ * varsayılanlarını her zaman ezer.
  * ------------------------------------------------------------------------------------------------- */
 
 export interface Resolved {
@@ -196,6 +199,9 @@ export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: num
   return {
     algorithm: dark ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
     cssVar: { key: 'synergy' },
+    // Sayfada tek antd ve tek tema: sınıf karması (`css-…`) gerekmez, seçiciler kısa kalır (hazır
+    // CSS'in seçicileri de karmasız)
+    hashed: false,
     token: {
       colorPrimary: v.accent,
       colorInfo: v.accent,
@@ -347,6 +353,12 @@ const WAVE = { disabled: true }
 const CARD_CONFIG = { variant: 'borderless' } as const
 /** Gezinme alttayken bildirimler çubuğun üstünden başlar (çubuk alttan 12 + 44px; içerik 68px'te biter). */
 const ABOVE_BAR = { bottom: 68 }
+/**
+ * Tema değişkenleri çözülmeden önceki ilk karenin yapılandırması. `zeroRuntime` ilk çizimden beri
+ * açık olmalı: antd onu her bileşende ilk çizimde okuyup sabitler (sonradan açılırsa o bileşenler
+ * stillerini yine çalışma zamanında üretir).
+ */
+const FIRST: ThemeConfig = { zeroRuntime: true, cssVar: { key: 'synergy' }, hashed: false }
 
 /**
  * Kabukta: antd bileşenlerine tema, Türkçe yerelleştirme ve düz varsayılanlar (alanlar kart
@@ -361,7 +373,7 @@ export function AntTheme({ children }: { children: ReactNode }) {
   // Yapılandırma yalnızca girdileri değişince yenilenir: ConfigProvider'a her çizimde yeni nesne
   // gelirse bütün antd bileşenleri (gizli form sekmelerindekiler dahil) yeniden çizilir
   const config = useMemo(
-    () => (vars ? tokensOf(vars, dark, animated, speed) : undefined),
+    () => (vars ? { ...tokensOf(vars, dark, animated, speed), zeroRuntime: true } : FIRST),
     [vars, dark, animated, speed],
   )
   return (
@@ -387,8 +399,6 @@ export function AntTheme({ children }: { children: ReactNode }) {
         <App component={false} notification={nav === 'bottom' ? ABOVE_BAR : undefined}>
           {children}
         </App>
-        {/* Bileşen stilleri açılıştan sonra boşta basılır (ilk sekme açılışına düşmesin) */}
-        <AntWarmup />
       </ConfigProvider>
     </StyleProvider>
   )

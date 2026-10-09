@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
-import { ChevronDown, FilterX, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, FilterX, MousePointerClick, Plus, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -96,7 +96,21 @@ export function HrPage() {
   // Geniş ekranda alan ekranın (sekmeler açıkken bölmenin) kalanını doldurur; paneller kendi içinde kayar
   const scroller = useTabScroller()
   const setFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
-  if (!def) return <Navigate to={hrLink('kullanicilar')} replace />
+  // Bilinmeyen modül: modülsüz İK'ya
+  if (params.module && !def) return <Navigate to={HR_BASE} replace />
+  // Modül seçili değil (raftan, menüden açılınca): gezgin ve seçim notu; hiçbiri kendiliğinden seçilmez
+  if (!def)
+    return (
+      <Flex ref={setFill} align="start" gap={12} className="@6xl:h-(--fill-h) @6xl:items-stretch">
+        <HrNav always />
+        <Card
+          className={cn(CARD, 'min-w-0 flex-1 self-stretch')}
+          classNames={{ body: 'flex h-full items-center justify-center' }}
+        >
+          <EmptyNote icon={MousePointerClick} text={PICK_ITEM} className="py-16" />
+        </Card>
+      </Flex>
+    )
   return (
     <Flex ref={setFill} align="start" gap={12} className="@6xl:h-(--fill-h) @6xl:items-stretch">
       <HrNav current={def} />
@@ -156,16 +170,24 @@ function NavItem({
   )
 }
 
-function HrNav({ current }: { current: ModuleDef }) {
+/** Modül seçili değilken (104028). */
+const PICK_ITEM = 'Görüntülemek için bir öğe seçin'
+
+/** Modül gezgini. `always`: dar bölmede de görünür (modül seçili değilken tek seçim yolu). */
+function HrNav({ current, always = false }: { current?: ModuleDef; always?: boolean }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
-    current.parent ? { [current.parent]: true } : {},
+    current?.parent ? { [current.parent]: true } : {},
   )
   const grow = useTransition({ duration: 0.25, ease: [0.22, 1, 0.36, 1] })
   return (
     <Card
       role="navigation"
       aria-label={HR_LABELS.title}
-      className={cn(CARD, 'hidden w-64 shrink-0 @6xl:flex @6xl:flex-col')}
+      className={cn(
+        CARD,
+        'w-64 shrink-0',
+        always ? 'flex flex-col' : 'hidden @6xl:flex @6xl:flex-col',
+      )}
       classNames={{ body: 'flex min-h-0 flex-1 flex-col p-0' }}
     >
       <Scroll className="min-h-0 flex-1 gap-0.5 p-2">
@@ -177,7 +199,7 @@ function HrNav({ current }: { current: ModuleDef }) {
           if (item === 'bakim' || item === 'ozellik') {
             const p = PARENTS[item]
             const children = MODULES.filter((m) => m.parent === item)
-            const isOpen = !!open[item] || current.parent === item
+            const isOpen = !!open[item] || current?.parent === item
             const Icon = p.icon
             return (
               <Flex key={item} vertical>
@@ -214,7 +236,7 @@ function HrNav({ current }: { current: ModuleDef }) {
                       className="overflow-hidden"
                     >
                       {children.map((m) => (
-                        <NavItem key={m.id} m={m} current={m.id === current.id} nested />
+                        <NavItem key={m.id} m={m} current={m.id === current?.id} nested />
                       ))}
                     </MotionFlex>
                   )}
@@ -223,7 +245,7 @@ function HrNav({ current }: { current: ModuleDef }) {
             )
           }
           const m = findModule(item)!
-          return <NavItem key={m.id} m={m} current={m.id === current.id} />
+          return <NavItem key={m.id} m={m} current={m.id === current?.id} />
         })}
       </Scroll>
     </Card>

@@ -34,8 +34,9 @@ test('eşit pay: doğal genişliğinde duranlar payı bırakır', () => {
 test('dar sekmede üst köşe: üstün en az üçte biri düz', () => {
   assert.equal(topRadius(200, 16), 16)
   assert.equal(topRadius(5 * 16, 16), 16)
-  assert.equal(topRadius(50, 16), 6)
-  assert.equal(topRadius(20, 16), 0)
+  assert.equal(topRadius(39, 22), 13)
+  assert.equal(topRadius(30, 16), 10)
+  assert.equal(topRadius(0, 16), 0)
 })
 
 test('sürükleme eşiği sekmeyle orantılı, en az 3px', () => {

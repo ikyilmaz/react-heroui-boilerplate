@@ -45,8 +45,17 @@ export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
 export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
 /** Köşe biçimi: yuvarlak (daire yayı) ya da squircle (süperelips; CSS `corner-shape`). */
 export type CornerShape = 'round' | 'squircle'
-/** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
+/**
+ * Animasyon: açık, az (hazır ayar: aşağıdaki hareketler kapalı, sekme içeriği yalnızca solar),
+ * kapalı (hepsi kapalı, süreler sıfır).
+ */
 export type MotionLevel = 'full' | 'reduced' | 'off'
+/** Sekme içeriğinin geçişi (sekme değişince içerik): kayarak ve solarak, yalnızca solarak, hiç. */
+export type ContentMotion = 'full' | 'fade' | 'off'
+/** Form yüklenirken (sunucudan gelene kadar): iskelet, döner simge, hiçbiri. */
+export type LoadingStyle = 'skeleton' | 'spinner' | 'off'
+/** Tek bir hareketin açık / kapalı ayarı. */
+export type Toggle = 'on' | 'off'
 /**
  * Zemin dokusu (zeminin üstünde, kartların arkasında): düz, nokta / çizgi ızgarası ya da birincil
  * renkten geçişler (üstten, alttan, köşeden, tepeden ışık, çapraz iki köşe, aurora).
@@ -78,9 +87,45 @@ export interface ThemeSettings {
   nav: string
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. */
   motion: MotionLevel
+  /** Sekme içeriğinin geçişi (şeridin kendisi değil). */
+  tabContent: ContentMotion
+  /** Form yüklenirken gösterilen. */
+  loading: LoadingStyle
+  /** Kayma ve büyüme (sayfa içi giriş / çıkış, gösterge kayması, yerleşim): kapalıyken yalnızca solma. */
+  movement: Toggle
+  /** Sekme şeridinin hareketi: seçili yaprak kayar, sekmeler yer değiştirirken kayar. */
+  stripMotion: Toggle
+  /** Sayılar sayarak gelir. */
+  counting: Toggle
   /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
   motionSpeed: number
 }
+
+/** Animasyon bölümünün ayarları (hazır temalar bunlara dokunmaz). */
+export type MotionKey =
+  | 'motion'
+  | 'motionSpeed'
+  | 'tabContent'
+  | 'loading'
+  | 'movement'
+  | 'stripMotion'
+  | 'counting'
+
+/** "Az" düzeyi: az düzeyinin yönettiği hareketler kapalı, sekme içeriği yalnızca solar. */
+export const MINIMAL_MOTION = {
+  tabContent: 'fade',
+  movement: 'off',
+  stripMotion: 'off',
+  counting: 'off',
+} as const satisfies Partial<ThemeSettings>
+
+/** "Açık" düzeyi: az düzeyinin yönettiği hareketler açık. */
+export const FULL_MOTION = {
+  tabContent: 'full',
+  movement: 'on',
+  stripMotion: 'on',
+  counting: 'on',
+} as const satisfies Partial<ThemeSettings>
 
 /** Tema paneli yapılandırması. */
 export interface ThemeKit {
@@ -105,7 +150,7 @@ export interface ThemePreset {
   id: string
   label: string
   description: string
-  look: Partial<Omit<ThemeSettings, 'nav' | 'corner' | 'motion' | 'motionSpeed'>>
+  look: Partial<Omit<ThemeSettings, 'nav' | 'corner' | MotionKey>>
 }
 
 /** Tarayıcı squircle köşe çizebiliyor mu (`corner-shape`); çizemiyorsa ayar hiçbir şey yazmaz. */
@@ -403,7 +448,7 @@ function variables(
   s: ThemeSettings,
   d: ThemeSettings,
   dark: boolean,
-  motion: MotionLevel,
+  anim: Anim,
 ): Partial<Record<VarName, string>> {
   const out: Partial<Record<VarName, string>> = {}
   const { h, c, l } = COLORS.find((x) => x.id === s.color) ?? COLORS[0]
@@ -499,9 +544,9 @@ function variables(
   if (s.density !== d.density || s.density !== 'normal')
     out['--spacing'] = `${DENSITIES[s.density].spacing}rem`
   // Animasyon: az = kayma / ölçek yok, kapalı = süre de yok
-  if (motion !== 'full') out['--motion-shift'] = '0'
+  if (!anim.movement) out['--motion-shift'] = '0'
   // Hız çarpanı süreleri böler (2× → yarı süre); kapalıda süre 0
-  if (motion === 'off') out['--motion-time'] = '0'
+  if (anim.off) out['--motion-time'] = '0'
   else if (s.motionSpeed !== 1)
     out['--motion-time'] = String(Math.round((1 / s.motionSpeed) * 1000) / 1000)
   return out
@@ -522,6 +567,11 @@ const NOTHING = {
   nav: '',
   motion: 'full',
   motionSpeed: 1,
+  tabContent: 'full',
+  loading: 'spinner',
+  movement: 'on',
+  stripMotion: 'on',
+  counting: 'on',
 } as unknown as ThemeSettings
 
 /**
@@ -529,7 +579,7 @@ const NOTHING = {
  * (tema panelindeki hazır tema önizlemesi; kabuğun o anki ayarlarından bağımsız).
  */
 export function lookVars(look: ThemeSettings, dark: boolean) {
-  const out: Record<string, string> = { ...variables(look, NOTHING, dark, 'full') }
+  const out: Record<string, string> = { ...variables(look, NOTHING, dark, animOf(look, false)) }
   if (look.font === 'synergy') {
     out['--font-sans'] = `'Inter', ${SANS}`
     out['--font-display'] = `'Bricolage Grotesque', ${SANS}`
@@ -564,6 +614,12 @@ function load(kit: ThemeKit): ThemeSettings {
       cardStyle: Object.keys(FIELD_FILL),
       // Kaldırılmış gezinme konumu (ör. "İkisi de") varsayılana döner
       nav: kit.navOptions.map((o) => o.id),
+      motion: ['full', 'reduced', 'off'],
+      tabContent: ['full', 'fade', 'off'],
+      loading: ['skeleton', 'spinner', 'off'],
+      movement: ['on', 'off'],
+      stripMotion: ['on', 'off'],
+      counting: ['on', 'off'],
     }
     const keys = Object.keys(kit.defaults) as (keyof ThemeSettings)[]
     return Object.fromEntries(
@@ -585,18 +641,58 @@ function clear(root: HTMLElement) {
 
 /* --- Görünüm bağlamı (sayfalar okur) ---------------------------------------------------------- */
 
+/** Geçerli animasyonlar (ayarlar, ana düzey ve sistemin "hareketi azalt" tercihiyle birlikte). */
+export interface Anim {
+  /** Animasyon kapalı: hiçbir şey hareket etmez, süreler sıfır. */
+  off: boolean
+  /** Sekme içeriğinin geçişi. */
+  content: ContentMotion
+  /** Form yüklenirken gösterilen. */
+  loading: LoadingStyle
+  /** Kayma ve büyüme. */
+  movement: boolean
+  /** Sekme şeridinin hareketi. */
+  strip: boolean
+  /** Sayıların sayarak gelmesi. */
+  counting: boolean
+}
+
+/** Ayarların geçerli animasyonları (`reduced`: sistem hareketi azaltıyor). */
+export function animOf(s: ThemeSettings, reduced: boolean): Anim {
+  const off = s.motion === 'off'
+  const moving = !off && !reduced
+  return {
+    off,
+    content: off ? 'off' : reduced && s.tabContent === 'full' ? 'fade' : s.tabContent,
+    loading: s.loading,
+    movement: moving && s.movement === 'on',
+    strip: moving && s.stripMotion === 'on',
+    counting: moving && s.counting === 'on',
+  }
+}
+
 export interface Look {
   nav: string
   /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
   motion: MotionLevel
   /** Animasyon hızı çarpanı. */
   speed: number
+  /** Geçerli animasyonlar (tek tek). */
+  anim: Anim
 }
 
 export const LookContext = createContext<Look>({
   nav: 'default',
   motion: 'full',
   speed: 1,
+  anim: {
+    off: false,
+    content: 'full',
+    loading: 'spinner',
+    movement: true,
+    strip: true,
+    counting: true,
+  },
 })
 
 const REDUCE = '(prefers-reduced-motion: reduce)'
@@ -697,17 +793,27 @@ export function useThemeSettings(kit: ThemeKit) {
   const systemReduced = useSystemReduced()
   const motion: MotionLevel =
     settings.motion === 'full' && systemReduced ? 'reduced' : settings.motion
+  const { tabContent, loading, movement, stripMotion, counting } = settings
+  // Ayrı ayrı değerlerle (nesne kimliği her ayar değişikliğinde yenilenmesin)
+  const anim = useMemo(
+    () =>
+      animOf(
+        { motion: settings.motion, tabContent, loading, movement, stripMotion, counting } as ThemeSettings,
+        systemReduced,
+      ),
+    [settings.motion, tabContent, loading, movement, stripMotion, counting, systemReduced],
+  )
 
   useEffect(() => {
     const root = document.documentElement
     clear(root)
-    Object.entries(variables(settings, kit.defaults, dark, motion)).forEach(
+    Object.entries(variables(settings, kit.defaults, dark, anim)).forEach(
       ([k, val]) => val && root.style.setProperty(k, val),
     )
     const { scale } = DENSITIES[settings.density]
     if (scale !== 16) root.style.fontSize = `${scale}px`
     return () => clear(root)
-  }, [settings, dark, kit, motion])
+  }, [settings, dark, kit, anim])
 
   const update = useCallback(
     (next: ThemeSettings) => {
@@ -725,6 +831,6 @@ export function useThemeSettings(kit: ThemeKit) {
   // Bağlamın değeri yalnızca görünüm değişince yenilenir: kabuk her çizildiğinde (ör. konum
   // değişince) `useLook` okuyan her bileşen, gizli form sekmeleri dahil, yeniden çizilmesin
   const { nav, motionSpeed: speed } = settings
-  const look = useMemo<Look>(() => ({ nav, motion, speed }), [nav, motion, speed])
+  const look = useMemo<Look>(() => ({ nav, motion, speed, anim }), [nav, motion, speed, anim])
   return [settings, update, look] as const
 }

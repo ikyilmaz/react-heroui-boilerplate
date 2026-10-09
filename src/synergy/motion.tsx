@@ -16,12 +16,15 @@ import { INSTANT, scaleTransition } from '@/synergy/shared/transition'
 /** Seçim göstergesi yayı (hızlı, hafif esnek). */
 const SPRING: Transition = { type: 'spring', stiffness: 520, damping: 40, mass: 0.9 }
 
-/** Kabukta: framer-motion'ı düzeye bağlar (az / kapalıda yerleşim ve kayma yok). */
+/**
+ * Kabukta: framer-motion'ı ayarlara bağlar (kayma ve büyüme kapalıyken — "Az"da da — yerleşim ve
+ * kayma yok, yalnızca solma; kapalıda anında).
+ */
 export function MotionScope({ children }: { children: ReactNode }) {
-  const level = useLook().motion
+  const { motion: level, anim } = useLook()
   return (
     <MotionConfig
-      reducedMotion={level === 'full' ? 'never' : 'always'}
+      reducedMotion={anim.movement ? 'never' : 'always'}
       transition={level === 'off' ? INSTANT : undefined}
     >
       {children}

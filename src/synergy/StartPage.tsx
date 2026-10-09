@@ -18,11 +18,13 @@ import {
   Segmented,
   Select,
   Skeleton,
+  Spin,
   Table,
+  type TableColumnsType,
   Tag,
   Typography,
-  type TableColumnsType,
 } from 'antd'
+import { useLook } from '@/synergy/shared/themeSettings'
 import type { SortOrder } from 'antd/es/table/interface'
 import { ExternalLink, History, MousePointerClick, Moon, RefreshCw, Star, Sun } from 'lucide-react'
 import {
@@ -131,13 +133,27 @@ const dim = (on: boolean) => cn('transition-opacity', on && 'opacity-50')
 type TableSort = { column: string; direction: 'ascending' | 'descending' }
 
 /** Yenilenirken liste yerine parıldayan iskelet satırları. */
+/** Yüklenirken (tema paneli › Animasyon › Yüklenirken): iskelet satırları, döner simge ya da hiçbiri. */
 function SkeletonRows({ rows = 6, className }: { rows?: number; className?: string }) {
+  const { loading, off } = useLook().anim
+  if (loading === 'off') return null
+  if (loading === 'spinner')
+    return (
+      <Flex
+        role="status"
+        aria-label="Yükleniyor"
+        justify="center"
+        className={cn('py-10', className)}
+      >
+        <Spin />
+      </Flex>
+    )
   return (
     <Flex vertical gap={8} aria-hidden className={className}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton.Button
           key={i}
-          active
+          active={!off}
           block
           className="[&_.ant-skeleton-button]:h-10! [&_.ant-skeleton-button]:rounded-lg!"
           style={{ opacity: 1 - i * 0.12 }}

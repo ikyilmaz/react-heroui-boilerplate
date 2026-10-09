@@ -20,6 +20,11 @@ export const APP_THEME: ThemeKit = {
     nav: 'top',
     motion: 'full',
     motionSpeed: 1,
+    tabContent: 'full',
+    loading: 'spinner',
+    movement: 'on',
+    stripMotion: 'on',
+    counting: 'on',
   },
   navOptions: [
     { id: 'default', label: 'Solda', side: 'left' },
