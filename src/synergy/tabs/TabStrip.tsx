@@ -981,8 +981,9 @@ export const Tab = memo(function Tab({
         ...(out && { position: 'absolute', left: out.px, width: out.w, top: 0 }),
       }}
       onPointerDown={onPointerDown}
+      // İçerik hapın kutusunda ortalı (hap alttan `--tab-gap` kısa: alt pay kadar yukarıda)
       className={cn(
-        'group/tab relative flex h-(--tab-h) items-stretch data-[dragging]:z-3',
+        'group/tab relative flex h-(--tab-h) items-stretch pb-(--tab-gap) data-[dragging]:z-3',
         TAB_SIZING[api.sizing],
         SEPARATOR,
         !present && 'pointer-events-none',
@@ -1137,7 +1138,8 @@ export function TabClose({
           onClose()
         }}
         className={cn(
-          'relative z-2 -ms-1 me-1 shrink-0 self-center rounded-full text-muted opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] hover:text-foreground! focus-visible:opacity-100',
+          // Hapın sağ kenarından düğmenin üstteki / alttaki payı kadar içeride
+          'relative z-2 -ms-1 me-[calc(var(--tab-gap)+4px)] shrink-0 self-center rounded-full text-muted opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] hover:text-foreground! focus-visible:opacity-100',
           'group-hover/tab:opacity-100 group-data-[selected]/tab:opacity-100',
           'group-[[data-compact]:not([data-selected])]/tab:hidden',
         )}

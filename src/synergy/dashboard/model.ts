@@ -184,23 +184,32 @@ const at = (kind: WidgetKind, x: number, y: number, sizeId: string): PlacedWidge
   const s = WIDGETS[kind].sizes.find((z) => z.id === sizeId)!
   return { kind, x, y, w: s.w, h: s.h }
 }
+/** Serbest boyutlu yerleşim (görünüm en yakın desteklenen boyuta göre seçilir, `sizeOf`). */
+const box = (kind: WidgetKind, x: number, y: number, w: number, h: number): PlacedWidget => ({
+  kind,
+  x,
+  y,
+  w,
+  h,
+})
 
 /**
- * Hazır düzenler: hepsi 12 sütun × 9 satırlık ızgarayı boşluksuz doldurur (satır yüksekliği
- * ekrana göre hesaplandığından pano görünen alanı tam kaplar, sayfa kaymaz).
+ * Hazır düzenler: hepsi 12 sütunluk ızgarayı boşluksuz doldurur (Varsayılan 10, diğerleri 9 satır;
+ * satır yüksekliği ekrana göre hesaplandığından pano görünen alanı tam kaplar, sayfa kaymaz).
  */
 export const PRESETS: Preset[] = [
   {
     id: 'default',
     name: 'Varsayılan',
-    description: 'Karşılama, saat, hava ve iş akışları; sağda uygulamalar sütunu',
-    // sol 9: 3 + 2 + 4 | 9 × 7 · sağ 3 × 9
+    description: 'Üstte karşılama, hava ve uygulamalar; altta iş akışları, saat ve notlar',
+    // üst 3 satır: sol 4 × (2 + 1) | uygulamalar 8 × 3 · alt 7 satır: 9 × 7 | sağ 3 × (1 + 6)
     items: [
-      at('greeting', 0, 0, 's'),
-      at('clock', 3, 0, 's'),
-      at('weather', 5, 0, 'm'),
-      at('work', 0, 2, 's'),
-      at('apps', 9, 0, 'column'),
+      box('greeting', 0, 0, 4, 2),
+      box('weather', 0, 2, 4, 1),
+      box('apps', 4, 0, 8, 3),
+      box('work', 0, 3, 9, 7),
+      box('clock', 9, 3, 3, 1),
+      box('notes', 9, 4, 3, 6),
     ],
   },
   {

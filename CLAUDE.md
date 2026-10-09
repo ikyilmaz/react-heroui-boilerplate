@@ -243,7 +243,9 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   with the same threshold (İK's edit card beside / below the table). Viewport breakpoints stay only
   in the shell, dialogs / popovers (portals) and the phone checks (`max-width: 639px`: fixed bottom
   action bars).
-- `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
+- `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar (in the horizontal
+  sizes the tiles go to two rows, left to right, when the widget's own height allows: a size container
+  query on its panel, `min-height: 13rem`), and the work block
   (5 category tabs — the shared `TabStrip`, `sizing="fill"`, sheet on the card surface with the card
   contour running down the flares into the card's top line (`SHEET_ON_SURFACE`); the work card is
   their `tabpanel` — + process groups ↔ "Süreç Talepleri"; `WorkBlock`, exported for the start
@@ -255,7 +257,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   only when the target cell changes —, placeholder, vertical compaction; `useWidth`),
   `Dashboard.tsx` (the board with edit mode — drag, resize snapping to the nearest supported size,
   size menu, add / remove, reset; row height fitted to the visible area so the page never scrolls, presets
-  tile 12 × 9 with no gaps and `fillGaps` grows neighbours into any empty cell (view mode and on
+  tile 12 columns with no gaps (Varsayılan 12 × 10: Karşılama 4×2 and Hava 4×1 beside Favoriler
+  8×3, then İş Akışları 9×7 beside Saat 3×1 and Notlar 3×6; the others 12 × 9) and `fillGaps` grows neighbours into any empty cell (view mode and on
   "Bitti"); resize is free (min = smallest supported size), the view picks the nearest supported size;
   stacked below 960px), `widgets.tsx` (the extra widgets).
 - İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as agenda tabs incl.
@@ -400,7 +403,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     (round corners and flares in squircle too, `round` strips), gap geometry: `--tab-gap` (3px),
     `--tab-nr` (a neighbour pill's corner) and the flare radius `--tab-f` = `--tab-nr` + gap, so the
     flare is concentric with a neighbouring hover pill or back / forward and the channel between them
-    is one width everywhere (hover pill inset by the gap at the sides and bottom, its top level with the selected sheet; strip insets use `--tab-f`), `TAB_BG`, `SHEET` / `SHEET_RING` /
+    is one width everywhere (hover pill inset by the gap at the sides and bottom, its top level with the selected sheet; tab content and separators centred on the pill — slot `pb-(--tab-gap)` —, the close button as far from the pill's end as from its top and bottom; strip insets use `--tab-f`), `TAB_BG`, `SHEET` / `SHEET_RING` /
     `SHEET_ON_SURFACE`, caps and middle, `PILL`, `SEPARATOR`, `GROUP_TONE` / `GROUP_LINE` /
     `GROUP_DOT`). Flares: with `corner-shape` a `scoop` (squircle: `--corner-concave`) box whose ring is
     a real border; otherwise (Safari, Firefox) a transparent box with a convex corner, the ring as its

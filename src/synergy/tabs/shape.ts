@@ -92,7 +92,7 @@ export const PILL_TONED = 'bg-[color-mix(in_oklab,var(--g)_14%,transparent)]'
  * üzerine gelinmiş ya da odakta ise (hapla birlikte) söner; grubun son sekmesinde yok.
  */
 export const SEPARATOR =
-  "after:pointer-events-none after:absolute after:end-0 after:top-1/2 after:z-0 after:block after:h-4 after:w-px after:translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-[color-mix(in_oklab,var(--foreground)_20%,transparent)] after:content-[''] after:transition-opacity after:duration-[calc(150ms*var(--motion-time,1))] last:after:opacity-0 data-[selected]:after:opacity-0 hover:after:opacity-0 has-[:focus-visible]:after:opacity-0 has-[+[data-tab][data-selected]]:after:opacity-0 has-[+[data-tab]:hover]:after:opacity-0 has-[+[data-tab]_:focus-visible]:after:opacity-0"
+  "after:pointer-events-none after:absolute after:end-0 after:top-[calc(50%-var(--tab-gap)/2)] after:z-0 after:block after:h-4 after:w-px after:translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-[color-mix(in_oklab,var(--foreground)_20%,transparent)] after:content-[''] after:transition-opacity after:duration-[calc(150ms*var(--motion-time,1))] last:after:opacity-0 data-[selected]:after:opacity-0 hover:after:opacity-0 has-[:focus-visible]:after:opacity-0 has-[+[data-tab][data-selected]]:after:opacity-0 has-[+[data-tab]:hover]:after:opacity-0 has-[+[data-tab]_:focus-visible]:after:opacity-0"
 
 /** Grubun rengi `--g` (tema dosyası `--group-1` … `--group-6`). */
 export const GROUP_TONE = [

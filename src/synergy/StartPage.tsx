@@ -565,7 +565,8 @@ function AppsBlock({ size }: { size: WidgetSize }) {
           vertical
           role="tabpanel"
           aria-label={APPS_LABELS[tab]}
-          className="min-h-0 min-w-0 flex-1"
+          // Yatay boyutlarda kendi yüksekliğine göre (kap sorgusu): yer varsa karolar iki satır
+          className={cn('min-h-0 min-w-0 flex-1', side && '[container-type:size]')}
         >
           {lists[tab].length === 0 ? (
             <EmptyNote text="Kullanılabilir öğe yok." className="py-3" />
@@ -590,10 +591,19 @@ function AppsBlock({ size }: { size: WidgetSize }) {
               <Flex
                 role="list"
                 aria-label={APPS_LABELS[tab]}
+                // İki satırda sıra soldan sağa (sütun sayısı öğe sayısının yarısı); sığmazsa yana
+                // kayar
+                style={
+                  side
+                    ? ({ '--cols': Math.ceil(lists[tab].length / 2) } as CSSProperties)
+                    : undefined
+                }
                 className={cn(
                   'grid grid-flow-col gap-1',
-                  // Yanda karolar hücrenin yüksekliğini doldurur
-                  side ? 'h-full auto-cols-[9rem] gap-2' : 'auto-cols-[8rem]',
+                  // Yanda karolar hücrenin yüksekliğini doldurur; hücre yeterince yüksekse iki satır
+                  side
+                    ? 'h-full auto-cols-[9rem] gap-2 [@container_(min-height:13rem)]:grid-flow-row [@container_(min-height:13rem)]:grid-cols-[repeat(var(--cols),9rem)] [@container_(min-height:13rem)]:grid-rows-2'
+                    : 'auto-cols-[8rem]',
                 )}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
