@@ -5,6 +5,7 @@ import trTR from 'antd/locale/tr_TR'
 import dayjs from 'dayjs'
 import 'dayjs/locale/tr'
 import { useIsDark, useLook } from '@/synergy/shared/themeSettings'
+import { AntWarmup } from '@/synergy/ant/warmup'
 
 dayjs.locale('tr')
 
@@ -386,6 +387,8 @@ export function AntTheme({ children }: { children: ReactNode }) {
         <App component={false} notification={nav === 'bottom' ? ABOVE_BAR : undefined}>
           {children}
         </App>
+        {/* Bileşen stilleri açılıştan sonra boşta basılır (ilk sekme açılışına düşmesin) */}
+        <AntWarmup />
       </ConfigProvider>
     </StyleProvider>
   )

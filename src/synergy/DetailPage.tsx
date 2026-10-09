@@ -224,7 +224,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
   const phone = useMediaQuery('(max-width: 639px)')
   const scroller = useTabScroller()
   const scrolled = useScrolled(220, scroller)
-  const [attachFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const attachFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   const bandStyle = useBand('record')
   const solid = !bandStyle.light
   const band = cn(CARD, bandStyle.band)
@@ -272,9 +272,8 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
         >
           {!phone && scrolled && <Flex className={ACTIONS_SCROLL}>{actions(true)}</Flex>}
           <Typography.Text
-            ellipsis
             title={app.caption}
-            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current`}
+            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current truncate`}
           >
             {app.caption}
           </Typography.Text>
@@ -313,9 +312,9 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
       </Card>
 
       {/* Form kartı kabın (sayfa ya da form sekmesinin bölmesi) altına kadar uzanır */}
-      <Flex ref={attachFill} style={fillStyle} className="flex">
+      <Flex ref={attachFill} className="flex">
         <Card
-          className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1')}
+          className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1 [--fill-h:inherit]')}
           classNames={{ body: 'p-6 @xl:p-8' }}
         >
           <AppFormBody form={form} />
@@ -437,11 +436,15 @@ function Viewer({
   const band = cn(CARD, bandStyle.band)
   const scrolled = useScrolled(220, scroller)
   // Form ve yan bilgiler kabın (sayfa ya da form sekmesinin bölmesi) altına kadar uzanır
-  const [attachFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const attachFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   const attachBento = useCallback(
     (el: HTMLElement | null) => {
-      attachSide(el)
-      attachFill(el)
+      const side = attachSide(el)
+      const fill = attachFill(el)
+      return () => {
+        side?.()
+        fill?.()
+      }
     },
     [attachSide, attachFill],
   )
@@ -547,9 +550,8 @@ function Viewer({
           {/* Olaylar en solda; formun adı (yalnızca ad, kod yok) en sağda, uzunsa kısalır */}
           {!phone && scrolled && <Flex className={ACTIONS_SCROLL}>{actions(true)}</Flex>}
           <Typography.Text
-            ellipsis
             title={caption}
-            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current`}
+            className={`${TITLE} ms-auto max-w-[min(24rem,40%)] min-w-0 shrink text-end text-current truncate`}
           >
             {process.form}
           </Typography.Text>
@@ -655,7 +657,6 @@ function Viewer({
       <Flex
         ref={attachBento}
         vertical={side.mode === 'stack'}
-        style={side.mode === 'stack' ? undefined : fillStyle}
         className={cn('relative gap-3', side.mode !== 'stack' && 'items-start')}
       >
         {/*
@@ -672,7 +673,8 @@ function Viewer({
           className={cn(
             CARD,
             'min-w-0 overflow-clip',
-            side.mode !== 'stack' && 'min-h-(--fill-h) flex-1',
+            // Kabın boyu kalıtılmaz (`src/index.css`): kullanan öğe açıkça alır
+            side.mode !== 'stack' && 'min-h-(--fill-h) flex-1 [--fill-h:inherit]',
             formHidden && 'hidden',
           )}
           classNames={{ body: 'p-6 @xl:p-8' }}
@@ -1173,7 +1175,7 @@ function NavGrid({
           <Typography.Text type="secondary" className="text-xs">
             {box.title}
           </Typography.Text>
-          <Typography.Title level={2} ellipsis className="m-0 font-display text-lg">
+          <Typography.Title level={2} className="m-0 font-display text-lg truncate">
             {caption}
           </Typography.Title>
         </Flex>

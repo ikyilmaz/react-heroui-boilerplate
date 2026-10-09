@@ -1,0 +1,407 @@
+{
+  "S1": {
+    "title": "Başlangıç → yeni sekmede talep",
+    "clickTask": 3.9,
+    "maxTask": 62.5,
+    "busy": 696.2,
+    "forcedInJs": 120.2,
+    "paint": 141.3,
+    "layerize": 43.9,
+    "style": 123,
+    "layout": 92.8,
+    "gbcr": 45,
+    "styleWrites": 165,
+    "maxGap": 67,
+    "maxGap500": 67,
+    "dropped": 8,
+    "loaf": 9,
+    "worst": {
+      "start": 6279,
+      "dur": 85,
+      "block": 23,
+      "render": 51,
+      "style": 8,
+      "scripts": [
+        {
+          "dur": 22,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 44,
+          "fn": "h",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1406837",
+          "forced": 41
+        }
+      ],
+      "at": 1102
+    },
+    "tabs": [
+      "Başlangıç",
+      "Satın Alma Talep Formu"
+    ],
+    "errors": []
+  },
+  "S1w": {
+    "title": "Başlangıç → yeni sekmede talep (ikinci kez)",
+    "clickTask": 2.1,
+    "maxTask": 61.4,
+    "busy": 653.8,
+    "forcedInJs": 120.6,
+    "paint": 147.5,
+    "layerize": 45.4,
+    "style": 120.4,
+    "layout": 93.2,
+    "gbcr": 45,
+    "styleWrites": 166,
+    "maxGap": 67,
+    "maxGap500": 50,
+    "dropped": 8,
+    "loaf": 9,
+    "worst": {
+      "start": 8285,
+      "dur": 84,
+      "block": 24,
+      "render": 55,
+      "style": 13,
+      "scripts": [
+        {
+          "dur": 18,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 42,
+          "fn": "h",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1406837",
+          "forced": 41
+        }
+      ],
+      "at": 1064
+    },
+    "tabs": [
+      "Başlangıç",
+      "Satın Alma Talep Formu"
+    ],
+    "errors": []
+  },
+  "S2": {
+    "title": "Başlangıç → Favoriler’den uygulama",
+    "clickTask": 10.9,
+    "maxTask": 34.4,
+    "busy": 256.1,
+    "forcedInJs": 40,
+    "paint": 122.5,
+    "layerize": 25.7,
+    "style": 79.4,
+    "layout": 18.1,
+    "gbcr": 21,
+    "styleWrites": 162,
+    "maxGap": 33,
+    "maxGap500": 33,
+    "dropped": 2,
+    "loaf": 2,
+    "worst": {
+      "start": 3967,
+      "dur": 51,
+      "block": 1,
+      "render": 34,
+      "style": 4,
+      "scripts": [
+        {
+          "dur": 16,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 30,
+          "fn": "h",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1406837",
+          "forced": 26
+        }
+      ],
+      "at": 35
+    },
+    "tabs": [
+      "Başlangıç",
+      "Personel Rehberi"
+    ],
+    "errors": []
+  },
+  "S3": {
+    "title": "Raf → İK (yeni sekme)",
+    "clickTask": 10,
+    "maxTask": 61.8,
+    "busy": 293.3,
+    "forcedInJs": 52.7,
+    "paint": 22.4,
+    "layerize": 18.9,
+    "style": 65.8,
+    "layout": 17.3,
+    "gbcr": 37,
+    "styleWrites": 105,
+    "maxGap": 67,
+    "maxGap500": 67,
+    "dropped": 4,
+    "loaf": 4,
+    "worst": {
+      "start": 4081,
+      "dur": 81,
+      "block": 25,
+      "render": 13,
+      "style": 12,
+      "scripts": [
+        {
+          "dur": 5,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 63,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 39
+        }
+      ],
+      "at": 150
+    },
+    "tabs": [
+      "Başlangıç",
+      "Kullanıcılar"
+    ],
+    "errors": []
+  },
+  "S4": {
+    "title": "Tek sekme (talep) kapanır → Başlangıç",
+    "clickTask": 4.3,
+    "maxTask": 55.2,
+    "busy": 202,
+    "forcedInJs": 43.9,
+    "paint": 42.3,
+    "layerize": 19.2,
+    "style": 52.3,
+    "layout": 30.5,
+    "gbcr": 18,
+    "styleWrites": 87,
+    "maxGap": 50,
+    "maxGap500": 50,
+    "dropped": 2,
+    "loaf": 3,
+    "worst": {
+      "start": 3964,
+      "dur": 78,
+      "block": 8,
+      "render": 49,
+      "style": 8,
+      "scripts": [
+        {
+          "dur": 9,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 41,
+          "fn": "h",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1406837",
+          "forced": 39
+        }
+      ],
+      "at": 28
+    },
+    "tabs": [
+      "Başlangıç"
+    ],
+    "errors": []
+  },
+  "S5": {
+    "title": "Tek sekme (İK) kapanır → Başlangıç",
+    "clickTask": 4.7,
+    "maxTask": 54.1,
+    "busy": 190.6,
+    "forcedInJs": 42.4,
+    "paint": 34.1,
+    "layerize": 18.9,
+    "style": 47.3,
+    "layout": 27.8,
+    "gbcr": 16,
+    "styleWrites": 92,
+    "maxGap": 50,
+    "maxGap500": 50,
+    "dropped": 2,
+    "loaf": 3,
+    "worst": {
+      "start": 4048,
+      "dur": 60,
+      "block": 2,
+      "render": 46,
+      "style": 7,
+      "scripts": [
+        {
+          "dur": 5,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 6,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 39,
+          "fn": "h",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1406837",
+          "forced": 35
+        }
+      ],
+      "at": 22
+    },
+    "tabs": [
+      "Başlangıç"
+    ],
+    "errors": []
+  },
+  "S6": {
+    "title": "Seçili sekme kapanır → komşusu gelir",
+    "clickTask": 5.2,
+    "maxTask": 26.2,
+    "busy": 167.2,
+    "forcedInJs": 17.5,
+    "paint": 29,
+    "layerize": 16.7,
+    "style": 44.3,
+    "layout": 3.8,
+    "gbcr": 16,
+    "styleWrites": 113,
+    "maxGap": 33,
+    "maxGap500": 33,
+    "dropped": 0,
+    "loaf": 0,
+    "worst": null,
+    "tabs": [
+      "Başlangıç",
+      "Finans – Masraf Bildirimi",
+      "Personel Rehberi"
+    ],
+    "errors": []
+  },
+  "S7": {
+    "title": "Dört sekme art arda kapanır → Başlangıç",
+    "clickTask": 4.3,
+    "maxTask": 52.1,
+    "busy": 495.4,
+    "forcedInJs": 83.9,
+    "paint": 139.9,
+    "layerize": 71.6,
+    "style": 201,
+    "layout": 34.5,
+    "gbcr": 74,
+    "styleWrites": 380,
+    "maxGap": 50,
+    "maxGap500": 33,
+    "dropped": 4,
+    "loaf": 4,
+    "worst": {
+      "start": 5186,
+      "dur": 65,
+      "block": 0,
+      "render": 44,
+      "style": 8,
+      "scripts": [
+        {
+          "dur": 5,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 5,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 34,
+          "fn": "",
+          "inv": "FrameRequestCallback",
+          "src": "index-Ck_vjeiO.js:1915032",
+          "forced": 34
+        }
+      ],
+      "at": 1057
+    },
+    "tabs": [
+      "Başlangıç"
+    ],
+    "errors": []
+  },
+  "S8": {
+    "title": "Başlangıç’a geç (sekmeler açık kalır)",
+    "clickTask": 3.5,
+    "maxTask": 49.8,
+    "busy": 265.4,
+    "forcedInJs": 0,
+    "paint": 33.4,
+    "layerize": 36.8,
+    "style": 75.7,
+    "layout": 24.4,
+    "gbcr": 8,
+    "styleWrites": 159,
+    "maxGap": 67,
+    "maxGap500": 67,
+    "dropped": 2,
+    "loaf": 2,
+    "worst": {
+      "start": 4127,
+      "dur": 76,
+      "block": 16,
+      "render": 56,
+      "style": 56,
+      "scripts": [
+        {
+          "dur": 5,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        },
+        {
+          "dur": 10,
+          "fn": "D",
+          "inv": "MessagePort.onmessage",
+          "src": "index-Ck_vjeiO.js:10331",
+          "forced": 0
+        }
+      ],
+      "at": 8
+    },
+    "tabs": [
+      "Başlangıç",
+      "Finans – Masraf Bildirimi",
+      "Personel Rehberi",
+      "Kullanıcılar"
+    ],
+    "errors": []
+  }
+}

@@ -15,12 +15,15 @@ import {
   type RefObject,
 } from 'react'
 import {
+  NavigationType,
+  Router,
+  UNSAFE_LocationContext,
   UNSAFE_NavigationContext,
+  UNSAFE_RouteContext,
   createPath,
-  useLocation,
-  useNavigate,
-  useNavigationType,
+  parsePath,
   type Location,
+  type Navigator,
   type To,
 } from 'react-router'
 import { ArrowLeftRight, Columns2, SquareArrowOutUpRight, Ungroup } from 'lucide-react'
@@ -154,6 +157,8 @@ interface Actions {
   copyLink: (path: string) => void
   /** Delete tuşu (şerit): odaktaki sekmenin ekranı. */
   remove: (el: HTMLElement) => void
+  /** Seçili sekmenin yanına başka bir sekme alınabilir mi (menü açılınca sorulur). */
+  canPair: () => boolean
 }
 
 /** Ekranın sabit araçları: işlemleri, gezgini ve child açma. */
@@ -173,80 +178,145 @@ function sameUrl(a: string, b: string) {
   }
 }
 
+/** Tarayıcının şu anki adresi (yol + sorgu). */
+const currentUrl = () => window.location.pathname + window.location.search
+
+/** Geçmiş kaydının ekran durumu (ör. talebin açıldığı listenin sırası). */
+const entryState = (entry: unknown) =>
+  entry && typeof entry === 'object' && 'state' in entry ? (entry.state ?? undefined) : undefined
+
 /**
- * Adres ile çalışma alanı (kabuk kullanır). Durum her değişince adres yazılır (`encodeWorkspace`):
- * ekranın içinde gezinme (`push`) tarayıcı geçmişine eklenir, gerisi (sekme geçişi, açma, kapama,
- * düzen) yerinde değişir. Adres dışarıdan değişince durum ona uyar:
- * - tarayıcının geri / ileri tuşu: seçili ekranın geçmişinde bir adım (listenin üstündeki form
- *   kapanır ya da yeniden açılır); geçmişte değilse o yer açılır (açıksa ona geçilir);
- * - kabuktaki bağlantı (raf dışı: başlat kutusu, tüm uygulamalar, arama): o yer açılır (açıksa ona
- *   geçilir). Geçersiz adres açılmaz, adres duruma döner.
+ * Adres ile çalışma alanı. Adres çalışma alanınındır: tarayıcı geçmişine doğrudan yazılır
+ * (react-router'ın yeri hiç değişmez, `ShellRouter`; değişseydi her geçişte bütün ekranların
+ * yönlendirici bağlamlarını okuyan parçaları yeniden çalışırdı). Durum her değişince adres yazılır
+ * (`encodeWorkspace`): ekranın içinde gezinme (`push`) geçmişe eklenir, gerisi (sekme geçişi, açma,
+ * kapama, düzen) yerinde değişir. Tarayıcının geri / ileri tuşunda durum adrese uyar: seçili ekranın
+ * geçmişinde bir adım (listenin üstündeki form kapanır ya da yeniden açılır); geçmişte değilse o yer
+ * açılır (açıksa ona geçilir). Geçersiz adres açılmaz, adres duruma döner.
  */
-export function useWorkspaceUrl(state: WorkspaceState, act: Act, pushNext: RefObject<boolean>) {
-  const location = useLocation()
-  const navType = useNavigationType()
-  const navigate = useNavigate()
-  const here = location.pathname + location.search
+export function useWorkspaceUrl(
+  state: WorkspaceState,
+  act: Act,
+  /** Bu değişiklik geçmişe eklensin mi (ekranın içinde gezinme); okununca sıfırlanır. */
+  takePush: () => boolean,
+) {
   // Durumun karşılığı olan son adres (yazılan ya da kabul edilen)
-  const accepted = useRef(here)
+  const accepted = useRef<string | null>(null)
   const latest = useRef(state)
   useLayoutEffect(() => {
     latest.current = state
   })
   const [tick, setTick] = useState(0)
+  // Geri / ileri tuşundan gelen değişiklik geçmişe eklenmez
   const popped = useRef(false)
 
-  // Adres dışarıdan değişti
-  useLayoutEffect(() => {
-    if (sameUrl(here, accepted.current)) return
-    accepted.current = here
-    const s = latest.current
-    const path = normalizePath(location.pathname)
-    const state = (location.state as unknown) ?? undefined
-    if (isValidPath(path)) {
-      const x = activeScreen(s)
-      const under = x.under ? screenOf(s, x.under) : undefined
-      if (navType !== 'POP') act({ type: 'open', path, state, where: 'tab' })
-      else {
-        popped.current = true
-        if (x.back.at(-1)?.path === path || (!x.back.length && under?.path === path))
-          act({ type: 'back', screen: x.key })
-        else if (x.forward.at(-1)?.path === path) act({ type: 'forward', screen: x.key })
-        else if (listUnder(path) === x.path) act({ type: 'go', screen: x.key, path, state })
-        else act({ type: 'open', path, state, where: 'tab' })
-      }
+  // Tarayıcının geri / ileri tuşu
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const here = currentUrl()
+      if (accepted.current !== null && sameUrl(here, accepted.current)) return
+      accepted.current = here
+      popped.current = true
+      const path = normalizePath(window.location.pathname)
+      const st = entryState(e.state)
+      // Geçiş, sonraki görevde: React popstate içinde başlayan geçişi hemen ve tek parça çizer
+      // (tarayıcının kaydırma geri yüklemesi için; bölmeler kendi içinde kaydığından gereksiz)
+      setTimeout(() =>
+        startTransition(() => {
+          const s = latest.current
+          if (isValidPath(path)) {
+            const x = activeScreen(s)
+            const under = x.under ? screenOf(s, x.under) : undefined
+            if (x.back.at(-1)?.path === path || (!x.back.length && under?.path === path))
+              act({ type: 'back', screen: x.key })
+            else if (x.forward.at(-1)?.path === path) act({ type: 'forward', screen: x.key })
+            else if (listUnder(path) === x.path) act({ type: 'go', screen: x.key, path, state: st })
+            else act({ type: 'open', path, state: st, where: 'tab' })
+          }
+          // Durum değişmese de adres ona döner (aşağıda); durumla aynı çizimde
+          setTick((t) => t + 1)
+        }),
+      )
     }
-    // Durum değişmese de adres ona döner (aşağıda)
-    setTick((t) => t + 1)
-    // Yalnızca adres değişince
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [here])
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [act])
 
   // Durum → adres
   useEffect(() => {
     const url = encodeWorkspace(state)
-    const push = pushNext.current && !popped.current
-    pushNext.current = false
+    const push = takePush() && !popped.current
     popped.current = false
+    accepted.current ??= currentUrl()
     if (sameUrl(url, accepted.current)) return
     accepted.current = url
-    void navigate(url, { replace: !push, state: activeScreen(state).state ?? null })
-  }, [state, tick, navigate, pushNext])
+    const entry = { state: activeScreen(state).state ?? null }
+    if (push) window.history.pushState(entry, '', url)
+    else window.history.replaceState(entry, '', url)
+  }, [state, tick, takePush])
 }
 
-/** Ekranın sayfası: kendi adresiyle (yalnızca ekranın durumu değişince çizilir). */
+/** Kabuğun yönlendirici yeri: hiç değişmez (adres çalışma alanının, `useWorkspaceUrl`). */
+const SHELL_LOCATION: Location = { pathname: '/', search: '', hash: '', state: null, key: 'shell' }
+
+/**
+ * Kabuğun yönlendiricisi (react-router `Router`; kabuk ve ekranlar onun içinde). Yeri sabit:
+ * yönlendirici bağlamları hiç değişmez. Gezgini çalışma alanında açar: kabuktaki bağlantılar ve
+ * `useNavigate` (başlat kutusu, tüm uygulamalar, arama) gittikleri yeri yeni sekmede açar (açıksa
+ * ona geçilir); geri / ileri tarayıcınınki.
+ */
+export function ShellRouter({ act, children }: { act: Act; children: ReactNode }) {
+  const navigator = useMemo<Navigator>(() => {
+    const open = (to: To, state?: unknown) => {
+      const { pathname = '' } = typeof to === 'string' ? parsePath(to) : to
+      const path = normalizePath(pathname)
+      if (isValidPath(path)) startTransition(() => act({ type: 'open', path, state, where: 'tab' }))
+    }
+    return {
+      createHref: (to: To) => (typeof to === 'string' ? to : createPath(to)),
+      go: (delta: number) => window.history.go(delta),
+      push: open,
+      replace: open,
+    }
+  }, [act])
+  return (
+    <Router location={SHELL_LOCATION} navigator={navigator}>
+      {children}
+    </Router>
+  )
+}
+
+/** Ekranın kök rota bağlamı: kabuğun rotasından kopuk (onun eşleşmeleri her gezinmede yenilenir). */
+const SCREEN_ROOT: React.ContextType<typeof UNSAFE_RouteContext> = {
+  outlet: null,
+  matches: [],
+  isDataRoute: false,
+}
+
+/**
+ * Ekranın sayfası: kendi adresiyle (yalnızca ekranın durumu değişince çizilir). Rota ve adres
+ * bağlamları ekranın kendisinin: `useRoutes` verilen adresle eşler ama kabuğun adresini ve rota
+ * eşleşmelerini de okur; tarayıcı adresi her geçişte değiştiğinden bunlar kabuktan gelse her
+ * geçişte bütün ekranlar yeniden çizilirdi.
+ */
 const ScreenView = memo(function ScreenView({ screen }: { screen: Screen }) {
-  const location = useMemo<Partial<Location>>(
-    () => ({
+  const here = useMemo(() => {
+    const location: Location = {
       pathname: screen.path,
       search: '',
       hash: '',
       state: screen.state ?? null,
       key: screen.key,
-    }),
-    [screen.path, screen.state, screen.key],
+    }
+    return { location, navigationType: NavigationType.Pop }
+  }, [screen.path, screen.state, screen.key])
+  return (
+    <UNSAFE_RouteContext value={SCREEN_ROOT}>
+      <UNSAFE_LocationContext value={here}>
+        <ScreenRoutes location={here.location} />
+      </UNSAFE_LocationContext>
+    </UNSAFE_RouteContext>
   )
-  return <ScreenRoutes location={location} />
 })
 
 export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act }) {
@@ -312,6 +382,11 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
         if (!tabKey || tabKey === START) return
         if (side && screen) closeSide(screen)
         else closeTab(tabKey)
+      },
+      canPair: () => {
+        const { st: s, wide: w } = latest.current
+        const t = activeTab(s)
+        return w && t.screens.length === 1 && t.key !== START
       },
     }
   }, [act])
@@ -496,13 +571,6 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
   const sig = (u: Unit) =>
     `${u.key}:${u.group ? `${u.group.name}.${u.group.color}` : ''}:${u.tabs.map((t) => `${t.key}=${t.screens.join('+')}`).join(',')}`
   const stripKey = units.map(sig).join('|')
-  // Sıra başına: kendi yapısı ve öncekilerin (yeri ancak bunlar değişince kayar)
-  const unitDeps = units.map((_, i) =>
-    units
-      .slice(0, i + 1)
-      .map(sig)
-      .join('|'),
-  )
   const orderKey = units
     .slice(1)
     .map((u) => u.key)
@@ -512,9 +580,6 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
   const pathOf = (k: string) => screenOf(st, k)?.path ?? ''
   const unitPaths = units.map((u) => u.tabs.map((t) => t.screens.map(pathOf).join('\t')).join('\n'))
   const activeGroup = tab.group ? st.groups.find((g) => g.key === tab.group) : undefined
-  // Seçili sekme tek ekranlıysa diğer tek ekranlı sekmeler onun yanına alınabilir
-  const canPair = wide && tab.screens.length === 1 && tab.key !== START
-
   // Şeridin sabit parçaları (şerit her çizimde yeniden kurulmasın)
   const tabKey = tab.key
   const splitActions = useMemo(
@@ -587,13 +652,13 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
               key={u.key}
               unit={u}
               paths={unitPaths[i]!}
-              layoutKey={unitDeps[i]!}
               position={i - 1}
               count={units.length - 1}
               first={units.slice(0, i).reduce((n, x) => n + x.tabs.length, 0)}
               selected={u.tabs.some((t) => t.key === tab.key) ? tab.key : undefined}
-              split={split}
-              canPair={canPair}
+              // Yalnızca seçili sekmenin sırası için (diğerleri geçişte yeniden çizilmesin)
+              split={split && u.tabs.some((t) => t.key === tab.key)}
+              wide={wide}
               unitOrder={unitOrder}
               actions={actions}
             />
@@ -613,7 +678,9 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
           'data-[resizing]:cursor-col-resize data-[resizing]:select-none [&[data-resizing]_[role=tabpanel]]:pointer-events-none',
         )}
       >
-        <AnimatePresence initial={false}>
+        {/* `presenceAffectsLayout` kapalı: açıkken alan her çizildiğinde bütün bölmelere yeni bağlam
+            gider, bütün ekranların Motion öğeleri yeniden çizilir (düzen öğeleri ölçülür) */}
+        <AnimatePresence initial={false} presenceAffectsLayout={false}>
           {panes.map(({ key, slot, share, form }) => {
             const visible = shown.includes(key)
             return (
@@ -791,21 +858,18 @@ function OpenMenu({ ref, wide }: { ref: Ref<MenuHandle>; wide: boolean }) {
 const UnitView = memo(function UnitView({
   unit,
   paths,
-  layoutKey,
   position,
   count,
   first,
   selected,
   split,
-  canPair,
+  wide,
   unitOrder,
   actions,
 }: {
   unit: Unit
   /** Sekmelerin ekranlarının adresleri (satır başına bir sekme, sekmede bir sekme karakteriyle). */
   paths: string
-  /** Sıranın düzen imzası (kendi ve önceki sıraların yapısı). */
-  layoutKey: string
   /** Başlangıç hariç sırası. */
   position: number
   count: number
@@ -813,8 +877,10 @@ const UnitView = memo(function UnitView({
   first: number
   /** Seçili sekme bu sıradaysa anahtarı. */
   selected: string | undefined
+  /** Seçili sekme bu sıradaysa ve yan yanaysa. */
   split: boolean
-  canPair: boolean
+  /** Geniş ekran: yan yana açılabilir. */
+  wide: boolean
   unitOrder: string[]
   actions: Actions
 }) {
@@ -830,7 +896,6 @@ const UnitView = memo(function UnitView({
       tone={g ? GROUP_TONE[g.color % GROUP_TONE.length] : undefined}
       toned={!!g}
       label={g?.name || undefined}
-      layoutKey={layoutKey}
       onMove={start ? undefined : onMove}
       siblings={start ? undefined : unitOrder}
     >
@@ -841,20 +906,24 @@ const UnitView = memo(function UnitView({
         const handle = !start && i === 0
         const paired = t.screens.length > 1
         const focusPath = screenPaths[t.screens.indexOf(t.focus)] ?? screenPaths[0]!
-        const pairable = canPair && !start && !paired && !isSelected
-        const menu: MenuItem[] = []
-        if (!start) {
-          if (pairable)
-            menu.push({ key: 'pair', label: 'Yan yana aç', onClick: () => actions.pair(t.key) })
+        // Yan yana alınabilir tek ekranlı sekme (yalnızca sağ tık menüsünde; sekmenin üstünde düğme
+        // yok: sekmenin genişliği seçimle değişmesin)
+        const pairable = wide && !start && !paired && !isSelected
+        // Menü açılınca kurulur (o anki duruma göre)
+        const menu = () => {
+          const items: MenuItem[] = []
+          if (start) return items
+          if (pairable && actions.canPair())
+            items.push({ key: 'pair', label: 'Yan yana aç', onClick: () => actions.pair(t.key) })
           if (paired)
-            menu.push({
+            items.push({
               key: 'unpair',
               label: 'Ayrı sekmelere ayır',
               onClick: () => actions.unpair(t.key),
             })
-          if (menu.length) menu.push({ type: 'divider' })
+          if (items.length) items.push({ type: 'divider' })
           if (handle && g)
-            menu.push(
+            items.push(
               {
                 key: 'group-left',
                 label: 'Grubu sola taşı',
@@ -869,7 +938,7 @@ const UnitView = memo(function UnitView({
               },
             )
           else if (g)
-            menu.push(
+            items.push(
               {
                 key: 'left',
                 label: 'Sola taşı',
@@ -884,7 +953,7 @@ const UnitView = memo(function UnitView({
               },
             )
           else
-            menu.push(
+            items.push(
               {
                 key: 'left',
                 label: 'Sola taşı',
@@ -898,7 +967,7 @@ const UnitView = memo(function UnitView({
                 onClick: () => actions.moveUnit(unit.key, position + 1),
               },
             )
-          menu.push(
+          items.push(
             { type: 'divider' },
             {
               key: 'link',
@@ -909,11 +978,12 @@ const UnitView = memo(function UnitView({
             { key: 'close', label: 'Kapat', onClick: () => actions.closeTab(t.key) },
           )
           if (handle && g)
-            menu.push({
+            items.push({
               key: 'group-close',
               label: 'Grubu kapat',
               onClick: () => actions.closeGroup(g.key),
             })
+          return items
         }
         return (
           <Tab
@@ -921,7 +991,7 @@ const UnitView = memo(function UnitView({
             id={t.key}
             selected={isSelected}
             handle={handle}
-            menu={menu.length ? menu : undefined}
+            menu={start ? undefined : menu}
             onMove={g && !handle ? (to) => actions.moveTab(t.key, first + to, g.key) : undefined}
             siblings={siblings}
             min={1}
@@ -951,18 +1021,6 @@ const UnitView = memo(function UnitView({
                 />
               </Fragment>
             ))}
-            {pairable && (
-              <Tip label="Yan yana aç">
-                <Button
-                  type="text"
-                  size="small"
-                  aria-label={`Yan yana aç: ${screenMeta(screenPaths[0]!).name}`}
-                  icon={<Columns2 {...IC} size={14} />}
-                  onClick={() => actions.pair(t.key)}
-                  className="relative z-2 me-1 shrink-0 self-center rounded-full text-muted opacity-0 transition-opacity group-hover/tab:opacity-100 hover:text-foreground! focus-visible:opacity-100"
-                />
-              </Tip>
-            )}
           </Tab>
         )
       })}

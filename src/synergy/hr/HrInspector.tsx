@@ -166,7 +166,7 @@ export function HrInspector({
           <Typography.Text type="secondary" className="text-xs">
             {def.label}
           </Typography.Text>
-          <Typography.Title level={2} ellipsis className="m-0 font-display text-lg font-semibold">
+          <Typography.Title level={2} className="m-0 font-display text-lg font-semibold truncate">
             {title}
           </Typography.Title>
           <Flex align="center">
@@ -394,10 +394,8 @@ function GroupMembers({
         }
         render={(item) => (
           <Flex vertical className="min-w-0">
-            <Typography.Text ellipsis className="text-current">
-              {item.title}
-            </Typography.Text>
-            <Typography.Text type="secondary" ellipsis className="text-xs">
+            <Typography.Text className="text-current truncate">{item.title}</Typography.Text>
+            <Typography.Text type="secondary" className="text-xs truncate">
               {item.description}
             </Typography.Text>
           </Flex>

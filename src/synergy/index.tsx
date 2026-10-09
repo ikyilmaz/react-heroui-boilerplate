@@ -1,7 +1,9 @@
 import {
+  createContext,
   memo,
   startTransition,
   useCallback,
+  useContext,
   useLayoutEffect,
   useMemo,
   useReducer,
@@ -9,7 +11,7 @@ import {
   useState,
 } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link } from 'react-router'
 import {
   AutoComplete,
   Avatar,
@@ -77,7 +79,8 @@ import {
   type ChromePlace,
   type StartActions,
 } from '@/synergy/StartMenu'
-import { Workspace, useWorkspaceUrl, type Act } from '@/synergy/Workspace'
+import { ShellRouter, Workspace, useWorkspaceUrl, type Act } from '@/synergy/Workspace'
+import { PlaceContext } from '@/synergy/tabs/context'
 import { isValidPath } from '@/synergy/screens'
 import { AntTheme } from '@/synergy/ant/theme'
 import { useNotify } from '@/synergy/ant/hr'
@@ -226,7 +229,7 @@ function AppSearch({ autoFocus = false, onPick }: { autoFocus?: boolean; onPick?
                           {initials(caption)}
                         </Avatar>
                       )}
-                      <Typography.Text ellipsis className="min-w-0 text-current">
+                      <Typography.Text className="min-w-0 text-current truncate">
                         {caption}
                       </Typography.Text>
                     </Flex>
@@ -265,21 +268,29 @@ interface HistoryNav {
 }
 
 /**
+ * Kabuğun seçili sekmeye bağlı iki değeri: raftaki dolu uygulama ve geri / ileri. Yalnızca
+ * kullananlar (raf daireleri, geri / ileri) okur: sekme geçişinde kabuğun geri kalanı çizilmez.
+ */
+const ChromeNavContext = createContext<{ current: string | undefined; history: HistoryNav }>({
+  current: undefined,
+  history: { back: false, forward: false, go: () => {} },
+})
+
+/**
  * Geri / ileri: seçili sekmenin kendi geçmişinde (sekmeler tarayıcı sekmesi gibi). `compact`: 28px
  * (üst çubukta); kabukta 32px.
  */
-function HistoryButtons({
-  nav,
+const HistoryButtons = memo(function HistoryButtons({
   tip = 'bottom',
   className,
   compact,
 }: {
-  nav: HistoryNav
   /** İpucunun yönü (alttaki çubukta yukarı). */
   tip?: 'bottom' | 'top'
   className?: string
   compact?: boolean
 }) {
+  const nav = useContext(ChromeNavContext).history
   return (
     <Flex
       align="center"
@@ -308,7 +319,7 @@ function HistoryButtons({
       ))}
     </Flex>
   )
-}
+})
 
 function TopBar({
   onMenu,
@@ -494,17 +505,16 @@ function PanelButton({
  */
 function DockList({
   expanded,
-  current,
   onApp,
   onNavigate,
   group = 'dock',
 }: {
   expanded: boolean
-  current: string | undefined
   onApp: DockOpen
   onNavigate?: () => void
   group?: string
 }) {
+  const { current } = useContext(ChromeNavContext)
   return (
     <Flex vertical role="list" aria-label="Sayfalar" className="gap-0.5">
       {dockEntries.map(({ id, label, icon: Icon, href }) => {
@@ -656,15 +666,8 @@ type DockOpen = (id: string, opts?: { force?: boolean; background?: boolean }) =
  * sekmede açılır (`onApp`); sağ tık "Yeni sekmede aç" sekmesi varken de yenisini, Ctrl / Cmd / orta
  * tık yenisini geçmeden açar. Sayfası olmayan uygulama pasif.
  */
-function DockApps({
-  current,
-  place,
-  onApp,
-}: {
-  current: string | undefined
-  place: ChromePlace
-  onApp: DockOpen
-}) {
+const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; onApp: DockOpen }) {
+  const { current } = useContext(ChromeNavContext)
   const column = isColumn(place)
   const size = DOCK_SIZE[column ? 'left' : 'top']
   const tip = CHROME_TIP[place]
@@ -735,7 +738,7 @@ function DockApps({
         })}
     </Flex>
   )
-}
+})
 
 /**
  * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller.
@@ -748,8 +751,6 @@ function DockApps({
 const Chrome = memo(function Chrome({
   place,
   actions,
-  current,
-  history,
   onApp,
   panel,
   onPanel,
@@ -759,9 +760,6 @@ const Chrome = memo(function Chrome({
 }: {
   place: ChromePlace
   actions: StartActions
-  /** Seçili sekmenin uygulaması (raftaki dolu daire). */
-  current: string | undefined
-  history: HistoryNav
   onApp: DockOpen
   panel: 'news' | 'chat' | null
   onPanel: (p: 'news' | 'chat' | null) => void
@@ -807,7 +805,7 @@ const Chrome = memo(function Chrome({
             orientation={column ? 'horizontal' : 'vertical'}
             className={column ? 'my-1 w-6 min-w-0' : 'top-0 mx-0.5 h-5'}
           />
-          <DockApps current={current} place={place} onApp={onApp} />
+          <DockApps place={place} onApp={onApp} />
         </>
       )}
     </StartDock>
@@ -873,7 +871,7 @@ const Chrome = memo(function Chrome({
         {/* Üst: logo ve yan yana geri / ileri (zeminsiz) */}
         <Flex vertical align="center" className="pointer-events-auto gap-2 pt-1.5">
           {logo}
-          <HistoryButtons nav={history} className="me-0" />
+          <HistoryButtons className="me-0" />
         </Flex>
         {dock}
         {/* Alt: eylemler ve kullanıcı (zeminsiz) */}
@@ -908,12 +906,7 @@ const Chrome = memo(function Chrome({
         align="center"
         className="pointer-events-auto min-w-0 gap-2.5 overflow-hidden ps-[24px]"
       >
-        <HistoryButtons
-          nav={history}
-          tip={place === 'bottom' ? 'top' : 'bottom'}
-          compact
-          className="me-0"
-        />
+        <HistoryButtons tip={place === 'bottom' ? 'top' : 'bottom'} compact className="me-0" />
         {logo}
       </Flex>
       {dock}
@@ -921,6 +914,49 @@ const Chrome = memo(function Chrome({
         {actionsGroup}
       </Flex>
     </Flex>
+  )
+})
+
+/**
+ * Dar ekranın çekmecesi: arama, raf, tüm uygulamalar, tema. Seçili uygulama bağlamdan
+ * (`ChromeNavContext`): çekmece kapalıyken sekme geçişinde çizilmez.
+ */
+const PhoneDrawer = memo(function PhoneDrawer({
+  open,
+  onClose,
+  onApp,
+  onApps,
+  onTheme,
+}: {
+  open: boolean
+  onClose: () => void
+  onApp: DockOpen
+  onApps: () => void
+  onTheme: () => void
+}) {
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      placement="left"
+      title="synergy"
+      closable={{ placement: 'end' }}
+      size="min(24rem, 100vw)"
+      classNames={{
+        section: 'bg-background',
+        header: 'border-b-0',
+        title: 'font-display text-lg font-semibold',
+        body: 'flex flex-col gap-6',
+      }}
+    >
+      <AppSearch />
+      <DockList expanded onApp={onApp} onNavigate={onClose} group="drawer" />
+      <AllAppsButton expanded onPress={onApps} />
+      <Flex align="center" className="gap-2">
+        <ThemeButton onPress={onTheme} />
+        <ThemeSwitch vertical={false} group="drawer" />
+      </Flex>
+    </Drawer>
   )
 })
 
@@ -956,13 +992,11 @@ function Frame({
   themeOpen: boolean
   setThemeOpen: (open: boolean) => void
 }) {
-  const location = useLocation()
-  const { pathname } = location
   const notify = useNotify()
 
-  // Çalışma alanı: adresten kurulur (geçersiz yerler atlanır), adresle eşlenir
+  // Çalışma alanı: adresten kurulur (geçersiz yerler atlanır), adresle eşlenir (`useWorkspaceUrl`)
   const [ws, dispatch] = useReducer(workspaceReducer, undefined, () =>
-    decodeWorkspace(location.pathname, location.search, isValidPath),
+    decodeWorkspace(window.location.pathname, window.location.search, isValidPath),
   )
   const latest = useRef({ ws, notify })
   useLayoutEffect(() => {
@@ -981,7 +1015,12 @@ function Frame({
     if (opts?.push) pushNext.current = true
     dispatch(a)
   }, [])
-  useWorkspaceUrl(ws, act, pushNext)
+  const takePush = useCallback(() => {
+    const push = pushNext.current
+    pushNext.current = false
+    return push
+  }, [])
+  useWorkspaceUrl(ws, act, takePush)
 
   // Raf: uygulamanın sekmesine geçilir (formun altındaki listesi de sayılır), yoksa yeni sekmede
   // açılır (`force`: varken de yenisi; `background`: geçmeden); Başlangıç ve logo Başlangıç'a
@@ -1016,120 +1055,110 @@ function Frame({
     [act],
   )
   const history = useMemo(() => ({ back, forward, go }), [back, forward, go])
+  const nav = useMemo(() => ({ current, history }), [current, history])
 
-  // Çekmece açıldığı adreste açık kalır; gezinince kendiliğinden kapanır
+  // Çekmece açıldığı yerde (seçili ekran ve adresi) açık kalır; gezinince kendiliğinden kapanır
+  const where = activeScreen(ws).path
+  const here = `${active}\t${where}`
   const [drawerAt, setDrawerAt] = useState<string | null>(null)
-  const setDrawer = (open: boolean) => setDrawerAt(open ? pathname : null)
+  const openDrawer = useCallback(() => {
+    const x = activeScreen(latest.current.ws)
+    setDrawerAt(`${x.key}\t${x.path}`)
+  }, [])
+  const closeDrawer = useCallback(() => setDrawerAt(null), [])
   // Tek kabuk: yanda sütun ya da çubuk (tema paneli › Gezinme); 640px altında üst çubuk + çekmece
   const place: ChromePlace = NAV_PLACE[look.nav] ?? 'left'
   const wide = useMediaQuery('(min-width: 640px)')
   const [appsOpen, setAppsOpen] = useState(false)
   const [panel, setPanel] = useState<'news' | 'chat' | null>(null)
   const openTheme = useCallback(() => setThemeOpen(true), [setThemeOpen])
+  const closeTheme = useCallback(() => setThemeOpen(false), [setThemeOpen])
   const openApps = useCallback(() => setAppsOpen(true), [])
+  const appsFromDrawer = useCallback(() => {
+    setDrawerAt(null)
+    setAppsOpen(true)
+  }, [])
+  const themeFromDrawer = useCallback(() => {
+    setDrawerAt(null)
+    setThemeOpen(true)
+  }, [setThemeOpen])
   const startActions = useMemo<StartActions>(
     () => ({ onTheme: openTheme, onPanel: setPanel }),
     [openTheme],
   )
 
   return (
-    // Zemin dokusu (tema paneli): görüntü alanına sabit katman, içeriğin arkasında (kök kendi yığın
-    // bağlamı: katman kökün zemininin üstünde, içeriğin altında)
-    <Flex
-      vertical
-      className="isolate min-h-screen bg-background text-foreground antialiased before:pointer-events-none before:fixed before:inset-0 before:-z-10 before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:content-['']"
-    >
-      {wide ? (
-        <Chrome
-          place={place}
-          actions={startActions}
-          current={current}
-          history={history}
-          onApp={openDock}
-          panel={panel}
-          onPanel={setPanel}
-          onTheme={openTheme}
-          appsOpen={appsOpen}
-          onApps={openApps}
-        />
-      ) : (
-        <TopBar onMenu={() => setDrawer(true)} panel={panel} onPanel={setPanel} />
-      )}
-      <Flex
-        vertical
-        role="main"
-        className={cn(
-          // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride)
-          'min-w-0 flex-1 gap-3 px-4 pb-6 sm:pe-3',
-          // Kabuk içeriğin üstünde yüzer; yanına düşen alan kadar boşluk
-          wide && CHROME_SPACE[place],
-          // Yapışkan öğeler (ör. talep şeridi) kabuğun altına yapışsın
-          wide && place === 'top' ? '[--chrome-top:68px]' : '[--chrome-top:0px]',
-        )}
-      >
-        <Workspace state={ws} act={act} />
-      </Flex>
+    // Kabuğun yönlendiricisi: yeri sabit, bağlantılar çalışma alanında açar. Seçili ekranın adresi
+    // kabuğa bağlamla (başlat kutusu, tüm uygulamalar)
+    <ShellRouter act={act}>
+      <PlaceContext value={where}>
+        <ChromeNavContext value={nav}>
+          {/* Zemin dokusu (tema paneli): görüntü alanına sabit katman, içeriğin arkasında (kök kendi yığın
+        bağlamı: katman kökün zemininin üstünde, içeriğin altında) */}
+          <Flex
+            vertical
+            className="isolate min-h-screen bg-background text-foreground antialiased before:pointer-events-none before:fixed before:inset-0 before:-z-10 before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:content-['']"
+          >
+            {wide ? (
+              <Chrome
+                place={place}
+                actions={startActions}
+                onApp={openDock}
+                panel={panel}
+                onPanel={setPanel}
+                onTheme={openTheme}
+                appsOpen={appsOpen}
+                onApps={openApps}
+              />
+            ) : (
+              <TopBar onMenu={openDrawer} panel={panel} onPanel={setPanel} />
+            )}
+            <Flex
+              vertical
+              role="main"
+              className={cn(
+                // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride)
+                'min-w-0 flex-1 gap-3 px-4 pb-6 sm:pe-3',
+                // Kabuk içeriğin üstünde yüzer; yanına düşen alan kadar boşluk
+                wide && CHROME_SPACE[place],
+                // Yapışkan öğeler (ör. talep şeridi) kabuğun altına yapışsın
+                wide && place === 'top' ? '[--chrome-top:68px]' : '[--chrome-top:0px]',
+              )}
+            >
+              <Workspace state={ws} act={act} />
+            </Flex>
 
-      {/* Dar ekranda raf çekmecede */}
-      <Drawer
-        open={drawerAt === pathname}
-        onClose={() => setDrawer(false)}
-        placement="left"
-        title="synergy"
-        closable={{ placement: 'end' }}
-        size="min(24rem, 100vw)"
-        classNames={{
-          section: 'bg-background',
-          header: 'border-b-0',
-          title: 'font-display text-lg font-semibold',
-          body: 'flex flex-col gap-6',
-        }}
-      >
-        <AppSearch />
-        <DockList
-          expanded
-          current={current}
-          onApp={openDock}
-          onNavigate={() => setDrawer(false)}
-          group="drawer"
-        />
-        <AllAppsButton
-          expanded
-          onPress={() => {
-            setDrawer(false)
-            setAppsOpen(true)
-          }}
-        />
-        <Flex align="center" className="gap-2">
-          <ThemeButton
-            onPress={() => {
-              setDrawer(false)
-              setThemeOpen(true)
-            }}
-          />
-          <ThemeSwitch vertical={false} group="drawer" />
-        </Flex>
-      </Drawer>
+            {/* Dar ekranda raf çekmecede */}
+            <PhoneDrawer
+              open={drawerAt === here}
+              onClose={closeDrawer}
+              onApp={openDock}
+              onApps={appsFromDrawer}
+              onTheme={themeFromDrawer}
+            />
 
-      {/* Çubukta köşedeki tutamaçtan yüzen kutu; dar ekranda çekmeceden, kenara yapışık */}
-      <AllAppsPanel
-        isOpen={appsOpen}
-        onOpenChange={setAppsOpen}
-        floating={wide && !isColumn(place)}
-      />
+            {/* Çubukta köşedeki tutamaçtan yüzen kutu; dar ekranda çekmeceden, kenara yapışık */}
+            <AllAppsPanel
+              isOpen={appsOpen}
+              onOpenChange={setAppsOpen}
+              floating={wide && !isColumn(place)}
+            />
 
-      {/* Modal / drawer'da açılan formlar: sayfanın üstünde, deste */}
-      <FormDeck />
+            {/* Modal / drawer'da açılan formlar: sayfanın üstünde, deste */}
+            <FormDeck />
 
-      <ThemePanel
-        kit={APP_THEME}
-        isOpen={themeOpen}
-        onClose={() => setThemeOpen(false)}
-        settings={theme}
-        onChange={setTheme}
-        reducedBySystem={theme.motion === 'full' && look.motion !== 'full'}
-      />
-    </Flex>
+            <ThemePanel
+              kit={APP_THEME}
+              isOpen={themeOpen}
+              onClose={closeTheme}
+              settings={theme}
+              onChange={setTheme}
+              reducedBySystem={theme.motion === 'full' && look.motion !== 'full'}
+            />
+          </Flex>
+        </ChromeNavContext>
+      </PlaceContext>
+    </ShellRouter>
   )
 }
 
@@ -1162,7 +1191,10 @@ function Shell() {
   )
 }
 
-/** Uygulama kabuğu: tek rota (`src/router.tsx`); sayfalar çalışma alanının ekranlarında. */
+/**
+ * Uygulama kabuğu (`src/App.tsx`): yönlendiricisi kendinde (`ShellRouter`), sayfalar çalışma alanının
+ * ekranlarında, adres çalışma alanının (`useWorkspaceUrl`).
+ */
 export function AppShell() {
   return <Shell />
 }

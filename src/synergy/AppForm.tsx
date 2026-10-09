@@ -71,14 +71,17 @@ function ListTable({ table }: { table: AppFormTable }) {
     return row
   })
   return (
-    <Table<Row>
-      aria-label={table.title}
-      size="middle"
-      pagination={false}
-      scroll={{ x: 'max-content' }}
-      columns={columns}
-      dataSource={data}
-    />
+    // Dar bölmede yana kayar (antd `scroll.x` sütunları her görünüşte tek tek ölçerdi)
+    <Flex className="block min-w-0 overflow-x-auto">
+      <Table<Row>
+        aria-label={table.title}
+        size="middle"
+        pagination={false}
+        className="[&_table]:w-max [&_table]:min-w-full"
+        columns={columns}
+        dataSource={data}
+      />
+    </Flex>
   )
 }
 

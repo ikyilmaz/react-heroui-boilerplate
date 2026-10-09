@@ -47,3 +47,12 @@ export const ScreenContext = createContext<ScreenApi | null>(null)
 
 /** Sayfanın ekranı (çalışma alanının içindeyse; başlat kutusunda `null`). */
 export const useScreen = () => useContext(ScreenContext)
+
+/**
+ * Kabukta seçili ekranın adresi (çalışma alanı adresi kendisi tutar; yönlendiricinin yeri sabit).
+ * Okuyanlar: başlat kutusu (açıkken yer değişince kapanır), tüm uygulamalar (seçili uygulama).
+ */
+export const PlaceContext = createContext('/')
+
+/** Kabukta seçili ekranın adresi. */
+export const usePlace = () => useContext(PlaceContext)

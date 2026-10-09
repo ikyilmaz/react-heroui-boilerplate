@@ -7,9 +7,15 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
+    alias: [
+      { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      // rc-util'in kaydırma çubuğu ölçümü yerine bir kez ölçen (antd tablosu her takılışta belgeye stil
+      // ekleyip çıkarıyor, bütün sayfanın stilini ve düzenini yeniden hesaplatıyordu)
+      {
+        find: /^\.{1,2}\/getScrollBarSize$/,
+        replacement: fileURLToPath(new URL('./src/synergy/shared/scrollBarSize.ts', import.meta.url)),
+      },
+    ],
   },
   server: {
     port: 5173,

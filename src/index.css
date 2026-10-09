@@ -172,6 +172,21 @@
 }
 
 /*
+ * Bölmeyi dolduran boy (`--fill-h`, `useFillHeight`) ve bölmenin boyu (`--view-h`, yan bilgiler):
+ * kalıtılmaz. Ölçülüp kaba yazılınca yalnızca onları kullananlar (`[--fill-h:inherit]` ile kabın
+ * değerini alan birkaç öğe) yeniden stillenir; kalıtılsaydı formun bütün alt ağacı (yüzlerce öğe)
+ * her ölçümde yeniden hesaplanırdı.
+ */
+@property --fill-h {
+  syntax: '*';
+  inherits: false;
+}
+@property --view-h {
+  syntax: '*';
+  inherits: false;
+}
+
+/*
  * Kenarlık rengi (tüm uygulama): `border` sınıfları ayrıca renk vermeden tema konturunu alır
  * (Tailwind'in varsayılanı yazı rengidir).
  *

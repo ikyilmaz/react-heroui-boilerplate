@@ -131,24 +131,28 @@ const ITEM_COLUMNS: TableColumnsType<ItemRow> = [
 export function ItemsTable({ items }: { items: LineItem[] }) {
   const total = items.reduce((s, it) => s + it.qty * it.price, 0)
   return (
-    <Table<ItemRow>
-      aria-label="Kalemler"
-      size="middle"
-      pagination={false}
-      scroll={{ x: 'max-content' }}
-      columns={ITEM_COLUMNS}
-      dataSource={items.map((it, i) => ({ ...it, key: `i${i}` }))}
-      summary={() => (
-        <Table.Summary.Row>
-          <Table.Summary.Cell index={0} colSpan={3}>
-            <Text strong>Toplam</Text>
-          </Table.Summary.Cell>
-          <Table.Summary.Cell index={3} align="end">
-            <Text className={cn(NUM, 'font-display text-lg font-bold')}>{tl.format(total)}</Text>
-          </Table.Summary.Cell>
-        </Table.Summary.Row>
-      )}
-    />
+    // Dar bölmede yana kayar. antd'nin `scroll.x`'i yerine: o, form her göründüğünde sütunları tek
+    // tek ölçen bir satır ekler (zorunlu düzen)
+    <Flex className="block min-w-0 overflow-x-auto">
+      <Table<ItemRow>
+        aria-label="Kalemler"
+        size="middle"
+        pagination={false}
+        className="[&_table]:w-max [&_table]:min-w-full"
+        columns={ITEM_COLUMNS}
+        dataSource={items.map((it, i) => ({ ...it, key: `i${i}` }))}
+        summary={() => (
+          <Table.Summary.Row>
+            <Table.Summary.Cell index={0} colSpan={3}>
+              <Text strong>Toplam</Text>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="end">
+              <Text className={cn(NUM, 'font-display text-lg font-bold')}>{tl.format(total)}</Text>
+            </Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
+    </Flex>
   )
 }
 
@@ -413,9 +417,7 @@ export function DocumentsList({
       icon: <Icon {...IC} />,
       label: (
         <Flex vertical className="min-w-0 py-2 leading-tight">
-          <Text ellipsis className="text-current">
-            {d.name}
-          </Text>
+          <Text className="text-current truncate">{d.name}</Text>
           <Text className="text-xs text-current opacity-70">
             {DOCUMENT_LABELS.no}: {d.id}
           </Text>
@@ -678,7 +680,8 @@ function ReasonQuote({ h, reason }: { h: HistoryEntry; reason: string }) {
         <Text type="secondary" className="text-xs font-medium">
           {VIEWER_LABELS.reason}
         </Text>
-        <Typography.Paragraph ellipsis={long ? { rows: 2 } : false} className="mb-0 text-sm">
+        {/* İki satırda kesilir (CSS; antd `ellipsis` her metne bir boyut gözlemcisi takar) */}
+        <Typography.Paragraph className={cn('mb-0 text-sm', long && 'line-clamp-2')}>
           “{reason}”
         </Typography.Paragraph>
       </Flex>

@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { memo, type CSSProperties, type ReactNode } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
 import { Button, Divider, Drawer, Flex, Radio, Segmented, Select, Slider, Typography } from 'antd'
 import { cn } from '@/synergy/ant/ui'
@@ -352,7 +352,7 @@ function PresetPreview({ look, dark }: { look: ThemeSettings; dark: boolean }) {
 /** Bölüm ayracı. */
 const Separator = () => <Divider className="my-0" />
 
-export function ThemePanel({
+export const ThemePanel = memo(function ThemePanel({
   kit,
   isOpen,
   onClose,
@@ -630,4 +630,4 @@ export function ThemePanel({
       </Button>
     </Drawer>
   )
-}
+})

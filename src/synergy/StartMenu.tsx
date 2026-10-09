@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router'
+import { usePlace } from '@/synergy/tabs/context'
 import { AnimatePresence, LayoutGroup, type Transition } from 'framer-motion'
 import {
   AppWindow,
@@ -152,6 +153,19 @@ export const CHROME_SPACE: Record<ChromePlace, string> = {
 }
 
 /**
+ * Başka yere gidilince (seçili sekme ya da yeri değişince) başlat kutusunu kapatır. Yalnızca kutu
+ * açıkken takılı: sekme geçişlerinde yalnızca bu küçük parça yeniden çizilir.
+ */
+function CloseOnPlace({ onChange }: { onChange: () => void }) {
+  const place = usePlace()
+  const opened = useRef(place)
+  useEffect(() => {
+    if (place !== opened.current) onChange()
+  }, [place, onChange])
+  return null
+}
+
+/**
  * Raf (StartMenu): kendi başına bir panel; içeriği kabuk verir (`children(start)`: `start` başlat
  * düğmesi). Başlat düğmesine basınca raf paylaşılan yerleşimle (`layoutId`) başlat kutusuna
  * dönüşür, kapanınca yine rafa küçülür. Raf açıkken yerini aynı boyda boş bir tutucu korur (yanındaki
@@ -169,8 +183,8 @@ export function StartDock({
   layoutKey?: string
   children: (start: ReactNode) => ReactNode
 }) {
-  const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
   // Her açılış / kapanışta içerik yeniden kurulur: hızlı aç-kapa'da framer henüz çıkmamış rafı / kutuyu
   // geri getirir, içerik de gizli (şeffaf) hâlde kalıp kabuk boş görünüyordu
   const cycle = useRef(0)
@@ -194,8 +208,6 @@ export function StartDock({
     if (!open && wasOpen.current) trigger.current?.focus()
     wasOpen.current = open
   }, [open])
-  // Başka yere gidilince (adres değişince: seçili sekme ya da yeri) kutu kapanır
-  useEffect(() => setOpen(false), [pathname])
 
   const openStart = () => {
     const r = dockRef.current?.getBoundingClientRect()
@@ -268,6 +280,7 @@ export function StartDock({
         ) : (
           // `contents`: kap yerleşimde yer tutmaz (yoksa kapanırken raf bir an yukarı kayıp inerdi)
           <Flex key="start" className="contents">
+            <CloseOnPlace onChange={close} />
             {/* Dışarı tıklayınca kapanır; zemin hafifçe solar */}
             <MotionFlex
               aria-hidden

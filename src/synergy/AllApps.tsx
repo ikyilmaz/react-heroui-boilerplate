@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { memo, useMemo, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router'
+import { usePlace } from '@/synergy/tabs/context'
 import {
   AppWindow,
   ArrowDownAZ,
@@ -83,7 +84,7 @@ function TreeNode({ n, ...p }: TreeProps & { n: MenuNode }) {
         )}
       >
         <Icon {...IC} size={18} className={cn('shrink-0', !active && 'text-muted')} />
-        <Typography.Text ellipsis className="min-w-0 flex-1 text-sm text-current">
+        <Typography.Text className="min-w-0 flex-1 text-sm text-current truncate">
           <Highlight text={n.caption} query={p.query} />
         </Typography.Text>
         {badge ? (
@@ -136,11 +137,17 @@ function TreeNode({ n, ...p }: TreeProps & { n: MenuNode }) {
   )
 }
 
-function TreeList({ nodes, label, ...p }: TreeProps & { nodes: MenuNode[]; label: string }) {
+/** Ağacın bir listesi; seçili uygulama kabukta seçili ekranın adresinden (`usePlace`). */
+function TreeList({
+  nodes,
+  label,
+  ...p
+}: Omit<TreeProps, 'activeId'> & { nodes: MenuNode[]; label: string }) {
+  const activeId = activeLeaf(MENU_TREE, usePlace())
   return (
     <Flex vertical role="list" aria-label={label} className="gap-0.5">
       {nodes.map((n) => (
-        <TreeNode key={n.id} n={n} {...p} />
+        <TreeNode key={n.id} n={n} {...p} activeId={activeId} />
       ))}
     </Flex>
   )
@@ -169,7 +176,6 @@ function activeLeaf(nodes: MenuNode[], pathname: string): string | undefined {
 export function useAppTree(onPicked: () => void) {
   const navigate = useNavigate()
   const openApp = useOpenApp()
-  const { pathname } = useLocation()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<MenuSort>(() => readJson<MenuSort>(SORT_KEY, 'order'))
   const [userOpen, setUserOpen] = useState<ReadonlySet<string>>(new Set())
@@ -203,12 +209,11 @@ export function useAppTree(onPicked: () => void) {
     writeJson(SORT_KEY, next)
     setSort(next)
   }
-  const tree = {
+  const tree: Omit<TreeProps, 'activeId'> = {
     query,
     open,
     onToggle: toggle,
     onPick: pick,
-    activeId: activeLeaf(MENU_TREE, pathname),
     badges,
   }
   // Düğme, basınca geçilecek sıralamayı anlatır (o an aktif olanı değil)
@@ -237,7 +242,7 @@ export function useAppTree(onPicked: () => void) {
 
 export { Highlight }
 
-export function AllAppsPanel({
+export const AllAppsPanel = memo(function AllAppsPanel({
   isOpen,
   onOpenChange,
   floating = false,
@@ -257,6 +262,9 @@ export function AllAppsPanel({
       onClose={() => onOpenChange(false)}
       placement="left"
       closable={false}
+      // Kapalıyken içerik takılı değil: ağaç seçili ekranı okur, sekme geçişlerinde çizilmesin
+      // (arama ve açık klasörler bu bileşende kalır)
+      destroyOnHidden
       size={floating ? 'min(calc(23.75rem + 1.5rem), 100vw)' : 'min(23.75rem, 100vw)'}
       aria-label={MENU_LABELS.allApps}
       classNames={
@@ -306,7 +314,7 @@ export function AllAppsPanel({
       </Scroll>
     </Drawer>
   )
-}
+})
 
 /** Raftaki "Tüm uygulamalar" düğmesi (orijinal menü alt bandı); dar rafta yalnızca ikon. */
 export function AllAppsButton({ expanded, onPress }: { expanded: boolean; onPress: () => void }) {

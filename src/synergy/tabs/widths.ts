@@ -2,21 +2,39 @@
  * Sekme şeridinin saf kararları (TabStrip.tsx kullanır; DOM ve React yok, `scripts/tabs/` sınar).
  *
  * Genişlik dağılımı (Chrome modeli) CSS'te: sekmeler eşit paydan büyür (`flex: 1 1 0`), doğal
- * genişlikte durur (`max-width: max-content`), seçili sekme en az `ACTIVE_MIN` (doğal genişliği
- * daha azsa o kadar), diğerleri en az `ICON_MIN`; bunlar da sığmazsa şerit kayar. Buradakiler:
- * ikon kipi eşiği, dar sekmede üst köşe, sürükleme eşiği ve yer değiştirme, kapatırken donma.
+ * genişlikte durur (`max-width: max-content`), en az `ICON_MIN`; bunlar da sığmazsa şerit kayar.
+ * Seçim genişliği değiştirmez (seçili sekme de aynı paydan, yazı kalınlaşmaz). Buradakiler: ikon
+ * kipi eşiği, dar sekmede üst köşe, sürükleme eşiği ve yer değiştirme, kapatırken donma.
  * ------------------------------------------------------------------------------------------------- */
 
-/** Seçili sekmenin en az genişliği (rem): ikon + ad + kapatma. */
-export const ACTIVE_MIN = 9
-/** Seçili olmayan sekmenin en az genişliği (rem): yalnızca ikon. */
+/** Sekmenin en az genişliği (rem): yalnızca ikon. */
 export const ICON_MIN = 2.75
-/** Bundan dar seçili olmayan sekme yalnızca ikon (rem): ad ipucunda, kapatma gizli. */
+/**
+ * Bundan dar sekme ikon kipinde (rem): ad ipucunda; seçili olmayanın kapatması gizli, seçili
+ * sekmede ikonun yerinde kapatma (Chrome gibi).
+ */
 export const LABEL_MIN = 5
 
-/** Sekme ikon kipinde mi (genişlik px, kök yazı boyu px). Seçili sekme hiçbir zaman. */
-export function isCompact(width: number, remPx: number, selected: boolean) {
-  return !selected && width < LABEL_MIN * remPx
+/** Sekme ikon kipinde mi (genişlik px, kök yazı boyu px). Seçimden bağımsız: genişlik aynı kalır. */
+export function isCompact(width: number, remPx: number) {
+  return width < LABEL_MIN * remPx
+}
+
+/**
+ * Eşit pay (Chrome modeli): sekmeler sıfırdan eşit büyür, doğal genişliklerinde (`caps`) durur;
+ * `room` sekmelere düşen yer. Doğal genişliğine ulaşmayanların payı (hepsi sığıyorsa sonsuz). Bir
+ * sekmenin alacağı genişlik `min(doğal, pay)`; ikon kipindeki sekmenin kendi genişliği (adı gizli)
+ * yer açılınca büyümediğinden ikon kipi buna göre seçilir.
+ */
+export function fairShare(caps: number[], room: number) {
+  const sorted = [...caps].sort((a, b) => a - b)
+  let left = room
+  for (let i = 0; i < sorted.length; i++) {
+    const share = left / (sorted.length - i)
+    if (sorted[i]! >= share) return share
+    left -= sorted[i]!
+  }
+  return Infinity
 }
 
 /** Dar sekmede üst köşe küçülür: üstün en az üçte biri düz kalır (`clamp((w − 2R) / 3, 0, R)`). */

@@ -314,10 +314,8 @@ function PropertyText({ id }: { id: string }) {
   return (
     <Flex align="center" gap={12} className="min-w-0 flex-1">
       <Flex vertical className="min-w-0 flex-1">
-        <Text ellipsis className="block font-medium text-current">
-          {p?.caption as string}
-        </Text>
-        <Text type="secondary" ellipsis className="block text-xs">
+        <Text className="block font-medium text-current truncate">{p?.caption as string}</Text>
+        <Text type="secondary" className="block text-xs truncate">
           {p?.propertyName as string}
         </Text>
       </Flex>

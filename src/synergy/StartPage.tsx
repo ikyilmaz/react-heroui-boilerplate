@@ -356,13 +356,12 @@ function Greeting({
           <Icon {...IC_BLOCK} className="size-4 shrink-0" />
           <Title
             level={1}
-            ellipsis
-            className="m-0! min-w-0 flex-1 font-display text-lg font-bold text-current!"
+            className="m-0! min-w-0 flex-1 font-display text-lg font-bold text-current! truncate"
           >
             {text}, {CURRENT_USER.firstName}.
           </Title>
         </Flex>
-        <Paragraph ellipsis className="m-0! text-xs text-current! opacity-85">
+        <Paragraph className="m-0! text-xs text-current! opacity-85 truncate">
           {before}
           <Text className="font-semibold text-current!">{pending}</Text>
           {after}
@@ -380,9 +379,8 @@ function Greeting({
         <Icon {...IC_BLOCK} className="size-6 shrink-0" />
         <Title
           level={1}
-          ellipsis
           className={cn(
-            'm-0! min-w-0 flex-1 font-display font-bold text-current!',
+            'm-0! min-w-0 flex-1 truncate font-display font-bold text-current!',
             small ? 'text-xl' : 'text-2xl @xl:text-3xl',
           )}
         >
@@ -665,9 +663,8 @@ function Categories({
               >
                 {/* Dar blokta (48rem altı) etiket sığmıyor ("Bekle…"); orada ikon + sayı, ad aria-label'da */}
                 <Text
-                  ellipsis
                   className={cn(
-                    'hidden min-w-0 @3xl:block',
+                    'hidden min-w-0 truncate @3xl:block',
                     isSel ? 'font-semibold text-current!' : 'font-medium text-foreground/70!',
                   )}
                 >
@@ -856,10 +853,8 @@ function GroupList({
                     {isSelected && <Indicator id="start-group" className="bg-accent" />}
                     <Icon {...IC} className="relative shrink-0 opacity-80" />
                     <Flex vertical className="relative min-w-0 flex-1">
-                      <Text ellipsis className="text-xs text-current! opacity-65">
-                        {p.project}
-                      </Text>
-                      <Text ellipsis className="text-sm font-medium text-current!">
+                      <Text className="text-xs text-current! opacity-65 truncate">{p.project}</Text>
+                      <Text className="text-sm font-medium text-current! truncate">
                         {isDraft ? p.form : p.name}
                       </Text>
                     </Flex>
@@ -972,7 +967,7 @@ function RequestsTile({
             {title}
           </Title>
           {process && (
-            <Text type="secondary" ellipsis className="text-sm">
+            <Text type="secondary" className="text-sm truncate">
               {processCaption(process)}
             </Text>
           )}
@@ -1029,13 +1024,12 @@ function RequestsTile({
                   <Flex vertical className="min-w-0 flex-1">
                     <Text
                       data-item-title
-                      ellipsis
                       type={unread ? undefined : 'secondary'}
-                      className={cn('text-sm', unread && 'font-semibold')}
+                      className={cn('truncate text-sm', unread && 'font-semibold')}
                     >
                       {r.template.title}
                     </Text>
-                    <Text type="secondary" ellipsis className="text-xs">
+                    <Text type="secondary" className="text-xs truncate">
                       {r.requester.name} · {r.no}
                     </Text>
                   </Flex>

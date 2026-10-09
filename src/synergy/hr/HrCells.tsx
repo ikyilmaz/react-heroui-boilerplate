@@ -126,10 +126,8 @@ export function Cell({ r, col }: { r: HrRecord; col: Column }) {
         <Flex align="center" gap={12} className="min-w-0">
           <UserAvatar user={u} />
           <Flex vertical className="min-w-0">
-            <Text ellipsis className="block font-medium text-current">
-              {fullName(u)}
-            </Text>
-            <Text type="secondary" ellipsis className="block text-xs">
+            <Text className="block font-medium text-current truncate">{fullName(u)}</Text>
+            <Text type="secondary" className="block text-xs truncate">
               {u?.username as string}
             </Text>
           </Flex>

@@ -47,6 +47,7 @@ import {
   dragThreshold,
   freeze,
   insideStrip,
+  fairShare,
   isCompact,
   swapTarget,
   topRadius,
@@ -66,17 +67,24 @@ import {
  * sekmede iki form, ajandada bağlantı, kategoride sayı).
  *
  * Başarım: sekme geçişinde hiçbir şey ölçülmez. Yaprak üç parça ve yalnızca dönüşümle kayar
- * (MotionValue, React çizmez); hedefi sekmelerin önbellekteki konumu. Konumlar düzen temizken
- * okunur: ResizeObserver geri çağrısında ve yapı (`layoutKey`) değişince. Sekmeler Motion'ın düzen
- * animasyonuyla (`layout="position"`) yalnızca yapı değişince ölçülür; sürükleme elle (Motion
- * `drag` her çizimde ölçtürür).
+ * (MotionValue, React çizmez); hedefi sekmelerin önbellekteki konumu. Konumlar düzen hazırken
+ * okunur: ResizeObserver geri çağrısında ve yapı (`layoutKey`) değişince sonraki karenin okuma
+ * adımında (`frame.read`: React'in yazdığı düzen o karede zaten hesaplanacaktı; işlemde zorunlu
+ * düzen yok). Yapı değişince sekmeler ve gruplar eski yerlerinden kayar (FLIP, elle: eski yer
+ * önbellekte, yenisi okunur, aradaki fark kendi `x` değerinden sıfıra); Motion'ın düzen
+ * animasyonu (projeksiyon ağacı) şeritte yok. Sürükleme de elle (Motion `drag` her çizimde
+ * ölçtürür).
  *
  * Genişlik (`sizing="chrome"`): sekmeler eşit paydan büyür, doğal genişlikte durur; daralınca
- * seçili sekme en az 9rem kalır, diğerleri ikona iner (ad ipucunda, kapatma gizli); o da sığmazsa
- * şerit kayar. Fareyle art arda kapatırken genişlikler donar (`widths.ts`).
+ * ikona iner (ad ipucunda; seçili olmayanın kapatması gizli, seçili sekmede ikonun yerinde
+ * kapatma); o da sığmazsa şerit kayar. Seçim genişliği değiştirmez. Fareyle art arda kapatırken
+ * genişlikler donar (`widths.ts`).
  * ------------------------------------------------------------------------------------------------- */
 
 export type StripSizing = 'chrome' | 'content' | 'fill'
+
+/** Kapatma düğmesinin payı (rem): ikon kipinde gizli, açılınca sekmenin doğal genişliğine eklenir. */
+const CLOSE_REM = 1.75
 
 /** Sekmenin satıra göre yeri (`x`), üst öğesine göre yeri (`px`) ve genişliği. */
 interface Slot extends Span {
@@ -120,7 +128,13 @@ interface StripApi {
    * olabilir (sekme gruptan çıkınca ya da gruba girince yeni grubunda yeniden kurulur, eskisi çıkan
    * grupla söner): ayrılan öğe yalnızca kayıtlı olan kendisiyse silinir.
    */
-  register: (key: string, el: HTMLElement | null, prev?: HTMLElement | null) => void
+  register: (
+    key: string,
+    el: HTMLElement | null,
+    prev?: HTMLElement | null,
+    /** Öğenin `x` değeri (sürükleme ve yapı değişince kayma). */
+    x?: MotionValue<number>,
+  ) => void
   slot: (key: string) => Slot | undefined
   /** Kapatma düğmesine basıldı (genişlik donması): sekme ya da bütün grubu kalkar. */
   closing: (el: HTMLElement, pointer: string, removes: 'tab' | 'group') => void
@@ -128,11 +142,6 @@ interface StripApi {
 }
 
 const StripContext = createContext<StripApi | null>(null)
-/** Şeridin düzen imzası (donma, daralmışken seçim) ve sürüklenen öğe: geçişte değişmez. */
-const LayoutContext = createContext<{ dep: string; dragging: string | null }>({
-  dep: '',
-  dragging: null,
-})
 
 function useStrip() {
   const api = useContext(StripContext)
@@ -206,6 +215,8 @@ export function TabStrip({
   const [tabs] = useState(() => new Map<string, HTMLElement>())
   const [groups] = useState(() => new Map<string, HTMLElement>())
   const [slots] = useState(() => new Map<string, Slot>())
+  // Sekmelerin ve grupların `x` değerleri (sürükleme ve kayma)
+  const [values] = useState(() => new Map<string, MotionValue<number>>())
   // Olay işleyicileri ve gözlemci son değerleri okur
   const latest = useRef({ selected, sizing, motion, R, tight: false })
   useLayoutEffect(() => {
@@ -280,17 +291,25 @@ export function TabStrip({
     [sx, sw, sr, snap],
   )
 
-  /** Seçili sekme görünür alanın dışındaysa oraya kayar (sonraki karede, düzen temizken). */
+  /**
+   * Şerit kabının görünür alanı: gözlemcide (düzen temizken) ve kaydırınca güncellenir. Seçimde
+   * okunmaz: geçişin hemen ardından (React yeni bölmeyi göstermişken) kaydırma konumunu okumak
+   * bütün sayfanın stilini ve düzenini zorlardı.
+   */
+  const view = useRef({ scroll: 0, width: 0, overflow: false })
+
+  /** Seçili sekme görünür alanın dışındaysa oraya kayar (yerler ve görünür alan önbellekten). */
   const reveal = useCallback(
     (key: string) => {
       const sc = scroller.current
       const s = slots.get(key)
-      if (!sc || !s) return
+      const v = view.current
+      if (!sc || !s || !v.overflow) return
       const pad = (latest.current.R ?? 16) + 8
       const behavior = latest.current.motion.level === 'full' ? 'smooth' : 'auto'
-      if (s.x - pad < sc.scrollLeft) sc.scrollTo({ left: s.x - pad, behavior })
-      else if (s.x + s.w + pad > sc.scrollLeft + sc.clientWidth)
-        sc.scrollTo({ left: s.x + s.w + pad - sc.clientWidth, behavior })
+      if (s.x - pad < v.scroll) sc.scrollTo({ left: s.x - pad, behavior })
+      else if (s.x + s.w + pad > v.scroll + v.width)
+        sc.scrollTo({ left: s.x + s.w + pad - v.width, behavior })
     },
     [slots],
   )
@@ -311,20 +330,22 @@ export function TabStrip({
     }
   }, [lock])
 
-  // Daralmış mı (doğal genişliklerin altında): yalnızca değişince çizilir; daralmışken seçim
-  // sekme genişliklerini değiştirir (seçili sekmenin en azı), o zaman sekmeler de ölçülür
-  const [tight, setTight] = useState(false)
-  const [dragging, setDragging] = useState<string | null>(null)
-  // Sekmelerin düzen imzası: grubun kendi yapısı (`TabGroup` › `layoutKey`) + şeridin donması ve
-  // daralmışken seçim. Yapı imzası (`layoutKey`) grubun yerini etkileyen her şeyi içerir
-  const stripDep = `${lock ?? ''}|${tight ? (selected ?? '') : ''}`
-  const dep = `${layoutKey}|${stripDep}`
+  // Sekmelerin düzen imzası: yapı (`layoutKey`) ve şeridin donması (seçim genişlik değiştirmez):
+  // değişince sekmeler ve gruplar yeni yerlerine kayar
+  const dep = `${layoutKey}|${lock ?? ''}`
 
   /* --- Gözlemci: sekmelerin yeri, doğal genişliği, ikon kipi ------------------------------------ */
   const onResize = useCallback(() => {
     const r = row.current
     if (!r) return
     readSlots()
+    const sc = scroller.current
+    if (sc)
+      view.current = {
+        scroll: sc.scrollLeft,
+        width: sc.clientWidth,
+        overflow: sc.scrollWidth > sc.clientWidth + 1,
+      }
     if (sheetEl.current) origin.current = sheetEl.current.getBoundingClientRect().left
     if (latest.current.sizing === 'chrome') {
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
@@ -334,23 +355,37 @@ export function TabStrip({
       let end = 0
       for (const s of slots.values()) end = Math.max(end, s.x + s.w)
       const isTight = r.scrollWidth > r.clientWidth + 1 || end >= r.clientWidth - pad - 1
+      // İkon kipi alacağı genişliğe göre (kendi genişliğine göre değil: ikon kipindeki sekmenin adı
+      // gizli, doğal genişliği ikona iner, yer açılınca büyümezdi). Sekmeler satırın yerini eşit
+      // paylaşır (`fairShare`), doğal genişliklerinde dururlar; doğal genişlik: kesilen ya da gizli
+      // adın tamamı eklenmiş, ikon kipinde gizli kapatma da
+      const rs = getComputedStyle(r)
+      let room = r.clientWidth - (parseFloat(rs.paddingInlineStart) || 0) - pad
+      room -= (parseFloat(rs.columnGap) || 0) * Math.max(0, groups.size - 1)
+      for (const g of groups.values()) room -= g.offsetWidth
+      const flex: { el: HTMLElement; nat: number }[] = []
       for (const el of tabs.values()) {
-        const sel = el.hasAttribute('data-selected')
         const w = el.offsetWidth
-        const compact = isCompact(w, rem, sel)
-        el.toggleAttribute('data-compact', compact)
-        if (compact) continue
-        // Doğal genişlik (seçili sekmenin en azı için): kesilen adların tamamı eklenir
+        room += w
+        // Sabit genişlikli sekme (Başlangıç) payı paylaşmaz
+        if (getComputedStyle(el).flexGrow === '0') {
+          room -= w
+          continue
+        }
         let nat = w
         el.querySelectorAll<HTMLElement>('[data-label]').forEach((l) => {
           nat += l.scrollWidth - l.clientWidth
         })
-        el.style.setProperty('--nat', `${Math.ceil(nat)}px`)
+        if (el.hasAttribute('data-compact')) nat += CLOSE_REM * rem
+        flex.push({ el, nat })
       }
-      if (isTight !== latest.current.tight) {
-        latest.current.tight = isTight
-        setTight(isTight)
-      }
+      const share = fairShare(
+        flex.map((f) => f.nat),
+        room,
+      )
+      for (const { el, nat } of flex)
+        el.toggleAttribute('data-compact', isCompact(Math.min(nat, share), rem))
+      latest.current.tight = isTight
       // Kalan sekmeler doğal genişliklerine sığdı: donma gereksiz
       if (!isTight && lockRef.current !== null) setFrozen(null)
     }
@@ -361,7 +396,7 @@ export function TabStrip({
     const n = s && snap(s)
     if (s && n && placed.current === key && (!t || t.x !== n.x || t.w !== n.w))
       moveSheet(s, sx.isAnimating() ? 'shift' : 'jump')
-  }, [readSlots, moveSheet, snap, tabs, slots, sx])
+  }, [readSlots, moveSheet, snap, tabs, groups, slots, sx])
   const resizeRef = useRef(onResize)
   useLayoutEffect(() => {
     resizeRef.current = onResize
@@ -379,20 +414,59 @@ export function TabStrip({
       observer.current = null
     }
   }, [tabs, groups])
-  // Şerit kayınca katmanın yeri değişir: kayma bitince yaprak yeniden piksele oturur
+  // Şerit kayınca katmanın yeri değişir: kayma bitince yaprak yeniden piksele oturur. Kaydırma
+  // konumu kayarken de önbellekte (seçimde okunmaz)
   useLayoutEffect(() => {
     const sc = scroller.current
     if (!sc) return
     const settle = () => resizeRef.current()
+    const track = () => {
+      view.current.scroll = sc.scrollLeft
+    }
     sc.addEventListener('scrollend', settle)
-    return () => sc.removeEventListener('scrollend', settle)
+    sc.addEventListener('scroll', track, { passive: true })
+    return () => {
+      sc.removeEventListener('scrollend', settle)
+      sc.removeEventListener('scroll', track)
+    }
   }, [])
 
-  /* --- Yapı değişince: yerler, sürüklemenin telafisi, yaprak ------------------------------------ */
+  /**
+   * Yapı değişince sekmeler ve gruplar eski yerlerinden yeni yerlerine kayar (FLIP): görünen yer
+   * aynı kalacak kadar `x` verilir, sıfıra iner. Grubun içindeki sekmenin farkından grubun kendi
+   * farkı düşülür (grup zaten taşıyor). Yeni gelen (eski yeri yok) kendi girişini yapar.
+   */
+  const flip = useCallback(
+    (before: Map<string, Slot>) => {
+      const t = latest.current.motion
+      if (t.level !== 'full') return
+      for (const [key, el] of [...groups, ...tabs]) {
+        const old = before.get(key)
+        const now = slots.get(key)
+        const x = values.get(key)
+        if (!old || !now || !x) continue
+        let delta = old.x - now.x
+        if (!key.startsWith('group:')) {
+          const g = el.parentElement?.closest<HTMLElement>('[data-group]')?.dataset.group
+          const go = g ? before.get(`group:${g}`) : undefined
+          const gn = g ? slots.get(`group:${g}`) : undefined
+          if (go && gn) delta -= go.x - gn.x
+        }
+        if (Math.abs(delta) < 0.5) continue
+        x.jump(x.get() + delta)
+        void animate(x, 0, t.shift)
+      }
+    },
+    [groups, tabs, slots, values],
+  )
+
+  /* --- Yapı değişince: yerler, kayma, sürüklemenin telafisi, yaprak ----------------------------- */
   useLayoutEffect(() => {
-    readSlots()
     const d = drag.current
     if (d?.started) {
+      // Sürüklerken hemen: sürüklenen sekme yeni yuvasına göre telafi edilir (imleç olayları arada)
+      const before = new Map(slots)
+      readSlots()
       const s = slots.get(d.key)
       if (s && s.x !== d.base) {
         const delta = s.x - d.base
@@ -401,11 +475,23 @@ export function TabStrip({
         d.mv.set(d.mv.get() - delta)
       }
       d.busy = false
+      before.delete(d.key)
+      flip(before)
+      const key = latest.current.selected
+      const sel = key ? slots.get(key) : undefined
+      if (sel && placed.current === key) moveSheet(sel, 'shift')
+      return
     }
-    const key = latest.current.selected
-    const s = key ? slots.get(key) : undefined
-    if (s && placed.current === key) moveSheet(s, 'shift')
-  }, [dep, readSlots, moveSheet, slots])
+    // Eski yerler önbellekte; yenileri sonraki karenin okuma adımında (o karenin düzeni)
+    const before = new Map(slots)
+    frame.read(() => {
+      readSlots()
+      flip(before)
+      const key = latest.current.selected
+      const sel = key ? slots.get(key) : undefined
+      if (sel && placed.current === key) moveSheet(sel, 'shift')
+    })
+  }, [dep, readSlots, moveSheet, slots, flip])
 
   /* --- Seçim değişince: yaprak kayar (yer önbellekten; ölçüm yok) ------------------------------- */
   useLayoutEffect(() => {
@@ -415,19 +501,26 @@ export function TabStrip({
       shown.jump(0)
       return
     }
-    let s = slots.get(selected)
-    if (!s) {
-      // Yeni sekme (henüz okunmadı): yapı zaten değişti, düzen ölçülecek
+    const place = (s: Slot) => {
+      const first = placed.current === undefined
+      placed.current = selected
+      moveSheet(s, first ? 'jump' : 'slide')
+      shown.jump(1)
+    }
+    const s = slots.get(selected)
+    if (s) {
+      place(s)
+      frame.read(() => reveal(selected))
+      return
+    }
+    // Yeni sekme (henüz okunmadı): yeri sonraki karenin okuma adımında (zorunlu düzen yok)
+    frame.read(() => {
       readSlots()
       if (sheetEl.current) origin.current = sheetEl.current.getBoundingClientRect().left
-      s = slots.get(selected)
-    }
-    if (!s) return
-    const first = placed.current === undefined
-    placed.current = selected
-    moveSheet(s, first ? 'jump' : 'slide')
-    shown.jump(1)
-    frame.read(() => reveal(selected))
+      const now = slots.get(selected)
+      if (now && latest.current.selected === selected) place(now)
+      reveal(selected)
+    })
   }, [selected, R, slots, readSlots, moveSheet, reveal, shown])
 
   /* --- Sürükleme -------------------------------------------------------------------------------- */
@@ -458,7 +551,6 @@ export function TabStrip({
         if (Math.abs(raw) < d.threshold) return
         d.started = true
         d.el.setAttribute('data-dragging', '')
-        setDragging(d.key)
       }
       const dx = raw - d.shift
       d.mv.set(dx)
@@ -487,7 +579,6 @@ export function TabStrip({
       // Bırakınca yuvasına oturur (yaprak da)
       void animate(d.mv, 0, t.drop).then(() => d.el.removeAttribute('data-dragging'))
       if (d.carries && target.current) void animate(sx, target.current.x, t.drop)
-      setDragging(null)
       // Sürüklemenin sonundaki tıklama sekmeyi seçmesin
       const r = row.current
       const stop = (e: Event) => {
@@ -509,12 +600,13 @@ export function TabStrip({
     () => ({
       sizing,
       motion,
-      register: (key, el, prev) => {
+      register: (key, el, prev, x) => {
         const map = key.startsWith('group:') ? groups : tabs
         const cur = map.get(key)
         if (el) {
           if (cur && cur !== el) observer.current?.unobserve(cur)
           map.set(key, el)
+          if (x) values.set(key, x)
           observer.current?.observe(el)
           return
         }
@@ -523,6 +615,7 @@ export function TabStrip({
         if (cur && prev && cur !== prev) return
         map.delete(key)
         slots.delete(key)
+        values.delete(key)
       },
       slot: (key) => slots.get(key),
       closing: (el, pointer, removes) => {
@@ -585,9 +678,8 @@ export function TabStrip({
         listeners.attach()
       },
     }),
-    [sizing, motion, tabs, groups, slots, readSlots, listeners],
+    [sizing, motion, tabs, groups, slots, values, readSlots, listeners],
   )
-  const layout = useMemo(() => ({ dep: stripDep, dragging }), [stripDep, dragging])
 
   // Klavye (WAI-ARIA sekmeleri): oklar / Home / End sekmeler arasında gezer, Delete kapatır
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
@@ -614,10 +706,8 @@ export function TabStrip({
 
   return (
     <Flex className={cn('relative flex min-w-0 items-end', STRIP_VARS, className)}>
-      {/* Kayan şerit Motion öğesi (`layoutScroll`): kaydırılmışken de düzen animasyonu doğru */}
-      <MotionFlex
+      <Flex
         ref={scroller}
-        layoutScroll
         className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
       >
         <Flex
@@ -633,8 +723,10 @@ export function TabStrip({
               ref={sheetEl}
               aria-hidden
               style={{ opacity: shown, '--tab-r': `${R}px` } as MotionStyle}
+              // Kendi katmanında (`will-change-transform`): yaprak kayarken her karede yalnızca
+              // kendisi boyanır, sayfanın tamamı değil
               className={cn(
-                'pointer-events-none absolute bottom-0 start-0 z-1 block h-(--tab-h) w-0',
+                'pointer-events-none absolute bottom-0 start-0 z-1 block h-(--tab-h) w-0 will-change-transform',
                 sheet,
               )}
             >
@@ -645,12 +737,14 @@ export function TabStrip({
             </MotionFlex>
           )}
           <StripContext value={api}>
-            <LayoutContext value={layout}>
-              <AnimatePresence initial={false}>{children}</AnimatePresence>
-            </LayoutContext>
+            {/* `presenceAffectsLayout` kapalı: açıkken şerit her çizildiğinde (ör. sekme geçişi)
+                  bütün sekmelere yeni bağlam gider, hepsi yeniden çizilir (kayma şeritten) */}
+            <AnimatePresence initial={false} presenceAffectsLayout={false}>
+              {children}
+            </AnimatePresence>
           </StripContext>
         </Flex>
-      </MotionFlex>
+      </Flex>
       {end}
     </Flex>
   )
@@ -661,8 +755,6 @@ export function TabStrip({
 const GroupContext = createContext<{
   key: string
   toned: boolean
-  /** Grubun ve sekmelerinin düzen imzası (grubun yapısı + şeridinki). */
-  dep: string
   /** Grubu sürükler (kök sekmesinden tutulur). */
   dragStart?: (e: ReactPointerEvent<HTMLElement>, carries: boolean) => void
 } | null>(null)
@@ -684,18 +776,12 @@ export const TabGroup = memo(function TabGroup({
   label,
   tone,
   toned = false,
-  layoutKey = '',
   onMove,
   siblings,
   children,
 }: {
   ref?: Ref<HTMLElement>
   id: string
-  /**
-   * Grubun yerini ve sekmelerinin genişliğini etkileyen yapı (kendi sekmeleri ve önceki grupların
-   * yapısı): yalnızca bu değişince grup ve sekmeleri ölçülür (Motion `layoutDependency`).
-   */
-  layoutKey?: string
   /** Grubun adı (renksiz grup). */
   label?: string
   /** Grubun rengi (`GROUP_TONE`). */
@@ -709,7 +795,6 @@ export const TabGroup = memo(function TabGroup({
   children: ReactNode
 }) {
   const api = useStrip()
-  const { dep, dragging } = useContext(LayoutContext)
   const present = useIsPresent()
   const mv = useMotionValue(0)
   const el = useRef<HTMLElement | null>(null)
@@ -718,19 +803,17 @@ export const TabGroup = memo(function TabGroup({
     (node: HTMLElement | null) => {
       const prev = el.current
       el.current = node
-      api.register(key, node, prev)
+      api.register(key, node, prev, mv)
       if (typeof ref === 'function') ref(node)
       else if (ref) ref.current = node
     },
-    [api, key, ref],
+    [api, key, ref, mv],
   )
   const order = siblings?.join('|')
-  const groupDep = `${layoutKey}|${dep}`
   const group = useMemo(
     () => ({
       key: id,
       toned,
-      dep: groupDep,
       dragStart: onMove
         ? (e: ReactPointerEvent<HTMLElement>, c: boolean) => {
             if (!el.current) return
@@ -746,7 +829,7 @@ export const TabGroup = memo(function TabGroup({
           }
         : undefined,
     }),
-    [id, toned, groupDep, onMove, api, key, mv, order],
+    [id, toned, onMove, api, key, mv, order],
   )
   // Çıkan grup bulunduğu yerde söner (akıştan çıkar, komşular kayar)
   const out = present ? undefined : api.slot(key)
@@ -756,9 +839,10 @@ export const TabGroup = memo(function TabGroup({
       ref={attach}
       data-group={id}
       role="presentation"
-      layout="position"
-      layoutDependency={dragging === key ? 'drag' : groupDep}
-      transition={{ layout: api.motion.shift }}
+      // Başlangıç saydamlığı bilinir (`initial` / `animate`): çıkış onu sayfadan okumaz (okumak
+      // stili ve düzeni zorlardı)
+      initial={false}
+      animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: api.motion.tabOut }}
       style={{
         x: mv,
@@ -785,7 +869,9 @@ export const TabGroup = memo(function TabGroup({
       <Flex className="relative flex min-w-0 flex-1 items-stretch">
         {toned && <Flex aria-hidden className={GROUP_LINE} />}
         <GroupContext value={group}>
-          <AnimatePresence initial={false}>{children}</AnimatePresence>
+          <AnimatePresence initial={false} presenceAffectsLayout={false}>
+            {children}
+          </AnimatePresence>
         </GroupContext>
       </Flex>
     </MotionFlex>
@@ -824,8 +910,8 @@ export const Tab = memo(function Tab({
   selected: boolean
   /** Grubun tutamağı: sürükleyince bütün grup gelir. */
   handle?: boolean
-  /** Sağ tık menüsü (klavyede menü tuşu / Shift+F10). */
-  menu?: MenuProps['items']
+  /** Sağ tık menüsü (klavyede menü tuşu / Shift+F10); işlevse menü açılınca kurulur. */
+  menu?: MenuProps['items'] | (() => MenuProps['items'])
   /** Sekmeyi grubun içinde `to` sırasına taşır (sürükleyerek). */
   onMove?: (to: number) => void
   /** Grubun sekmelerinin anahtarları sırayla. */
@@ -837,8 +923,6 @@ export const Tab = memo(function Tab({
 }) {
   const api = useStrip()
   const group = useContext(GroupContext)
-  const { dep: stripDep, dragging } = useContext(LayoutContext)
-  const dep = group?.dep ?? stripDep
   const present = useIsPresent()
   const mv = useMotionValue(0)
   const el = useRef<HTMLElement | null>(null)
@@ -846,11 +930,11 @@ export const Tab = memo(function Tab({
     (node: HTMLElement | null) => {
       const prev = el.current
       el.current = node
-      api.register(id, node, prev)
+      api.register(id, node, prev, mv)
       if (typeof ref === 'function') ref(node)
       else if (ref) ref.current = node
     },
-    [api, id, ref],
+    [api, id, ref, mv],
   )
   const order = siblings?.join('|')
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
@@ -866,7 +950,9 @@ export const Tab = memo(function Tab({
       carries: selected,
     })
   }
-  const frozen = dragging === id || dragging === `group:${group?.key}`
+  // İşlev menü: açılırken kurulur (sekme o anki durum için yeniden çizilmez)
+  const [built, setBuilt] = useState<MenuProps['items']>()
+  const items = typeof menu === 'function' ? built : menu
   const out = present ? undefined : api.slot(id)
   const t = api.motion
   const slot = (
@@ -875,12 +961,10 @@ export const Tab = memo(function Tab({
       data-tab={id}
       data-selected={selected || undefined}
       role="presentation"
-      layout="position"
-      layoutDependency={frozen ? 'drag' : dep}
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, transition: t.tabOut }}
-      transition={{ layout: t.shift, x: t.tabIn, opacity: t.tabIn }}
+      transition={{ x: t.tabIn, opacity: t.tabIn }}
       style={{
         x: mv,
         ...(out && { position: 'absolute', left: out.px, width: out.w, top: 0 }),
@@ -889,8 +973,6 @@ export const Tab = memo(function Tab({
       className={cn(
         'group/tab relative flex h-(--tab-h) items-stretch data-[dragging]:z-3',
         TAB_SIZING[api.sizing],
-        // Seçili sekme en az 9rem (doğal genişliği daha azsa o kadar; `--nat` gözlemciden)
-        api.sizing === 'chrome' && selected && 'min-w-[min(9rem,var(--nat,9rem))]',
         SEPARATOR,
         !present && 'pointer-events-none',
         className,
@@ -901,7 +983,13 @@ export const Tab = memo(function Tab({
     </MotionFlex>
   )
   return menu ? (
-    <Dropdown trigger={['contextMenu']} menu={{ items: menu }}>
+    <Dropdown
+      trigger={['contextMenu']}
+      menu={{ items }}
+      onOpenChange={(open) => {
+        if (open && typeof menu === 'function') setBuilt(menu())
+      }}
+    >
       {slot}
     </Dropdown>
   ) : (
@@ -915,13 +1003,14 @@ const TAB_BUTTON = cn(
   'relative z-2 flex h-full min-w-0 flex-[0_1_auto] items-center justify-start gap-2 rounded-(--tab-r) border-0 bg-transparent px-3 text-sm no-underline shadow-none outline-none',
   'hover:bg-transparent! hover:no-underline active:bg-transparent! focus-visible:outline-none! focus-visible:[box-shadow:inset_0_0_0_2px_var(--focus)]',
   // İkon kipinde (dar, seçili olmayan sekme) ikon ortada
-  'group-[[data-compact]:not([data-selected])]/tab:justify-center group-[[data-compact]:not([data-selected])]/tab:gap-0',
+  'group-data-[compact]/tab:justify-center group-data-[compact]/tab:gap-0',
 )
 
 /**
- * Sekmenin düğmesi (ya da bağlantısı): ikon ve ad. Ad kalın yazının genişliğini baştan ayırır
- * (seçilince sekme genişlemez); sığmazsa kesilir, ikon kipinde gizlenir (ad ipucunda). Odaktaki
- * (seçili) sekme birincil renkte; renkli grupta yazı rengi nötr, kalın.
+ * Sekmenin düğmesi (ya da bağlantısı): ikon ve ad. Seçim yalnızca rengi değiştirir (yazı
+ * kalınlaşmaz: sekmenin genişliği seçimle değişmez); ad sığmazsa kesilir, ikon kipinde gizlenir (ad
+ * ipucunda; seçili sekmede ikonun yerinde kapatma). Odaktaki (seçili) sekme birincil renkte;
+ * renkli grupta yazı rengi nötr.
  */
 export function TabButton({
   label,
@@ -960,31 +1049,25 @@ export function TabButton({
       className={cn(
         'shrink-0 transition-colors duration-[calc(150ms*var(--motion-time,1))]',
         current && !toned ? 'text-accent-soft-foreground' : 'text-muted',
+        // Dar seçili sekmede ikonun yerinde kapatma
+        'group-[[data-compact][data-selected]]/tab:hidden',
         iconClassName,
       )}
     />
   )
+  // Izgara içinde: kesilen ad sekmenin en küçük genişliğine katılmaz (sekme daralabilir; esnek
+  // kutunun öğesi olsaydı adın tam genişliği en küçük genişlik olurdu)
   const text = (
     <Typography.Text
       className={cn(
         'grid min-w-0 text-sm text-current',
-        'group-[[data-compact]:not([data-selected])]/tab:w-0 group-[[data-compact]:not([data-selected])]/tab:overflow-hidden',
+        'group-data-[compact]/tab:w-0 group-data-[compact]/tab:overflow-hidden',
         labelClassName,
       )}
     >
-      {/* Kalın yazının genişliği (görünmez; doğal genişlik bundan ölçülür) */}
       <Typography.Text
-        aria-hidden
         data-label
-        className="invisible col-start-1 row-start-1 truncate font-semibold text-current"
-      >
-        {label}
-      </Typography.Text>
-      <Typography.Text
-        className={cn(
-          'col-start-1 row-start-1 truncate text-current transition-colors duration-[calc(150ms*var(--motion-time,1))]',
-          current ? 'font-semibold' : 'font-medium',
-        )}
+        className="truncate font-medium text-current transition-colors duration-[calc(150ms*var(--motion-time,1))]"
       >
         {label}
       </Typography.Text>

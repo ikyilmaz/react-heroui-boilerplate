@@ -15,7 +15,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
     animation keys (`animate-*` keyframes scaled by `--motion-time` / `--motion-shift`), base rules
     for border-colour inheritance (`var(--border)`), the corner shape (`corner-shape:
     var(--corner-shape, round)` on every element and pseudo-element, no exceptions) and the thin,
-    track-less scrollbars, and one `@layer components` block that points antd's circle / pill shapes
+    track-less scrollbars, the two measured sizes registered non-inherited (`@property --fill-h`, `--view-h`), and one
+    `@layer components` block that points antd's circle / pill shapes
     (avatar, circle / round button, switch, slider handle, radio, steps icon, badge…) at
     `--pill-radius` (`rounded-full` gets it through the `--radius-full` theme key).
   - `src/themes/synergy.css`: the theme, **variables only**, in `@layer base`, for
@@ -40,7 +41,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`;
   with no stored choice the mode is light, not the system's).
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
-  squircle, Serin, Plus Jakarta Sans, Kompakt, Dolu, İnce shadow — the theme file's
+  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok) — the theme file's
   `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
   positions and four presets in `theme.ts`): presets (Atölye, Kuzey Işığı, Şafak, Lacivert; each sets
   the look keys only (texture included), never nav / corner shape / motion; cards with a live preview drawn by writing
@@ -100,15 +101,22 @@ background tab (also on request; the only click modifiers in the app).
 
 ## Structure (`src/synergy/`)
 
-`src/router.tsx` has one route, the shell (`path: '*'`). Pages live in the workspace's screens:
-each screen renders the page routes with its own address (`screens.tsx`, `useRoutes(…, location)`):
+`src/App.tsx` renders the shell; there is no data router. The shell owns its react-router `Router`
+(`ShellRouter` in `Workspace.tsx`) with a location that never changes, and the workspace owns the
+browser address (`useWorkspaceUrl`, history API). Pages live in the workspace's screens: each screen
+renders the page routes with its own address (`screens.tsx`, `useRoutes(…, location)`) under its own
+`RouteContext` and `LocationContext`:
 `/calisma-alani` (Başlangıç), `/is-akislari[/:box[/:processId[/:requestId]]]` (a request under a list
 opens over that list), `/talepler/:requestId` (a request in its own tab; child forms too),
 `/uygulamalar/:appId`, `/insan-kaynaklari/:module[/:recordId]`. The browser address is the selected
 tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
 
 - `index.tsx` › `AppShell`: `Shell` (theme settings, providers) › `Frame` (inside `AntTheme`: holds
-  the workspace state, `useWorkspaceUrl`, chrome, main area, drawer, panels). Chrome as separate
+  the workspace state, `useWorkspaceUrl`, `ShellRouter`, chrome, main area, drawer, panels; the
+  selected tab's app and back / forward reach the dock and history buttons through
+  `ChromeNavContext`, the selected screen's path reaches the start menu (closes when it changes) and
+  the app tree (current app) through `PlaceContext`, so a tab switch doesn't re-render the chrome,
+  the phone drawer or the panels). Chrome as separate
   floating panels on one side, set by tema paneli › Gezinme (`ChromePlace`; "Sağda" mirrors "Solda",
   "Altta" mirrors "Üstte": tooltips, panels and the start menu open toward the content, from the
   chrome's side; `CHROME_TIP`, `PANEL_PLACEMENT`, `PLACE`): "Solda" = left column with logo + back /
@@ -127,9 +135,9 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   a card's top line). The dock is fixed circles (`DockApps`): Başlangıç and the apps, the selected
   tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
   app's tab (its list under a form counts) or opens one; Başlangıç and the logo select Başlangıç.
-  Back / forward act on the selected tab's own history. Other shell links (start menu, Tüm
-  uygulamalar, search) navigate the browser; the workspace opens what they point at (switching to it
-  if open). The chrome height reaches sticky page parts as `--chrome-top`; only the dock has a
+  Back / forward act on the selected tab's own history. Other shell links and `useNavigate` (start
+  menu, Tüm uygulamalar, search) go through `ShellRouter`'s navigator: the workspace opens what they
+  point at (switching to it if open). The chrome height reaches sticky page parts as `--chrome-top`; only the dock has a
   surface; below 640px a top bar + `Drawer`.
 - Workspace (`Workspace.tsx`; state `shared/workspace.ts`, address `shared/workspaceUrl.ts`; added on
   explicit request): app-wide tabs. A tab is a screen (Başlangıç, İş Akış Yönetimi at a box / process,
@@ -163,15 +171,19 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   family root), `?sekmeler=` the other tabs in order with `*` for the selected one (`ia.` / `t.` /
   `u.` / `ik.` tokens, `a~b@40` split, `(ad.renk[.k];…)` user group); child forms aren't stored.
   In-tab navigation pushes a browser entry (Back steps back in the selected tab, closing a form over a
-  list); switching, opening, closing and layout replace it. Each screen renders the page routes with
-  its own `NavigationContext` navigator (pages' `Link` / `useNavigate` / `Navigate` stay in their
-  screen), `ScreenContext` (`close`, `open`), `OpenChildContext` and a `LayoutGroup`, all built once
-  per screen. Strip: `TabStrip` › one `TabGroup` per unit (Başlangıç, a group, or an ungrouped tab;
+  list); switching, opening, closing and layout replace it. The address is written straight to the
+  history (`pushState` / `replaceState`; the router's location never changes); browser back / forward
+  (`popstate`) maps onto the selected tab's history in a transition started in the next task. Each
+  screen renders the page routes with its own `RouteContext` / `LocationContext` (the shell's never
+  reach it), its own `NavigationContext` navigator (pages' `Link` / `useNavigate` / `Navigate` stay in
+  their screen), `ScreenContext` (`close`, `open`), `OpenChildContext` and a `LayoutGroup`, all built
+  once per screen. Strip: `TabStrip` › one `TabGroup` per unit (Başlangıç, a group, or an ungrouped tab;
   units drag as a whole from their first tab) › `Tab` with one `ScreenLabel` per screen (icon + name
   from `screenMeta`, the tooltip gives the full path, which replaced the breadcrumb); context menu:
   Yan yana aç, Ayrı sekmelere ayır, Sola / Sağa taşı (Grubu … for a group's first tab), Bağlantıyı
-  kopyala (the tab's own address), Kapat / Grubu kapat; a hover button pairs a single tab with the
-  selected one; swap / separate at the strip's end. Screens are elements built once per screen and
+  kopyala (the tab's own address), Kapat / Grubu kapat (built when it opens; "Yan yana aç" only while
+  the selected tab is single; no pair button on the tab itself, so selecting never changes a tab's
+  width); swap / separate at the strip's end. Screens are elements built once per screen and
   rebuilt only when that screen's state object changes, so a switch re-renders two tabs and two
   panes, never a page. Panes never move in the DOM: each has a fixed absolute box (single = whole
   container, split = left / right by its tab's ratio, inline `width`); hidden ones are
@@ -179,7 +191,12 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   only the pane). Selecting, opening and closing are transitions (`startTransition`), so the click
   task stays ~1–2 ms. Motion: panes `layout` + `layoutScroll` measured only through
   `layoutDependency={moved}` (visible before and after), content `layout="position"`, px radius via
-  `style`. Tab switch: the new pane enters from the tab's direction (30px + fade; a form closing over
+  `style`; a pane's Motion tree gets an empty `PresenceContext` (the pane runs its own exit through
+  `usePresence`: Motion would otherwise measure the closing pane and play every inner exit). A pane
+  is promoted to its own layer only while it enters or leaves (`will-change` with `data-entering` /
+  leaving). A pane created hidden (restored from the address, opened in the background) sleeps:
+  pre-rendered in a hidden `<Activity>`, woken when selected or in an idle period (one per idle
+  callback), so a restored address paints only the visible screens first. Tab switch: the new pane enters from the tab's direction (30px + fade; a form closing over
   its list brings the list back from the left), the old one fades out in place underneath
   (`data-entering` replays the header cue). A side pane opened in the same tab pushes in from the
   container edge while the opener shrinks; closing pushes it out to its side while the other grows;
@@ -317,26 +334,37 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
-  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`).
+  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`), `warmup.tsx` (`AntWarmup`: the
+  pages' antd components drawn once, hidden, at idle after start-up, so their styles are injected
+  then and not on the first open of a tab).
 - `tabs/`: the one tab system (every strip and content switch in the app):
   - `TabStrip.tsx`: `TabStrip` (scrolling row, WAI-ARIA tablist keyboard — arrows / Home / End move
     focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag),
     `TabGroup` (label or coloured dot + 2px underline, drags as a unit from its `handle` tab),
-    `Tab` (slot: hover pill, separator, context menu, drag), `TabButton` (role=tab button or `Link`;
-    the label reserves its semibold width so selecting never changes a tab's width), `TabClose`
-    (visible on the selected tab, on hover / focus otherwise; hidden in icon-only tabs). Chrome
-    model: flat inactive tabs, 1×16px separators hidden next to the selected / hovered / focused tab,
-    hover pill (group tint in coloured strips), one selected sheet that merges into the container
-    with concave flares; in coloured strips a 2px ring in the group colour that meets the underline,
-    label neutral semibold; single group no ring, label `text-accent-soft-foreground`. The sheet is
-    three transform-only parts (start cap, scaled middle, end cap; MotionValues, no React render)
-    placed from cached tab positions (read only in the ResizeObserver callback and when the
-    structure — `layoutKey` / per-group `layoutKey` — changes, never on a plain switch), snapped to
-    device pixels, middle 1 device px under the caps (no seams). Sizing `chrome`: tabs grow equally
-    from 0 and stop at their natural width (`max-w-max`), the selected one keeps `min(9rem, natural)`
-    (`--nat`), inactive ones go down to 2.75rem and become icon-only below 5rem (`data-compact`, both
-    written by the observer, no React render), then the strip scrolls; `content` natural width;
-    `fill` equal shares. Closing freeze: a pointer close while tabs are squeezed locks the row's width
+    `Tab` (slot: hover pill, separator, context menu — items may be a function, built when it opens —,
+    drag), `TabButton` (role=tab button or `Link`; the label is medium weight and never bold:
+    selecting changes colour only, never a tab's width; it sits in a grid so a truncated label
+    doesn't count toward the tab's minimum width), `TabClose` (visible on the selected tab, on hover /
+    focus otherwise — opacity, its room stays; hidden in inactive icon-only tabs). Chrome model: flat
+    inactive tabs, 1×16px separators hidden next to the selected / hovered / focused tab, hover pill
+    (group tint in coloured strips), one selected sheet that merges into the container with concave
+    flares; in coloured strips a 2px ring in the group colour that meets the underline, label
+    neutral; single group no ring, label `text-accent-soft-foreground`. The sheet is three
+    transform-only parts (start cap, scaled middle, end cap; MotionValues, no React render; their
+    container is its own layer, `will-change-transform`) placed from cached tab positions (read in
+    the ResizeObserver callback, and when the structure — `layoutKey` — changes in the next frame's
+    read step (`frame.read`), never on a plain switch and never inside the commit), snapped to
+    device pixels, middle 1 device px under the caps (no seams). No Motion layout animation in the
+    strip: when the structure changes, tabs and groups slide from their cached old position to the
+    new one (FLIP by hand: each has an `x` MotionValue — also used for drag —, set to the
+    difference and animated to 0; a tab's difference minus its group's), so the strip never starts
+    Motion's projection tree. Sizing `chrome`: tabs grow equally from 0 and stop at their natural
+    width (`max-w-max`), down to 2.75rem, then the strip scrolls; selection never changes widths.
+    Icon-only below 5rem (`data-compact`, written by the observer, no React render) from the width
+    the tab would get (`fairShare`: equal share of the row, capped at each tab's natural width with
+    its hidden / truncated label counted), not its own width (an icon-only tab's own width can't
+    grow back); the selected icon-only tab shows its close button in place of the icon. `content`
+    natural width; `fill` equal shares. Closing freeze: a pointer close while tabs are squeezed locks the row's width
     (minus the closed tab or group) until the pointer leaves the strip (+40px below, +60px at the
     end), 2s after a touch close, or the structure changes. Drag is manual (Motion `drag` measures on
     every render): threshold 16 × width / 256, swap when the leading edge crosses the neighbour's
@@ -349,8 +377,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     border and the fill as an unoffset spread shadow clipped to the corner square. No radial-gradient
     bands.
   - `Panes.tsx`: `Pane` (memo; box, visibility, enter / leave / push / exit motions, skeleton +
-    hidden `<Activity>` pre-render) and `Divider`. `context.ts`: `OpenChildContext` / `useOpenChild`,
-    `PaneContext` / `useTabScroller`, `ScreenContext` / `useScreen` (values never change on a switch).
+    hidden `<Activity>` pre-render, sleeping until selected / idle) and `Divider`. `context.ts`:
+    `OpenChildContext` / `useOpenChild`, `PaneContext` / `useTabScroller`, `ScreenContext` /
+    `useScreen` (values never change on a switch), `PlaceContext` / `usePlace` (the shell's selected
+    path).
   - `ContentSwitch.tsx`: the direction-aware content switch (workflow boxes, İK sections): new
     content enters 30px from the change's direction with a fade, the old one fades out in place
     (`popLayout`). `motion.ts`: the single timing table (`useTabMotion`: sheet spring
@@ -358,41 +388,79 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     ease-in-out, drop spring 0.25, reveal 0.32; "Az" = fades only, "Kapalı" =
     instant, speed divides durations) and `useDirection`.
   - `widths.ts`: pure decisions with a self-check (`scripts/tabs/widths.test.mjs`): icon-only
-    threshold, narrow-tab top radius, drag threshold, swap target, closing freeze reducer.
+    threshold, fair share, narrow-tab top radius, drag threshold, swap target, closing freeze
+    reducer.
 - `shared/`: data and logic — `workflowData.ts` (people, boxes, processes, events, columns, date
   buckets, menu apps, formatting), `decisions.ts` (in-memory store: `decide`, `markRead`,
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
   forward → `decide()`; `flow.tsx` draws the dialogs), `workspace.ts` (workspace state: screens,
   tabs, groups, histories; pure reducer, self-check `scripts/tabs/workspace.test.mjs`),
-  `workspaceUrl.ts` (address ↔ state), `appForms.ts` (menu app forms), `formDeck.ts` (form deck), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
+  `workspaceUrl.ts` (address ↔ state), `scrollBarSize.ts` (replaces rc-util's scrollbar measurement
+  through a `vite.config.ts` alias: measured once at idle), `appForms.ts` (menu app forms), `formDeck.ts` (form deck), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
   `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
 
-## Performance rules (tab system; measured, see `docs/tab-system-rewrite.md`)
+## Performance rules (tab system; measured, see `docs/workspace-performance.md`)
 
 - Measure on the production build: `npm run build && npx vite preview --port 4173 --strictPort`, then
-  `node scripts/perf/tabs.mjs --out <file>.json` (scenario A–H, median of 3 rounds, 4× throttled
-  A–D), `node scripts/perf/interactions.mjs` (interruptions, drag, keyboard, divider, closing freeze,
-  all animation levels), `node --test scripts/tabs/widths.test.mjs scripts/tabs/workspace.test.mjs`,
-  `node scripts/perf/shots.mjs` (strip screenshots, both flare paths). Never report dev-server
-  numbers. The `scripts/perf/*.mjs` scenarios still drive the old form groups and are being
-  rewritten for the workspace.
+  `node scripts/perf/tabs.mjs --out <file>.json` (workspace scenarios A–Z: switches, child forms,
+  form over a list, back / forward, background open, pair / unpair, dock; median of 3 rounds, 4×
+  throttled switches), `node scripts/perf/open-close.mjs [--cpu 4]` (opening from Başlangıç / the
+  dock, closing back to Başlangıç; fresh page per round), `node scripts/perf/startup.mjs` (restored
+  addresses: first paint, long frames, reads in hidden panes), `node scripts/perf/interactions.mjs`
+  (correctness: interruptions, child forms, back / forward, open paths, drag, keyboard, divider,
+  closing freeze, widths, address restore, limit, nav positions, all animation levels),
+  `node --test scripts/tabs/widths.test.mjs scripts/tabs/workspace.test.mjs`,
+  `node scripts/perf/shots.mjs` (strip screenshots, both flare paths). Shared parts in
+  `scripts/perf/harness.mjs`. Never report dev-server numbers.
 - A context value that changes on a tab switch re-renders every form: keep `LookContext`,
   `SettingsContext`, antd `ConfigProvider` props (memoized config, constant `wave` / `card`),
   `PaneContext`, `OpenChildContext`, `ScreenContext` and each screen's `NavigationContext` stable;
   build screen elements once per screen (rebuilt only when that screen's state changes); pass stable
   callbacks / elements (`placeholder`) to `memo` parts.
+- React 19 propagates a context change to every consumer of that context object below the provider,
+  even under a nearer provider of the same context (the consumer runs, then bails). So router
+  state must never change: the workspace writes the address itself, the shell's `Router` location is
+  constant, and each screen provides its own `RouteContext` / `LocationContext` (otherwise every URL
+  write re-ran every screen's `Link`s and routes). Shell values that change on a switch go through
+  small contexts read only by their leaves (`ChromeNavContext`, `PlaceContext`).
+- `AnimatePresence` re-renders all its children's Motion components on every parent render
+  (`presenceAffectsLayout`, default on): set it off where children have their own
+  `layoutDependency` (panes, strips). A Motion tree that runs its own exit gets an empty
+  `PresenceContext` (panes). An `exit` (or any animation) needs a known start value (`initial` /
+  `animate` / a MotionValue): otherwise Motion reads the computed style and forces style and layout.
 - Every Motion `layout` / `layoutId` node needs a `layoutDependency` that changes only when its box
   can change (the dock too): a node without one snapshots on every render and forces a style /
-  layout flush before the commit. Don't nest `layout` nodes needlessly; never use `drag` on tabs.
+  layout flush before the commit. One layout node updating starts Motion's projection for the whole
+  tree (it also measures `layoutScroll` panes): the strip doesn't use layout animations at all (FLIP
+  by hand from cached positions). Don't nest `layout` nodes needlessly; never use `drag` on tabs.
+- No layout reads in the commit (layout effects) or in mount effects: read in a `ResizeObserver`
+  callback (layout is ready, before paint) or Motion's `frame.read`; write measured sizes straight to
+  the element (no React state), and when a measurement decides layout (column / sheet, wide / narrow)
+  re-render with `flushSync` only when the decision flips (`useSidePanel`, `usePaneMin`,
+  `useFillHeight`). Several observers: no read after another one's write in the same frame.
+- `popstate`: React renders a transition started inside it synchronously (scroll restoration): start
+  it in the next task (`setTimeout`). The decisions store re-renders through transitions
+  (`useSyncExternalStore` always renders synchronously).
 - Don't put a custom property that changes on interaction on a large container (it restyles the
-  whole subtree); write per-element inline values instead. Hiding big subtrees: `content-visibility`
-  is cheap, `visibility` / `pointer-events` / `inert` toggles restyle the whole subtree (5–20 ms per
-  form), `display: none` re-lays it out on show.
+  whole subtree); write per-element inline values instead. Measured custom properties written on a
+  container are registered non-inherited (`@property` in `src/index.css`: `--fill-h`, `--view-h`)
+  and passed down explicitly (`[--fill-h:inherit]`) only to the elements that use them. Hiding big
+  subtrees: `content-visibility` is cheap, `visibility` / `pointer-events` / `inert` toggles restyle
+  the whole subtree (5–20 ms per form), `display: none` re-lays it out on show.
+- antd: no `ellipsis` on `Typography` (a ResizeObserver and measuring per text; use `truncate`,
+  `line-clamp-*`); no `scroll.x` on `Table` (a measuring row on every reveal; wrap it in an
+  `overflow-x-auto` box, table `w-max min-w-full`). rc-util's scrollbar measurement (every table
+  mount inserted a stylesheet: full restyle and relayout) is replaced through a Vite alias by
+  `shared/scrollBarSize.ts` (measured once, at idle). Component styles are injected at idle after
+  start-up (`ant/warmup.tsx`): the first open of a page type no longer restyles the whole page.
 - `<Activity mode="hidden">` re-runs every mount effect (antd's measuring, Motion remounts with
-  replayed entrance animations) on reveal: use it only for one-time pre-rendering, not for switching.
+  replayed entrance animations) on reveal: use it only for one-time pre-rendering (forms behind the
+  skeleton, sleeping panes), not for switching.
+- Animations: JS-driven transform / opacity repaint every frame unless the element has its own
+  layer: promote only while animating (pane enter / leave) or small permanent ones (the sheet).
 - Hooks that keep an element in state must ignore ref detaches (`useAttach`) and skip measuring when
   the element has no boxes (hidden pane), or hiding / showing re-renders the whole form.
 
@@ -400,7 +468,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
 
 The tab radius cap (`TAB_RADIUS`); 2px group ring and underline (card contours stay 1px); neutral
 selected label in coloured strips; separators and a hover pill on inactive tabs; close button only on
-hover / focus for inactive tabs; Chrome-style width distribution with icon-only tabs; the closing
+hover / focus for inactive tabs; Chrome-style width distribution with icon-only tabs (selection never
+changes widths: no bold label, no pair button on the tab, no larger selected tab); the closing
 freeze; the shared `tabs/` module replacing `AgendaTabs.tsx`'s `FLARES` / `AGENDA_PAGE`, the
 StartPage category constants, `SwitchPanel` and `DirectionalPanels`.
 

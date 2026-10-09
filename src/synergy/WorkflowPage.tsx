@@ -231,10 +231,10 @@ function ProcessList({
               {on && <Indicator id="wf-process" className="bg-accent" />}
               <Icon {...IC} className="relative shrink-0 opacity-80" />
               <Flex vertical className="relative min-w-0 flex-1">
-                <Typography.Text ellipsis className="block text-xs text-current opacity-65">
+                <Typography.Text className="block text-xs text-current opacity-65 truncate">
                   {p.project}
                 </Typography.Text>
-                <Typography.Text ellipsis className="block text-sm font-medium text-current">
+                <Typography.Text className="block text-sm font-medium text-current truncate">
                   {isDraft ? p.form : p.name}
                 </Typography.Text>
               </Flex>

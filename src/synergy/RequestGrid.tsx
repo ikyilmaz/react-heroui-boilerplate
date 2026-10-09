@@ -203,7 +203,7 @@ export function RequestGrid({
     >
       <Flex wrap align="center" gap={8} className="shrink-0">
         {/* `min-w-48`: telefonda araçların yanında tek harfe ("S") sıkışıyordu; sığmazsa alt satıra iner */}
-        <Typography.Title level={2} ellipsis className="m-0 min-w-48 flex-1 font-display text-lg">
+        <Typography.Title level={2} className="m-0 min-w-48 flex-1 font-display text-lg truncate">
           {label}
         </Typography.Title>
         <SearchField

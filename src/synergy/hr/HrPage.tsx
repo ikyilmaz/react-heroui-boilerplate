@@ -95,16 +95,10 @@ export function HrPage() {
   const def = findModule(params.module)
   // Geniş ekranda alan ekranın (sekmeler açıkken bölmenin) kalanını doldurur; paneller kendi içinde kayar
   const scroller = useTabScroller()
-  const [setFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const setFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   if (!def) return <Navigate to={hrLink('kullanicilar')} replace />
   return (
-    <Flex
-      ref={setFill}
-      align="start"
-      gap={12}
-      style={fillStyle}
-      className="@6xl:h-(--fill-h) @6xl:items-stretch"
-    >
+    <Flex ref={setFill} align="start" gap={12} className="@6xl:h-(--fill-h) @6xl:items-stretch">
       <HrNav current={def} />
       <Flex vertical gap={12} className="min-w-0 flex-1 @6xl:min-h-0">
         {def.view === 'table' ? (
@@ -152,7 +146,7 @@ function NavItem({
       {/* Seçili modülün zemini modülden modüle kayar */}
       {current && <Indicator id="hr-nav" className="bg-accent" />}
       <Icon {...IC} className="relative shrink-0" />
-      <Typography.Text ellipsis className="relative min-w-0 flex-1 text-current [font:inherit]">
+      <Typography.Text className="relative min-w-0 flex-1 text-current [font:inherit] truncate">
         {m.label}
       </Typography.Text>
       <Typography.Text className={cn('relative text-xs text-current', !current && 'opacity-60')}>
@@ -194,10 +188,7 @@ function HrNav({ current }: { current: ModuleDef }) {
                   className="h-10 w-full justify-start gap-3 rounded-xl px-3 text-sm font-normal text-foreground/80"
                 >
                   <Icon {...IC} className="shrink-0" />
-                  <Typography.Text
-                    ellipsis
-                    className="min-w-0 flex-1 text-start text-current [font:inherit]"
-                  >
+                  <Typography.Text className="min-w-0 flex-1 text-start text-current [font:inherit] truncate">
                     {p.label}
                   </Typography.Text>
                   <ChevronDown
@@ -287,8 +278,7 @@ function Band({ def, count, children }: { def: ModuleDef; count: number; childre
           <Flex align="baseline" gap={12} className="min-w-0">
             <Typography.Title
               level={1}
-              ellipsis
-              className="m-0 min-w-0 font-display text-2xl font-bold text-current"
+              className="m-0 min-w-0 font-display text-2xl font-bold text-current truncate"
             >
               {def.label}
             </Typography.Title>

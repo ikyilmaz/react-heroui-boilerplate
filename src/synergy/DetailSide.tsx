@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -23,6 +22,7 @@ import {
   type Transition,
   type Variants,
 } from 'framer-motion'
+import { flushSync } from 'react-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Files, History, Info, PanelRightClose, PanelRightOpen, PanelTopClose } from 'lucide-react'
 import { Button, Card, Divider, Flex, Segmented, Typography } from 'antd'
@@ -76,7 +76,10 @@ const STICKY = 'sticky top-[calc(var(--chrome-top,0px)+var(--spacing)*22)]'
  * `useScroll`), yapışınca görünen alanda durur (görünen alan eksi yapışma yeri ve alt boşluk).
  */
 const FILL =
-  'h-[min(calc(var(--fill-h,100dvh)+var(--scrolled,0px)),calc(var(--view-h,100dvh)-var(--chrome-top,0px)-var(--spacing)*22-1rem))]'
+  '[--fill-h:inherit] [--view-h:inherit] h-[min(calc(var(--fill-h,100dvh)+var(--scrolled,0px)),calc(var(--view-h,100dvh)-var(--chrome-top,0px)-var(--spacing)*22-1rem))]'
+
+/** Kabın boyları kalıtılmaz (`src/index.css`): sütun kartların kabına aktarır. */
+const PASS_FILL = '[--fill-h:inherit] [--view-h:inherit]'
 
 const RAIL: { id: SideTarget; label: string; icon: LucideIcon }[] = [
   { id: 'docs', label: DOCUMENT_LABELS.title, icon: Files },
@@ -96,7 +99,6 @@ export interface SideState {
   opener: RefObject<HTMLElement | null>
   /** Sayfa açıksa kapatır (formda bir şey gösterilince). */
   dismiss: () => void
-  style: CSSProperties
   /** Formun kaydırma kabı (sekmeler açıkken bölme; yoksa `null`: pencere). */
   scroller: HTMLElement | null
 }
@@ -108,33 +110,37 @@ export interface SideState {
  */
 export function useSidePanel(
   scroller: HTMLElement | null,
-): [SideState, (el: HTMLElement | null) => void] {
+): [SideState, (el: HTMLElement | null) => (() => void) | undefined] {
   const phone = useMediaQuery('(max-width: 639px)')
-  const [box, setBox] = useState<HTMLElement | null>(null)
-  const attach = useAttach(setBox)
   const [roomy, setRoomy] = useState(true)
-  const [viewH, setViewH] = useState<number | null>(null)
-  useLayoutEffect(() => {
-    if (!box) return
-    const measure = () => {
-      // Gizli form sekmesinde (display: none) kutu yok: yerleşim olduğu gibi kalır (gizlenip
-      // görününce sayfaya dönüp geri gelmesin, form yeniden çizilmesin)
-      if (!box.getClientRects().length) return
-      // Tema paneli › Ölçek kök yazı boyunu değiştirir: rem her ölçümde yeniden okunur
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      setRoomy(box.clientWidth >= COLUMN_MIN * rem)
-      setViewH(scroller ? scroller.clientHeight : window.innerHeight)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(box)
-    if (scroller) ro.observe(scroller)
-    window.addEventListener('resize', measure)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', measure)
-    }
-  }, [box, scroller])
+  // Kabın genişliği ve ekranın boyu boyut gözlemcisinde (düzen hazırken) ölçülür: form iskeletten
+  // çıkınca ne düzeni zorlar ne de (yerleşim değişmedikçe) formu yeniden çizer. Ekranın boyu kaba
+  // doğrudan yazılır (`--view-h`, yapışkan yan sütun); yerleşim değişirse boyamadan önce çizilir
+  // (yanlış yerleşim bir kare görünmesin)
+  const attach = useCallback(
+    (box: HTMLElement | null) => {
+      if (!box) return
+      const measure = () => {
+        // Gizli bölmede kutu yok: yerleşim olduğu gibi kalır
+        if (!box.getClientRects().length) return
+        // Tema paneli › Ölçek kök yazı boyunu değiştirir: rem her ölçümde yeniden okunur
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+        const view = scroller ? scroller.clientHeight : window.innerHeight
+        box.style.setProperty('--view-h', `${view}px`)
+        const next = box.clientWidth >= COLUMN_MIN * rem
+        flushSync(() => setRoomy(next))
+      }
+      const ro = new ResizeObserver(measure)
+      ro.observe(box)
+      if (scroller) ro.observe(scroller)
+      window.addEventListener('resize', measure)
+      return () => {
+        ro.disconnect()
+        window.removeEventListener('resize', measure)
+      }
+    },
+    [scroller],
+  )
 
   const mode: Mode = phone ? 'stack' : roomy ? 'column' : 'sheet'
   const [folded, setFolded] = useState(loadFolded)
@@ -187,24 +193,9 @@ export function useSidePanel(
     },
     opener,
     dismiss: () => setSheet(false),
-    style: (viewH === null ? {} : { '--view-h': `${viewH}px` }) as CSSProperties,
     scroller,
   }
   return [state, attach]
-}
-
-/**
- * Durumda tutulan öğenin bağlayıcısı: yalnızca öğe gelince yazar. Form sekmesi gizlenince (`Activity`)
- * React bağı kopartır (`null`) ve görününce yeniden bağlar; ikisi de durumu değiştirip formu yeniden
- * çizmesin. Bileşen gerçekten kalkınca durum da gider.
- */
-function useAttach(set: (el: HTMLElement) => void) {
-  return useCallback(
-    (el: HTMLElement | null) => {
-      if (el) set(el)
-    },
-    [set],
-  )
 }
 
 /* --- Hareket ------------------------------------------------------------------------------------ */
@@ -296,7 +287,7 @@ export function SidePanel({
   // kenarı ekranın altında kalır. MotionValue: React çizmez
   const container = useMemo(() => ({ current: side.scroller }), [side.scroller])
   const { scrollY } = useScroll(side.scroller ? { container } : undefined)
-  const sticky = { ...side.style, '--scrolled': useMotionTemplate`${scrollY}px` } as MotionStyle
+  const sticky = { '--scrolled': useMotionTemplate`${scrollY}px` } as MotionStyle
   const foldLabel = 'Paneli katla'
   const { stack: stackVariants, card, fade } = useStack(mode === 'sheet')
 
@@ -450,6 +441,7 @@ export function SidePanel({
           // Yapışkan öğe çıkan kartların (`popLayout`, mutlak) konum kabı da olur: `relative` gerekmez
           // (eklenirse `cn` yapışkanlığı siler)
           STICKY,
+          PASS_FILL,
           'z-10 shrink-0 self-start',
           open ? 'w-[calc((100%-0.75rem)/3)]' : 'w-14',
         )}
@@ -477,7 +469,13 @@ export function SidePanel({
   // çıkar (`popLayout`: bento `relative`) ve yeniden beliren formun üstünde yukarı toplanır
   return (
     <AnimatePresence mode="popLayout">
-      {open && stack('sheet', 'h-(--fill-h) min-h-96 min-w-0 flex-1', 'Yan bilgiler', sheetBox)}
+      {open &&
+        stack(
+          'sheet',
+          'h-(--fill-h) min-h-96 min-w-0 flex-1 [--fill-h:inherit]',
+          'Yan bilgiler',
+          sheetBox,
+        )}
     </AnimatePresence>
   )
 }
@@ -593,8 +591,8 @@ function FadeScroll({
   }, [bottom])
   useMotionValueEvent(scrollY, 'change', measure)
   // İçerik ya da kart boyu değişince (sekme, doküman uyarısı, pencere) alt kenar yeniden ölçülür
+  // İlk ölçüm gözlemcinin ilk bildiriminde (düzen hazırken): takılınca hemen okumak düzeni zorlardı
   useEffect(() => {
-    measure()
     const ro = new ResizeObserver(measure)
     if (box.current) ro.observe(box.current)
     if (content.current) ro.observe(content.current)

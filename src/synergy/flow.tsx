@@ -231,8 +231,8 @@ function ForwardDialog({
           options={candidates.map((p) => ({ value: p.name, label: p.name, person: p }))}
           optionRender={(o) => (
             <Flex vertical className="min-w-0">
-              <Typography.Text ellipsis>{o.data.person.name}</Typography.Text>
-              <Typography.Text type="secondary" ellipsis className="text-xs">
+              <Typography.Text className="truncate">{o.data.person.name}</Typography.Text>
+              <Typography.Text type="secondary" className="text-xs truncate">
                 {o.data.person.department}
               </Typography.Text>
             </Flex>

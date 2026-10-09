@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 import {
   CURRENT_USER,
   boxes,
@@ -28,7 +28,7 @@ import {
  * - görüntülenen dokümanlar: `markDocumentViewed(requestId, docId)`,
  * - favori uygulamalar: `togglePin(appId)` (MenuManager.PinRecentlyMenuItem).
  * Sayfa yenilenince her şey sıfırlanır. Her dilim değişince yeni bir nesne olur; kancalar dilime
- * abone olur (`useSyncExternalStore`).
+ * abone olur (`useSlice`; değişiklik geçiş olarak çizilir).
  * ------------------------------------------------------------------------------------------------- */
 
 interface DecisionRecord {
@@ -68,15 +68,26 @@ function commit(next: Partial<State>) {
 
 function subscribe(l: () => void) {
   listeners.add(l)
-  return () => listeners.delete(l)
+  return () => {
+    listeners.delete(l)
+  }
 }
 
+/**
+ * Dilimin güncel değeri. Değişince yeniden çizim bir geçiş (`startTransition`): bir talep açılınca
+ * okundu olur, gizli listeler, Başlangıç'ın sayıları ve rozetler de güncellenir; bu iş parçalara
+ * bölünür, tıklamayı ya da formun gelişini bekletmez. (`useSyncExternalStore` her değişikliği
+ * hemen ve tek parça çizerdi.) Bir değişiklikteki bütün dilimler aynı geçişte çizilir.
+ */
 function useSlice<K extends keyof State>(key: K): State[K] {
-  return useSyncExternalStore(
-    subscribe,
-    () => state[key],
-    () => state[key],
-  )
+  const [value, setValue] = useState(() => state[key])
+  useEffect(() => {
+    const sync = () => startTransition(() => setValue(state[key]))
+    // Çizimle abonelik arasında değiştiyse
+    sync()
+    return subscribe(sync)
+  }, [key])
+  return value
 }
 
 /* --- Kararlar ---------------------------------------------------------------------------------- */

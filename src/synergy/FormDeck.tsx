@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import {
   AnimatePresence,
   usePresence,
@@ -75,13 +75,13 @@ const LEAVE: Transition = { duration: 0.16, ease: [0.4, 0, 1, 1] }
 /** Drawer kartının sağa kayarak çıkışı. */
 const SLIDE_OUT: Transition = { duration: 0.24, ease: [0.4, 0, 1, 1] }
 
-export function FormDeck() {
+export const FormDeck = memo(function FormDeck() {
   const deck = useFormDeck()
   return (
     // Kapanan deste (ya da yerini yenisine bırakan) çıkışını oynayıp öyle kalkar
     <AnimatePresence>{deck && <DeckHost key={deck.key} deck={deck} />}</AnimatePresence>
   )
-}
+})
 
 function DeckHost({ deck }: { deck: Deck }) {
   const move = useTransition(MOVE)

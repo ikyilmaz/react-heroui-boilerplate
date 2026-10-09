@@ -19,6 +19,7 @@ import {
   useMotionValue,
   usePresence,
   type MotionStyle,
+  PresenceContext,
 } from 'framer-motion'
 import { Flex } from 'antd'
 import { cn, MotionFlex } from '@/synergy/ant/ui'
@@ -39,6 +40,10 @@ import { TRAVEL, type TabMotion } from '@/synergy/tabs/motion'
  * yalnızca bölmenin kendi stilini değiştirir; `visibility`, `pointer-events` ya da `inert` bütün alt
  * ağacın stilini yeniden hesaplatırdı (form başına 5–20 ms), `display: none` görününce yeniden
  * dizerdi. İçindeki gözlemciler sıfır boyla tetiklenmez.
+ *
+ * Gizli kurulan bölme (adresten ya da arka planda açılan sekme) uyur: içeriği boşta önceden çizilir
+ * (`Activity` gizli: etkiler kurulmaz, hiçbir şey ölçülmez), seçilince ya da boşta sırayla (her
+ * boşlukta bir bölme) uyanır. Çok sekmeli adres açılınca ilk çizim yalnızca görünen ekranlar kadar.
  *
  * Hareket: yalnızca dönüşüm ve saydamlık (MotionValue, React çizmez). Form (talep, menü uygulaması)
  * sunucudan gelene kadar iskelet (`LOAD_MS`); liste ve sayfalar hemen.
@@ -62,6 +67,33 @@ export interface Entered {
 
 /** Formun sunucudan gelişi (maket): yeni giren form bu süre iskelet olarak görünür. */
 export const LOAD_MS = 1000
+
+/** Uyuyan bölmeler: boşta sırayla uyanır (her boşlukta bir tane; uyanmanın işi tek görevde birikmez). */
+const sleepers: (() => void)[] = []
+let waking = false
+
+/** Boşta bir sonraki bölmeyi uyandırır (Safari'de boşta geri çağrısı yok: kısa gecikme). */
+function wakeNext() {
+  waking = true
+  const run = () => {
+    const wake = sleepers.shift()
+    if (wake) startTransition(wake)
+    if (sleepers.length) wakeNext()
+    else waking = false
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 })
+  else setTimeout(run, 120)
+}
+
+/** Bölmeyi boşta uyanacaklar sırasına koyar; dönen işlev sıradan çıkarır. */
+function wakeLater(wake: () => void) {
+  sleepers.push(wake)
+  if (!waking) wakeNext()
+  return () => {
+    const i = sleepers.indexOf(wake)
+    if (i >= 0) sleepers.splice(i, 1)
+  }
+}
 
 /** Bölmelerin kutusu (kabın 0.75rem iç payı, aradaki bölücü 0.75rem); yan yanada genişlik `paneWidth`. */
 const BOX: Record<PaneSlot, string> = {
@@ -228,82 +260,104 @@ export const Pane = memo(function Pane({
     const t = setTimeout(() => startTransition(() => setLoaded(true)), LOAD_MS)
     return () => clearTimeout(t)
   }, [waits])
+  // Gizli kurulan bölme uyur: seçilince (bu çizimde) ya da boşta sırası gelince uyanır
+  const [awake, setAwake] = useState(visible)
+  if (visible && !awake) setAwake(true)
+  useEffect(() => {
+    if (awake) return
+    return wakeLater(() => setAwake(true))
+  }, [awake])
+  const ready = loaded && awake
 
   const shown = visible || leaving !== null
   const place = leaving ?? slot
   return (
-    <MotionFlex
-      ref={attach}
-      id={`screen-pane-${id}`}
-      role="tabpanel"
-      aria-labelledby={`screen-tab-${id}`}
-      layout
-      layoutScroll
-      layoutDependency={moved}
-      transition={{ layout: motion.pane }}
-      style={
-        {
-          x,
-          opacity,
-          width: paneWidth(place, share),
-          ...(radius !== undefined && { borderRadius: radius }),
-        } as MotionStyle
-      }
-      onPointerDownCapture={visible && onFocus ? () => onFocus(id) : undefined}
-      onFocusCapture={visible && onFocus ? () => onFocus(id) : undefined}
-      aria-busy={!loaded || undefined}
-      className={cn(
-        '@container min-w-0 rounded-2xl',
-        // Kendi kutusu, kendi içinde kayar (yan kaydırma yok: hareket boyunca içerik yaprağı taşar);
-        // yapışkan öğeler yaprağın tepesine yapışır. Zemini şeffaf: kartların arasında kabın rengi
-        // görünür
-        'absolute block min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [--chrome-top:0px]',
-        BOX[place],
-        // Görünen üstte, sönen altında (yeni bölme aynı kutuda üstünü örter, imleci o alır); gizlinin
-        // içi atlanır (`content-visibility`: çizilmez, odaklanmaz, durumu ve kaydırma yeri kalır)
-        visible ? 'z-1' : shown ? 'z-0' : 'z-0 [content-visibility:hidden]',
-        CUE,
-      )}
-    >
-      <PaneContext value={scroller}>
-        {/* `relative`: iskelet solarken formun üstünde durur (`popLayout`) */}
-        <MotionFlex
-          layout="position"
-          layoutDependency={moved}
-          transition={{ layout: motion.pane }}
-          className="relative block p-3"
-        >
-          {/* İskelet: form gelince söner (`popLayout`: formun üstünde kalır) */}
-          <AnimatePresence initial={false} mode="popLayout">
-            {!loaded && (
+    // Bölmenin Motion ağacı kapandığını bilmez (varlık bağlamı boş): çıkışı bölme kendisi yürütür
+    // (`usePresence` yukarıda). Bilseydi düzen öğesi olan bölme çıkarken ölçülür (kaydırma yeri
+    // dahil, zorunlu düzen), içindeki çıkış animasyonlu her öğe de kendi çıkışını oynatırdı
+    <PresenceContext value={null}>
+      <MotionFlex
+        ref={attach}
+        id={`screen-pane-${id}`}
+        role="tabpanel"
+        aria-labelledby={`screen-tab-${id}`}
+        layout
+        layoutScroll
+        layoutDependency={moved}
+        transition={{ layout: motion.pane }}
+        style={
+          {
+            x,
+            opacity,
+            width: paneWidth(place, share),
+            ...(radius !== undefined && { borderRadius: radius }),
+          } as MotionStyle
+        }
+        onPointerDownCapture={visible && onFocus ? () => onFocus(id) : undefined}
+        onFocusCapture={visible && onFocus ? () => onFocus(id) : undefined}
+        aria-busy={!ready || undefined}
+        className={cn(
+          '@container min-w-0 rounded-2xl',
+          // Kendi kutusu, kendi içinde kayar (yan kaydırma yok: hareket boyunca içerik yaprağı taşar);
+          // yapışkan öğeler yaprağın tepesine yapışır. Zemini şeffaf: kartların arasında kabın rengi
+          // görünür
+          'absolute block min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [--chrome-top:0px]',
+          BOX[place],
+          // Görünen üstte, sönen altında (yeni bölme aynı kutuda üstünü örter, imleci o alır); gizlinin
+          // içi atlanır (`content-visibility`: çizilmez, odaklanmaz, durumu ve kaydırma yeri kalır)
+          visible ? 'z-1' : shown ? 'z-0' : 'z-0 [content-visibility:hidden]',
+          // Gelirken ve sönerken kendi katmanında: hareket (JS ile yazılan dönüşüm ve saydamlık) her
+          // karede bölmeyi yeniden boyatmaz, yalnızca birleştirilir
+          'data-[entering]:will-change-[transform,opacity]',
+          leaving && 'will-change-[opacity]',
+          CUE,
+        )}
+      >
+        <PaneContext value={scroller}>
+          {/* `relative`: iskelet solarken formun üstünde durur (`popLayout`) */}
+          <MotionFlex
+            layout="position"
+            layoutDependency={moved}
+            transition={{ layout: motion.pane }}
+            className="relative block p-3"
+          >
+            {/* İskelet: form gelince söner (`popLayout`: formun üstünde kalır) */}
+            <AnimatePresence initial={false} mode="popLayout">
+              {!loaded && (
+                <MotionFlex
+                  key="placeholder"
+                  // Başlangıç saydamlığı bilinir: sönerken sayfadan okunmaz (zorunlu düzen olurdu)
+                  initial={false}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: motion.reveal }}
+                  className="block"
+                >
+                  {placeholder}
+                </MotionFlex>
+              )}
+            </AnimatePresence>
+            {/*
+             * Form iskeletin arkasında, boşta önceden çizilir (`Activity` gizli: React düşük öncelikle
+             * çizer, etkileri kurmaz); süre dolunca yalnızca görünür olur ve bir kez belirir. Kurulumun
+             * işi böylece tek bir uzun göreve yığılmaz. Animasyon kapalıyken doğrudan görünür
+             */}
+            <Activity mode={ready ? 'visible' : 'hidden'}>
               <MotionFlex
-                key="placeholder"
-                exit={{ opacity: 0, transition: motion.reveal }}
+                // İskeletsiz bölmede belirme yok (bölmenin kendi gelişi yeter)
+                initial={
+                  !waits || level === 'off' ? false : { opacity: 0, y: level === 'full' ? 8 : 0 }
+                }
+                animate={{ opacity: 1, y: 0 }}
+                transition={motion.reveal}
                 className="block"
               >
-                {placeholder}
+                {children}
               </MotionFlex>
-            )}
-          </AnimatePresence>
-          {/*
-           * Form iskeletin arkasında, boşta önceden çizilir (`Activity` gizli: React düşük öncelikle
-           * çizer, etkileri kurmaz); süre dolunca yalnızca görünür olur ve bir kez belirir. Kurulumun
-           * işi böylece tek bir uzun göreve yığılmaz. Animasyon kapalıyken doğrudan görünür
-           */}
-          <Activity mode={loaded ? 'visible' : 'hidden'}>
-            <MotionFlex
-              // İskeletsiz bölmede belirme yok (bölmenin kendi gelişi yeter)
-              initial={!waits || level === 'off' ? false : { opacity: 0, y: level === 'full' ? 8 : 0 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={motion.reveal}
-              className="block"
-            >
-              {children}
-            </MotionFlex>
-          </Activity>
-        </MotionFlex>
-      </PaneContext>
-    </MotionFlex>
+            </Activity>
+          </MotionFlex>
+        </PaneContext>
+      </MotionFlex>
+    </PresenceContext>
   )
 })
 

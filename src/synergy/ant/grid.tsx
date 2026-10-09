@@ -224,7 +224,7 @@ export function GridCard({
         <Flex className="grid grid-cols-2 gap-x-4 gap-y-2.5">
           {fields.map((f) => (
             <Flex key={f.label} vertical gap={2} className="min-w-0">
-              <Typography.Text type="secondary" ellipsis className="text-[0.6875rem]">
+              <Typography.Text type="secondary" className="text-[0.6875rem] truncate">
                 {f.label}
               </Typography.Text>
               <Flex className="min-w-0 truncate text-[0.8125rem] text-foreground/85">

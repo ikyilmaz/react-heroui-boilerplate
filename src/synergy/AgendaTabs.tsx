@@ -53,14 +53,13 @@ export function AgendaTabs({
 }) {
   // Sekmeler açıkken bölmenin kalanını (bölmenin iç payı 0.75rem), değilse ekranın kalanını
   const scroller = useTabScroller()
-  const [setFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
+  const setFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   // Geçişin yönü: yeni sekme eskisinin sağındaysa içerik sağdan, solundaysa soldan gelir
   const dir = useDirection(tabs.findIndex((t) => t.id === active))
   return (
     // Geniş ekranda ekranın (bölmenin) kalanını doldurur (altta boşluk kalmaz); içerik kendi içinde kayar
     <Flex
       ref={setFill}
-      style={fillStyle}
       className={cn('flex flex-col @4xl:h-(--fill-h)', TAB_BG)}
     >
       <TabStrip

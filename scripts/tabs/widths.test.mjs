@@ -12,15 +12,23 @@ import {
   dragThreshold,
   freeze,
   insideStrip,
+  fairShare,
   isCompact,
   swapTarget,
   topRadius,
 } from '../../src/synergy/tabs/widths.ts'
 
-test('ikon kipi: seçili olmayan dar sekme, seçili hiçbir zaman', () => {
-  assert.equal(isCompact(LABEL_MIN * 16 - 1, 16, false), true)
-  assert.equal(isCompact(LABEL_MIN * 16, 16, false), false)
-  assert.equal(isCompact(ICON_MIN * 16, 16, true), false)
+test('ikon kipi: dar sekme, seçimden bağımsız', () => {
+  assert.equal(isCompact(LABEL_MIN * 16 - 1, 16), true)
+  assert.equal(isCompact(LABEL_MIN * 16, 16), false)
+  assert.equal(isCompact(ICON_MIN * 16, 16), true)
+})
+
+test('eşit pay: doğal genişliğinde duranlar payı bırakır', () => {
+  assert.equal(fairShare([100, 100], 300), Infinity)
+  assert.equal(fairShare([100, 300], 300), 200)
+  assert.equal(fairShare([400, 400, 400], 300), 100)
+  assert.equal(fairShare([50, 400, 400], 350), 150)
 })
 
 test('dar sekmede üst köşe: üstün en az üçte biri düz', () => {
