@@ -103,13 +103,7 @@ export interface ThemeSettings {
 
 /** Animasyon bölümünün ayarları (hazır temalar bunlara dokunmaz). */
 export type MotionKey =
-  | 'motion'
-  | 'motionSpeed'
-  | 'tabContent'
-  | 'loading'
-  | 'movement'
-  | 'stripMotion'
-  | 'counting'
+  'motion' | 'motionSpeed' | 'tabContent' | 'loading' | 'movement' | 'stripMotion' | 'counting'
 
 /** "Az" düzeyi: az düzeyinin yönettiği hareketler kapalı, sekme içeriği yalnızca solar. */
 export const MINIMAL_MOTION = {
@@ -134,7 +128,7 @@ export interface ThemeKit {
   /** Tema dosyasının karşılığı; bu değerlerde hiçbir değişken yazılmaz. */
   defaults: ThemeSettings
   /** Gezinme konumu seçenekleri (ilki `default`); `side`: önizlemede kabuğun durduğu kenar. */
-  navOptions: { id: string; label: string; side?: 'left' | 'right' | 'top' | 'bottom' }[]
+  navOptions: { id: string; label: string; side?: 'left' | 'top' }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
   /** Hazır temalar (tema panelinin başında). */
@@ -594,12 +588,17 @@ export function presetOf(kit: ThemeKit, s: ThemeSettings) {
   return kit.presets?.find((p) => match(p.look))?.id ?? null
 }
 
+/** Kaldırılmış gezinme konumlarının yeni karşılığı (kayıtlı ayarlar için). */
+const MOVED_NAV: Record<string, string> = { right: 'default', bottom: 'top' }
+
 function load(kit: ThemeKit): ThemeSettings {
   try {
     const raw = localStorage.getItem(kit.storageKey)
     if (!raw) return kit.defaults
     // Yalnızca bilinen ayarlar (kaldırılmış eski anahtarlar taşınmaz)
     const saved = JSON.parse(raw) as Partial<ThemeSettings>
+    // Kaldırılan gezinme konumları en yakınına: sağdaki sola, alttaki üste
+    if (saved.nav && saved.nav in MOVED_NAV) saved.nav = MOVED_NAV[saved.nav]
     // Seçeneği kaldırılmış değer (ör. eski bir zemin) varsayılana döner
     const valid: Partial<Record<keyof ThemeSettings, readonly unknown[]>> = {
       color: COLORS.map((c) => c.id),
@@ -798,7 +797,14 @@ export function useThemeSettings(kit: ThemeKit) {
   const anim = useMemo(
     () =>
       animOf(
-        { motion: settings.motion, tabContent, loading, movement, stripMotion, counting } as ThemeSettings,
+        {
+          motion: settings.motion,
+          tabContent,
+          loading,
+          movement,
+          stripMotion,
+          counting,
+        } as ThemeSettings,
         systemReduced,
       ),
     [settings.motion, tabContent, loading, movement, stripMotion, counting, systemReduced],

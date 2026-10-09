@@ -28,9 +28,7 @@ export const APP_THEME: ThemeKit = {
   },
   navOptions: [
     { id: 'default', label: 'Solda', side: 'left' },
-    { id: 'right', label: 'Sağda', side: 'right' },
     { id: 'top', label: 'Üstte', side: 'top' },
-    { id: 'bottom', label: 'Altta', side: 'bottom' },
   ],
   /*
    * Hazır temalar: her biri ayrı bir karakter; görünüşü belirleyen bütün ayarları verir (gezinme,

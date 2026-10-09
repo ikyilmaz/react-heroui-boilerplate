@@ -26,9 +26,9 @@ import {
   type Navigator,
   type To,
 } from 'react-router'
-import { ArrowLeftRight, Columns2, SquareArrowOutUpRight, Ungroup } from 'lucide-react'
+import { Columns2, SquareArrowOutUpRight } from 'lucide-react'
 import { AnimatePresence, LayoutGroup } from 'framer-motion'
-import { Button, Dropdown, Flex, type MenuProps } from 'antd'
+import { Dropdown, Flex, type MenuProps } from 'antd'
 import { panelSizeOf, type PanelSize } from '@/synergy/shared/workflowData'
 import {
   START,
@@ -47,7 +47,7 @@ import {
   type WorkspaceState,
 } from '@/synergy/shared/workspace'
 import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
-import { cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
+import { cn, IC, Tip } from '@/synergy/ant/ui'
 import { useNotify } from '@/synergy/ant/hr'
 import { FormLoading } from '@/synergy/DetailTiles'
 import {
@@ -58,7 +58,7 @@ import {
 } from '@/synergy/tabs/context'
 import { useTabMotion } from '@/synergy/tabs/motion'
 import { Divider, Pane, type Entered, type PaneSlot } from '@/synergy/tabs/Panes'
-import { GROUP_TONE, SHEET, SHEET_RING, TAB_BG } from '@/synergy/tabs/shape'
+import { GROUP_TONE, SHEET, SHEET_RING, STRIP_VARS, TAB_BG } from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabClose, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { encodeWorkspace } from '@/synergy/shared/workspaceUrl'
 import { ScreenRoutes, isFormPath, isValidPath, screenMeta } from '@/synergy/screens'
@@ -154,6 +154,8 @@ interface Actions {
   moveTab: (tab: string, to: number, group: string) => void
   pair: (tab: string) => void
   unpair: (tab: string) => void
+  /** Yan yana sekmenin iki ekranının yerini değiştirir. */
+  swap: (tab: string) => void
   copyLink: (path: string) => void
   /** Delete tuşu (şerit): odaktaki sekmenin ekranı. */
   remove: (el: HTMLElement) => void
@@ -319,7 +321,21 @@ const ScreenView = memo(function ScreenView({ screen }: { screen: Screen }) {
   )
 })
 
-export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act }) {
+/**
+ * Şeridin solunda geri / ileri, sağında kabuğun eylemleri (`start` / `end`; kabuk verir, sabit
+ * öğeler). Varken şerit soldan yalnızca köşeye yetecek kadar içeri girer.
+ */
+export function Workspace({
+  state: st,
+  act,
+  start,
+  end,
+}: {
+  state: WorkspaceState
+  act: Act
+  start?: ReactNode
+  end?: ReactNode
+}) {
   const tab = activeTab(st)
   // Yan yana yalnızca geniş ekranda; daralınca bölünmüş sekmenin odaktaki ekranı tek başına kalır
   const wide = useMediaQuery('(min-width: 1024px)')
@@ -370,6 +386,8 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
       moveTab: (t, to, group) => act({ type: 'moveTab', tab: t, to, group }),
       pair: (t) => run({ type: 'pair', tab: t, with: latest.current.st.active }),
       unpair: (t) => run({ type: 'unpair', tab: t }),
+      // Düzen animasyonu: geçiş olmadan (bölmeler hemen kayar)
+      swap: (t) => act({ type: 'swap', tab: t }),
       copyLink: (path) => {
         const url = new URL(path, window.location.origin).href
         void navigator.clipboard?.writeText(url).then(
@@ -580,59 +598,33 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
   const pathOf = (k: string) => screenOf(st, k)?.path ?? ''
   const unitPaths = units.map((u) => u.tabs.map((t) => t.screens.map(pathOf).join('\t')).join('\n'))
   const activeGroup = tab.group ? st.groups.find((g) => g.key === tab.group) : undefined
-  // Şeridin sabit parçaları (şerit her çizimde yeniden kurulmasın)
-  const tabKey = tab.key
-  const splitActions = useMemo(
-    () => (
-      <AnimatePresence initial={false}>
-        {split && (
-          <MotionFlex
-            key="split-actions"
-            role="group"
-            aria-label="Yan yana"
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={motion.fade}
-            className="flex h-10 shrink-0 items-center gap-0.5 self-end ps-1 pe-3"
-          >
-            <Tip label="Yer değiştir">
-              <Button
-                type="text"
-                size="small"
-                aria-label="Bölmelerin yerini değiştir"
-                icon={<ArrowLeftRight {...IC} size={15} />}
-                onClick={() => act({ type: 'swap', tab: tabKey })}
-                className="text-muted hover:text-foreground!"
-              />
-            </Tip>
-            <Tip label="Ayrı sekmelere ayır">
-              <Button
-                type="text"
-                size="small"
-                aria-label="Ayrı sekmelere ayır"
-                icon={<Ungroup {...IC} size={15} />}
-                onClick={() => actions.unpair(tabKey)}
-                className="text-muted hover:text-foreground!"
-              />
-            </Tip>
-          </MotionFlex>
-        )}
-      </AnimatePresence>
-    ),
-    [split, motion, act, actions, tabKey],
-  )
 
   return (
     // Yapı sabit: sekmeler gelip gidince Başlangıç yeniden takılmaz
     <Flex
       ref={outer}
-      // Ekranın kalanı: alt pay (1.5rem) ve gezinme alttaysa çubuğun yeri (`--chrome-bottom`)
-      style={{ height: `calc(100dvh - ${top}px - 1.5rem - var(--chrome-bottom, 0px))` }}
+      // Ekranın kalanı: alt pay (1.5rem)
+      style={{ height: `calc(100dvh - ${top}px - 1.5rem)` }}
       className={cn('relative flex flex-col', TAB_BG)}
     >
       {/* Şerit: hep görünür (yalnız Başlangıç açıkken de) */}
-      <Flex ref={strip} className="flex shrink-0">
+      <Flex ref={strip} className="flex shrink-0 items-end">
+        {/*
+         * Eylemler sekmenin ortasından 4px, geri / ileri 2px yukarıda (`pb-2` / `pb-1`). Geri /
+         * ileri şeridin kavis payının üstüne biner (eksi kenar boşluğu): Başlangıç sekmesine 4px
+         * kalır, seçili sekmenin kavisi şeridin içinde kalır (kırpılmaz); üstte (`z-10`), tıklamayı
+         * şerit almaz
+         */}
+        {start && (
+          <Flex
+            className={cn(
+              'relative z-10 -me-[calc(var(--tab-r)-4px)] h-[2.5rem] shrink-0 items-center pb-1',
+              STRIP_VARS,
+            )}
+          >
+            {start}
+          </Flex>
+        )}
         <TabStrip
           label="Açık sekmeler"
           selected={tab.key}
@@ -641,11 +633,15 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
           }
           layoutKey={stripKey}
           // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`) + sekme kavisi: seçili
-          // sekmenin kavisi kabın düz üst kenarına oturur
-          inset="ps-[calc(var(--radius)*3+var(--tab-r))] pe-8"
+          // sekmenin kavisi kabın düz üst kenarına oturur. Geri / ileri soldayken (68px, payın
+          // üstüne `--tab-r` − 4px biner) en az kavis kadar (kırpılmasın), köşeye yetmeyen kadar fazla
+          inset={
+            start
+              ? 'ps-[max(var(--tab-r),calc(var(--radius)*3+var(--tab-r)*2-72px))] pe-8'
+              : 'ps-[calc(var(--radius)*3+var(--tab-r))] pe-8'
+          }
           onDelete={actions.remove}
           className="flex-1"
-          end={splitActions}
         >
           {units.map((u, i) => (
             <UnitView
@@ -664,6 +660,7 @@ export function Workspace({ state: st, act }: { state: WorkspaceState; act: Act 
             />
           ))}
         </TabStrip>
+        {end && <Flex className="h-[2.5rem] shrink-0 items-center pb-2">{end}</Flex>}
       </Flex>
 
       {/*
@@ -915,6 +912,9 @@ const UnitView = memo(function UnitView({
           if (start) return items
           if (pairable && actions.canPair())
             items.push({ key: 'pair', label: 'Yan yana aç', onClick: () => actions.pair(t.key) })
+          // Yan yana sekmenin işleri yalnızca menüde (şeridin sonunda düğme yok)
+          if (paired && wide)
+            items.push({ key: 'swap', label: 'Yer değiştir', onClick: () => actions.swap(t.key) })
           if (paired)
             items.push({
               key: 'unpair',

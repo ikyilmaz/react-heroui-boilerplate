@@ -148,7 +148,10 @@ const SCENARIOS = {
     title: 'Yan yana al (sekmenin menüsünden)',
     spec: { css: '.ant-dropdown:not(.ant-dropdown-hidden) li[role=menuitem]', text: 'Yan yana aç' },
   },
-  P: { title: 'Ayrı sekmelere ayır', spec: { css: 'button[aria-label="Ayrı sekmelere ayır"]' } },
+  P: {
+    title: 'Ayrı sekmelere ayır (sekmenin menüsünden)',
+    spec: { css: '.ant-dropdown:not(.ant-dropdown-hidden) li[role=menuitem]', text: 'Ayrı sekmelere ayır' },
+  },
   Q: { title: 'Raf: İK sekmesine geç', spec: { css: '[role=list][aria-label="Uygulamalar"] a[aria-label="İnsan Kaynakları"]' } },
   R: { title: 'Raf: İş Akış Yönetimi sekmesine geç', spec: { css: '[role=list][aria-label="Uygulamalar"] a[aria-label="İş Akış Yönetimi"]' } },
   Z: { title: 'Boşta 1.5 s', spec: null },
@@ -176,6 +179,11 @@ const BEFORE = {
     await click(page, TAB(K.list))
     await sleep(600)
     // Kendi sekmesindeki talebin menüsü (sağ tık)
+    await mouseClick(page, TAB(K.own), { button: 'right' })
+    await sleep(400)
+  },
+  P: async () => {
+    // Yan yana sekmenin menüsü (O'da alınan talep ekranının sekmesi)
     await mouseClick(page, TAB(K.own), { button: 'right' })
     await sleep(400)
   },

@@ -93,14 +93,14 @@ const SHELL = 'border border-border bg-surface shadow-(--overlay-shadow)'
 
 /* --- Raf --------------------------------------------------------------------------------------- */
 
-/** Kabuğun yeri (tema paneli › Gezinme): yanda sütun (solda / sağda) ya da çubuk (üstte / altta). */
-export type ChromePlace = 'left' | 'right' | 'top' | 'bottom'
+/** Kabuğun yeri (tema paneli › Gezinme): solda sütun ya da üstte çubuk. */
+export type ChromePlace = 'left' | 'top'
 
-/** Kabuk sütun mu (solda / sağda). */
-export const isColumn = (place: ChromePlace) => place === 'left' || place === 'right'
+/** Kabuk sütun mu (solda). */
+export const isColumn = (place: ChromePlace) => place === 'left'
 
 /** Kabuktaki ipuçlarının yönü: içeriğe doğru. */
-export const CHROME_TIP = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const
+export const CHROME_TIP = { left: 'right', top: 'bottom' } as const
 
 /**
  * Rafın tek yayı: başlat dönüşümü ve raf boyunun değişmesi aynı yayla (ayrı zamanlamalar üst üste
@@ -120,9 +120,17 @@ export const CHROME_PANEL = cn(
 )
 
 /** Sütun ve çubuk rafı: iç pay, başlat düğmesi (piksel: temanın boşluk ölçeği rafın oranını bozmasın). */
-const COLUMN = { shell: 'flex-col items-center p-[6px]', start: 'size-[40px] min-w-[40px]', icon: 18 }
+const COLUMN = {
+  shell: 'flex-col items-center p-[6px]',
+  start: 'size-[40px] min-w-[40px]',
+  icon: 18,
+}
 /** Çubukta kompakt: 44px (36px daireler, 4px pay). */
-const BAR = { shell: 'h-[44px] flex-row items-center p-[4px]', start: 'size-[36px] min-w-[36px]', icon: 16 }
+const BAR = {
+  shell: 'h-[44px] flex-row items-center p-[4px]',
+  start: 'size-[36px] min-w-[36px]',
+  icon: 16,
+}
 /** Yandaki kutu: dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile), ekranın %85'i boyunda. */
 const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]'
 /**
@@ -135,21 +143,16 @@ const BAR_PANEL =
 /** Rafın içi, başlat düğmesi ve açılan kutunun konumu (kutu rafın olduğu kenardan açılır). */
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
   left: { ...COLUMN, panel: cn('start-3', SIDE_PANEL) },
-  right: { ...COLUMN, panel: cn('end-3', SIDE_PANEL) },
   top: { ...BAR, panel: cn('top-3', BAR_PANEL) },
-  bottom: { ...BAR, panel: cn('bottom-3', BAR_PANEL) },
 }
 
 /**
  * Kabuğun yanına düşen alan (px; içerik bu kadar içeriden başlar). Sütun 12px içeride, 52px; çubuk 12px
- * içeride, 44px; aradaki boşluk 12px. Altta alt payın (1.5rem) üstüne kalan `--chrome-bottom`:
- * çalışma alanının boyu okur.
+ * içeride, 44px; aradaki boşluk 12px.
  */
 export const CHROME_SPACE: Record<ChromePlace, string> = {
   left: 'sm:ps-[76px] sm:pt-3',
-  right: 'sm:ps-3 sm:pe-[76px] sm:pt-3',
   top: 'sm:ps-3 sm:pt-[68px]',
-  bottom: 'sm:ps-3 sm:pt-3 sm:pb-[68px] sm:[--chrome-bottom:44px]',
 }
 
 /**

@@ -351,8 +351,6 @@ const BUTTON = { className: '[&.ant-btn-variant-outlined]:border-(length:--field
 /** Dalga yok, kartlar çerçevesiz (sabit nesneler: ConfigProvider bağlamı her çizimde değişmesin). */
 const WAVE = { disabled: true }
 const CARD_CONFIG = { variant: 'borderless' } as const
-/** Gezinme alttayken bildirimler çubuğun üstünden başlar (çubuk alttan 12 + 44px; içerik 68px'te biter). */
-const ABOVE_BAR = { bottom: 68 }
 /**
  * Tema değişkenleri çözülmeden önceki ilk karenin yapılandırması. `zeroRuntime` ilk çizimden beri
  * açık olmalı: antd onu her bileşende ilk çizimde okuyup sabitler (sonradan açılırsa o bileşenler
@@ -368,7 +366,7 @@ const FIRST: ThemeConfig = { zeroRuntime: true, cssVar: { key: 'synergy' }, hash
 export function AntTheme({ children }: { children: ReactNode }) {
   const vars = useResolved()
   const dark = useIsDark()
-  const { motion, speed, nav } = useLook()
+  const { motion, speed } = useLook()
   const animated = motion !== 'off'
   // Yapılandırma yalnızca girdileri değişince yenilenir: ConfigProvider'a her çizimde yeni nesne
   // gelirse bütün antd bileşenleri (gizli form sekmelerindekiler dahil) yeniden çizilir
@@ -396,9 +394,7 @@ export function AntTheme({ children }: { children: ReactNode }) {
         mentions={FIELD}
         button={BUTTON}
       >
-        <App component={false} notification={nav === 'bottom' ? ABOVE_BAR : undefined}>
-          {children}
-        </App>
+        <App component={false}>{children}</App>
       </ConfigProvider>
     </StyleProvider>
   )

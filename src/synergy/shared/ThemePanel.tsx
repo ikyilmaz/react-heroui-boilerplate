@@ -181,7 +181,7 @@ const GRID_SEGMENT =
   'grid! w-full gap-1 [&_.ant-radio-button-wrapper]:rounded-lg! [&_.ant-radio-button-wrapper]:border! [&_.ant-radio-button-wrapper]:border-border! [&_.ant-radio-button-wrapper]:px-1 [&_.ant-radio-button-wrapper]:text-center [&_.ant-radio-button-wrapper]:before:hidden! [&_.ant-radio-button-wrapper-checked]:border-accent! [&_.ant-radio-button-wrapper-checked]:bg-accent! [&_.ant-radio-button-wrapper-checked]:text-accent-foreground!'
 
 /** Izgaradaki sütun sayısı (sabit metin; Tailwind görsün). */
-const GRID_COLS = { 3: 'grid-cols-3', 4: 'grid-cols-4' } as const
+const GRID_COLS = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' } as const
 
 function Section({
   title,
@@ -294,9 +294,7 @@ function Segments<T extends string | number>({
 /** Gezinme önizlemesindeki kabuk: ekranın o kenarında ince çubuk. */
 const NAV_BAR = {
   left: 'inset-y-[2px] start-[2px] w-[3px]',
-  right: 'inset-y-[2px] end-[2px] w-[3px]',
   top: 'inset-x-[2px] top-[2px] h-[3px]',
-  bottom: 'inset-x-[2px] bottom-[2px] h-[3px]',
 } as const
 
 /** Gezinme seçeneğinin küçük önizlemesi: ekran ve kabuğun durduğu kenar (yazı renginde). */
@@ -307,7 +305,10 @@ function NavPreview({ side }: { side: keyof typeof NAV_BAR }) {
       aria-hidden
       className="relative block h-3 w-[18px] shrink-0 rounded-[3px] ring-1 ring-current/45"
     >
-      <Flex component="span" className={cn('absolute block rounded-[1px] bg-current', NAV_BAR[side])} />
+      <Flex
+        component="span"
+        className={cn('absolute block rounded-[1px] bg-current', NAV_BAR[side])}
+      />
     </Flex>
   )
 }
@@ -586,7 +587,7 @@ export const ThemePanel = memo(function ThemePanel({
             icon: o.side && <NavPreview side={o.side} />,
           }))}
           onChange={(nav) => set({ nav })}
-          grid={kit.navOptions.length > 3 ? 4 : undefined}
+          grid={2}
         />
       </Section>
 

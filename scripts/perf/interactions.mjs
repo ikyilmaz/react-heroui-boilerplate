@@ -421,10 +421,15 @@ await test('yan yana al (sağ tık), yer değiştir, ayır; sekmede düğme yok'
   expect(!items.includes('Yan yana aç'), `yan yanayken menüde: ${items}`)
   await page.keyboard.press('Escape')
   await sleep(300)
-  await click(page, { css: 'button[aria-label="Bölmelerin yerini değiştir"]' })
+  // Yer değiştir ve ayır yalnızca yan yana sekmenin menüsünde
+  await mouseClick(page, TAB(K.hr), { button: 'right' })
+  await sleep(300)
+  await click(page, MENU_ITEM('Yer değiştir'))
   await sleep(800)
   expect((await selectedNames(page)).join('+') === 'Kullanıcılar+Finans – Masraf Bildirimi', `yer değiştir: ${await selectedNames(page)}`)
-  await click(page, { css: 'button[aria-label="Ayrı sekmelere ayır"]' })
+  await mouseClick(page, TAB(K.hr), { button: 'right' })
+  await sleep(300)
+  await click(page, MENU_ITEM('Ayrı sekmelere ayır'))
   await sleep(800)
   expect((await selectedNames(page)).length === 1, `ayrılmadı: ${await selectedNames(page)}`)
 })
@@ -623,7 +628,7 @@ await test('karar: gizli liste ve Başlangıç’ın sayıları güncellenir', a
 
 /* --- Gezinme konumları ------------------------------------------------------------------------------ */
 
-for (const nav of ['default', 'right', 'top', 'bottom']) {
+for (const nav of ['default', 'top']) {
   await test(`gezinme ${nav}: çalışma alanı ekranda, kabukla çakışmaz`, async (page, expect) => {
     await setup(page)
     const r = await page.evaluate((sel) => {
@@ -631,9 +636,12 @@ for (const nav of ['default', 'right', 'top', 'bottom']) {
       const chrome = [...document.querySelectorAll('[role=navigation][aria-label="Ana menü"]')].map((n) =>
         n.getBoundingClientRect(),
       )
-      return { host: { l: host.left, r: host.right, t: host.top, b: host.bottom }, chrome: chrome.map((c) => ({ l: c.left, r: c.right, t: c.top, b: c.bottom })), w: innerWidth, h: innerHeight }
+      // Geri / ileri ve eylemler sekme satırında (bölmelerin üstünde)
+      const row = ['Geri', 'Tema ayarları'].map((l) => document.querySelector(`button[aria-label="${l}"]:not([id^="screen-pane-"] button)`)?.getBoundingClientRect())
+      return { host: { l: host.left, r: host.right, t: host.top, b: host.bottom }, chrome: chrome.map((c) => ({ l: c.left, r: c.right, t: c.top, b: c.bottom })), row: row.map((b) => b && { t: b.top, b: b.bottom, l: b.left, r: b.right }), w: innerWidth, h: innerHeight }
     }, PANE)
-    const { host, chrome, w, h } = r
+    const { host, chrome, row, w, h } = r
+    for (const b of row) expect(b && b.b <= host.t + 1 && b.l >= host.l - 1 && b.r <= host.r + 1, `sekme satırında değil: ${JSON.stringify(b)}`)
     expect(host.l >= 0 && host.r <= w && host.t >= 0 && host.b <= h, `alan ekranın dışında: ${JSON.stringify(host)}`)
     for (const c of chrome) {
       const overlap = Math.min(host.r, c.r) - Math.max(host.l, c.l) > 0 && Math.min(host.b, c.b) - Math.max(host.t, c.t) > 0

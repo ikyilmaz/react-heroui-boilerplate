@@ -130,9 +130,6 @@ const dockEntries: DockEntry[] = [
 
 const fold = (v: string) => v.toLocaleLowerCase('tr')
 
-/** İnce kart çizgisi, gölgesiz (küçük haplar; tema paneli › Kontur). */
-const card = 'ring-(length:--border-width) ring-border'
-
 /** Baş harfli uygulama rozetinin tonu (`avatarColor`, isme göre sabit). */
 const AVATAR_TONE: Record<ReturnType<typeof avatarColor>, string> = {
   success: 'bg-success/15 text-success',
@@ -277,43 +274,30 @@ const ChromeNavContext = createContext<{ current: string | undefined; history: H
 })
 
 /**
- * Geri / ileri: seçili sekmenin kendi geçmişinde (sekmeler tarayıcı sekmesi gibi). `compact`: 28px
- * (üst çubukta); kabukta 32px.
+ * Geri / ileri: seçili sekmenin kendi geçmişinde (sekmeler tarayıcı sekmesi gibi); sekme şeridinin
+ * solunda, Başlangıç sekmesinden hemen önce. Şeridin parçası gibi: çerçevesiz, sekme yaprağının
+ * zemini (`--tab-bg`) ve sekmenin köşesi (`--tab-r`, şeridin değişkenleri sarmalayıcıda). 68px
+ * genişlik (iki 32px düğme; şeridin içeri girme payı buna göre, `Workspace.tsx`).
  */
-const HistoryButtons = memo(function HistoryButtons({
-  tip = 'bottom',
-  className,
-  compact,
-}: {
-  /** İpucunun yönü (alttaki çubukta yukarı). */
-  tip?: 'bottom' | 'top'
-  className?: string
-  compact?: boolean
-}) {
+const HistoryButtons = memo(function HistoryButtons() {
   const nav = useContext(ChromeNavContext).history
   return (
-    <Flex
-      align="center"
-      className={cn('shrink-0 rounded-full bg-surface p-0.5', 'me-2', card, className)}
-    >
+    <Flex align="center" className="shrink-0 rounded-(--tab-r) bg-(--tab-bg) p-0.5">
       {(
         [
           { label: 'Geri', icon: ChevronLeft, dir: -1, on: nav.back },
           { label: 'İleri', icon: ChevronRight, dir: 1, on: nav.forward },
         ] as const
       ).map(({ label, icon: Icon, dir, on }) => (
-        <Tip key={label} label={label} placement={tip}>
+        <Tip key={label} label={label} placement="bottom">
           <Button
             type="text"
             size="small"
             aria-label={label}
             disabled={!on}
             onClick={() => nav.go(dir)}
-            icon={<Icon {...IC} size={compact ? 14 : 16} />}
-            className={cn(
-              'rounded-full p-0 text-muted enabled:hover:bg-surface-secondary enabled:hover:text-foreground disabled:opacity-50',
-              compact ? 'size-6 min-w-6' : 'size-7 min-w-7',
-            )}
+            icon={<Icon {...IC} size={18} />}
+            className="size-8 min-w-8 rounded-[calc(var(--tab-r)-2px)] p-0 text-muted enabled:hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] enabled:hover:text-foreground disabled:opacity-50"
           />
         </Tip>
       ))}
@@ -388,13 +372,13 @@ function BarButton({
 }: {
   label: string
   icon: LucideIcon
-  tip?: (typeof CHROME_TIP)[ChromePlace]
+  tip?: 'bottom'
   open: boolean
   onOpenChange: (open: boolean) => void
-  placement: (typeof PANEL_PLACEMENT)[ChromePlace]
+  placement: 'bottomRight'
   popupClassName: string
   content: ReactNode
-  /** Kompakt üst çubuk (Gezinme › Üstte): 32px düğme. */
+  /** Kompakt (sekme şeridinin yanında): 32px düğme. */
   compact?: boolean
 }) {
   return (
@@ -447,21 +431,12 @@ function SearchButton() {
   )
 }
 
-/** Kabuktaki panellerin açıldığı yön: içeriğe doğru, kabuğun ucundan. */
-const PANEL_PLACEMENT = {
-  left: 'rightBottom',
-  right: 'leftBottom',
-  top: 'bottomRight',
-  bottom: 'topRight',
-} as const
-
 /** Sohbet / duyurular: başlıklı küçük panel (içerik arka uçtan gelir; burada boş). */
 function PanelButton({
   label,
   icon,
   isOpen,
   onOpenChange,
-  side = 'top',
   compact,
 }: {
   label: string
@@ -469,8 +444,6 @@ function PanelButton({
   /** Başlat kutusundan da açılır (kabukta tutulur). */
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  /** Kabuğun konumu: panel içeriğe doğru açılır (sol rayda sağa, alttaki çubukta yukarı…). */
-  side?: ChromePlace
   compact?: boolean
 }) {
   return (
@@ -478,10 +451,9 @@ function PanelButton({
       label={label}
       icon={icon}
       compact={compact}
-      tip={CHROME_TIP[side]}
       open={isOpen}
       onOpenChange={onOpenChange}
-      placement={PANEL_PLACEMENT[side]}
+      placement="bottomRight"
       popupClassName="w-80 max-w-[calc(100vw-2rem)] p-4"
       content={
         <Flex role="dialog" aria-label={label} vertical className="gap-1">
@@ -672,7 +644,11 @@ const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; 
   const size = DOCK_SIZE[column ? 'left' : 'top']
   const tip = CHROME_TIP[place]
   return (
-    <Flex role="list" aria-label="Uygulamalar" className={cn('flex items-center', column && 'flex-col')}>
+    <Flex
+      role="list"
+      aria-label="Uygulamalar"
+      className={cn('flex items-center', column && 'flex-col')}
+    >
       {dockEntries
         .filter((e) => e.id !== 'geri')
         .map((e) => {
@@ -741,43 +717,86 @@ const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; 
 })
 
 /**
- * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller.
- * - Solda / Sağda: o kenarda alt alta: üstte logo ve yan yana geri / ileri, ortada raf (StartMenu:
- *   başlat ve uygulamalar; başlat kutusu o kenardan açılır), altta sohbet / duyurular, tema, kullanıcı.
- * - Üstte / Altta: ortada yatay raf; solda köşedeki tutamaç (tüm uygulamalar paneli soldan yüzerek
- *   açılır), geri / ileri ve logo; sağda eylemler ve kullanıcı. Altta ipuçları ve paneller yukarı açılır.
- * Zemini olan panel yalnızca raf; diğerleri zeminsiz. Geri / ileri seçili sekmenin geçmişinde.
+ * Sekme şeridinin sağındaki eylemler ve kullanıcı (her iki gezinme konumunda): sohbet / duyurular,
+ * tema ayarları, açık / koyu, kullanıcı. Kompakt (32px); ipuçları ve paneller aşağı açılır.
+ */
+const ShellActions = memo(function ShellActions({
+  panel,
+  onPanel,
+  onTheme,
+}: {
+  panel: 'news' | 'chat' | null
+  onPanel: (p: 'news' | 'chat' | null) => void
+  onTheme: () => void
+}) {
+  const dark = useIsDark()
+  const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
+  const button = 'size-[32px] min-w-[32px] text-muted hover:text-foreground'
+  return (
+    <Flex align="center" className="shrink-0 gap-0.5 ps-2 pe-1">
+      <PanelButton
+        label="Sohbet"
+        icon={MessageCircle}
+        compact
+        isOpen={panel === 'chat'}
+        onOpenChange={(o) => onPanel(o ? 'chat' : null)}
+      />
+      <PanelButton
+        label="Duyurular"
+        icon={Megaphone}
+        compact
+        isOpen={panel === 'news'}
+        onOpenChange={(o) => onPanel(o ? 'news' : null)}
+      />
+      <Tip label="Tema ayarları" placement="bottom">
+        <Button
+          type="text"
+          aria-label="Tema ayarları"
+          onClick={onTheme}
+          icon={<Palette {...IC} size={18} />}
+          className={button}
+        />
+      </Tip>
+      <Tip label={themeLabel} placement="bottom">
+        <Button
+          type="text"
+          aria-label={themeLabel}
+          onClick={() => setColorMode(dark ? 'light' : 'dark')}
+          icon={dark ? <Sun {...IC} size={18} /> : <Moon {...IC} size={18} />}
+          className={button}
+        />
+      </Tip>
+      <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement="bottom">
+        <UserAvatar size={32} className="ms-1 text-[0.8125rem]" />
+      </Tip>
+    </Flex>
+  )
+})
+
+/**
+ * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller. Geri / ileri ve eylemler her iki konumda
+ * sekme şeridinin satırında (`HistoryButtons`, `ShellActions`; çalışma alanına verilir).
+ * - Solda: sol kenarda üstte logo (sekme satırıyla aynı hizada), ortada raf (StartMenu: başlat ve
+ *   uygulamalar; başlat kutusu o kenardan açılır).
+ * - Üstte: ortada yatay raf; solda köşedeki tutamaç (tüm uygulamalar paneli soldan yüzerek açılır)
+ *   ve logo.
+ * Zemini olan panel yalnızca raf; logo zeminsiz.
  */
 const Chrome = memo(function Chrome({
   place,
   actions,
   onApp,
-  panel,
-  onPanel,
-  onTheme,
   appsOpen,
   onApps,
 }: {
   place: ChromePlace
   actions: StartActions
   onApp: DockOpen
-  panel: 'news' | 'chat' | null
-  onPanel: (p: 'news' | 'chat' | null) => void
-  onTheme: () => void
   /** Tüm uygulamalar paneli (üstteyken köşedeki tutamaç açar). */
   appsOpen: boolean
   onApps: () => void
 }) {
   const column = isColumn(place)
-  const dark = useIsDark()
-  const tip = CHROME_TIP[place]
-  const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
-  // Çubukta kompakt (44px): logo, düğmeler ve kullanıcı da küçük
-  const actionButton = cn(
-    'text-muted hover:text-foreground',
-    column ? 'size-10' : 'size-[32px] min-w-[32px]',
-  )
-  const actionIcon = column ? 20 : 18
 
   const logo = (
     <Link
@@ -811,88 +830,23 @@ const Chrome = memo(function Chrome({
     </StartDock>
   )
 
-  // Eylemler ve kullanıcı
-  const actionsGroup = (
-    <Flex align="center" className={cn('shrink-0 gap-0.5', column ? 'flex-col' : 'ms-auto')}>
-      <PanelButton
-        label="Sohbet"
-        icon={MessageCircle}
-        side={place}
-        compact={!column}
-        isOpen={panel === 'chat'}
-        onOpenChange={(o) => onPanel(o ? 'chat' : null)}
-      />
-      <PanelButton
-        label="Duyurular"
-        icon={Megaphone}
-        side={place}
-        compact={!column}
-        isOpen={panel === 'news'}
-        onOpenChange={(o) => onPanel(o ? 'news' : null)}
-      />
-      <Tip label="Tema ayarları" placement={tip}>
-        <Button
-          type="text"
-          aria-label="Tema ayarları"
-          onClick={onTheme}
-          icon={<Palette {...IC} size={actionIcon} />}
-          className={actionButton}
-        />
-      </Tip>
-      <Tip label={themeLabel} placement={tip}>
-        <Button
-          type="text"
-          aria-label={themeLabel}
-          onClick={() => setColorMode(dark ? 'light' : 'dark')}
-          icon={dark ? <Sun {...IC} size={actionIcon} /> : <Moon {...IC} size={actionIcon} />}
-          className={actionButton}
-        />
-      </Tip>
-      <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement={tip}>
-        <UserAvatar
-          size={column ? 36 : 32}
-          className={cn(column ? 'mt-1 text-sm' : 'ms-1 text-[0.8125rem]')}
-        />
-      </Tip>
-    </Flex>
-  )
-
   if (column)
     return (
-      <Flex
-        vertical
-        align="center"
-        justify="space-between"
-        className={cn(
-          'pointer-events-none fixed inset-y-3 z-50 hidden w-[52px] gap-3 sm:flex',
-          place === 'left' ? 'start-3' : 'end-3',
-        )}
-      >
-        {/* Üst: logo ve yan yana geri / ileri (zeminsiz) */}
-        <Flex vertical align="center" className="pointer-events-auto gap-2 pt-1.5">
-          {logo}
-          <HistoryButtons className="me-0" />
-        </Flex>
+      // Üç satır: üstte logo, raf tam ortada, alt satır boş (rafı ortada tutar)
+      <Flex className="pointer-events-none fixed inset-y-3 start-3 z-50 hidden w-[52px] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center gap-3 sm:grid">
+        {/* Logo geri / ileri ile aynı hizada: sekme satırının ortasından 4px yukarıda (satır 0.25rem
+            pay + 2.5rem sekme; logo 34px) */}
+        <Flex className="pointer-events-auto self-start pt-[calc(1.5rem-21px)]">{logo}</Flex>
         {dock}
-        {/* Alt: eylemler ve kullanıcı (zeminsiz) */}
-        <Flex vertical align="center" className="pointer-events-auto shrink-0 pb-1.5">
-          {actionsGroup}
-        </Flex>
       </Flex>
     )
   return (
-    // Üç sütun: solda tutamaç + geri / ileri + logo, ortada raf (hep tam ortada), sağda eylemler
+    // Üç sütun: solda tutamaç + logo, ortada raf (hep tam ortada), sağ sütun boş
     // Arkada sayfa renginde şerit: kaydırılan içerik çubuğun altında karışmasın (panel zemini değil);
     // dokusu görüntü alanına sabit, sayfanın doku katmanıyla aynı hizada. İçeriğin başladığı yerin
     // 1 birim üstünde biter: kartların dışa çizilen konturunu ve gölgesini örtmesin
-    // Kompakt: 44px (raf 36px dairelerle), içerik üstte 68px'ten başlar, altta 68px yukarıda biter
-    // (`CHROME_SPACE`)
-    <Flex
-      className={cn(
-        "pointer-events-none fixed inset-x-3 z-50 hidden h-[44px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:h-[calc(68px-var(--spacing))] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid",
-        place === 'top' ? 'top-3 before:-top-3' : 'bottom-3 before:-bottom-3',
-      )}
-    >
+    // Kompakt: 44px (raf 36px dairelerle), içerik 68px'ten başlar (`CHROME_SPACE`)
+    <Flex className="pointer-events-none fixed inset-x-3 top-3 z-50 hidden h-[44px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 before:absolute before:-inset-x-3 before:-top-3 before:h-[calc(68px-var(--spacing))] before:-z-10 before:bg-background before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:bg-fixed before:content-[''] sm:grid">
       {/* Köşedeki tutamaç: ekranın sol kenarına yapışık (çubuk kenardan 3 birim içeride, sol çizgisi
           ekran dışında), çubukta dikeyde ortalı (36px, rafın daireleri boyunda); sütunun taşma
           kırpmasının dışında */}
@@ -902,17 +856,10 @@ const Chrome = memo(function Chrome({
         className="pointer-events-auto absolute -start-[calc(var(--spacing)*3+1px)] top-[4px]"
       />
       {/* Tutamacın yanından (dışarı çekilmiş hâlinden de) başlar */}
-      <Flex
-        align="center"
-        className="pointer-events-auto min-w-0 gap-2.5 overflow-hidden ps-[24px]"
-      >
-        <HistoryButtons tip={place === 'bottom' ? 'top' : 'bottom'} compact className="me-0" />
+      <Flex align="center" className="pointer-events-auto min-w-0 overflow-hidden ps-[24px]">
         {logo}
       </Flex>
       {dock}
-      <Flex justify="flex-end" className="pointer-events-auto min-w-0 pe-1">
-        {actionsGroup}
-      </Flex>
     </Flex>
   )
 })
@@ -961,12 +908,7 @@ const PhoneDrawer = memo(function PhoneDrawer({
 })
 
 /** Tema paneli › Gezinme seçeneğinin kabuktaki yeri (`default` = Solda). */
-const NAV_PLACE: Record<string, ChromePlace> = {
-  default: 'left',
-  right: 'right',
-  top: 'top',
-  bottom: 'bottom',
-}
+const NAV_PLACE: Record<string, ChromePlace> = { default: 'left', top: 'top' }
 
 /** Adresin raftaki uygulaması (talep kendi sekmesinde de İş Akış Yönetimi'nin). */
 function appOf(path: string) {
@@ -1086,6 +1028,12 @@ function Frame({
     () => ({ onTheme: openTheme, onPanel: setPanel }),
     [openTheme],
   )
+  // Sekme şeridinin iki yanı (geniş ekranda; dar ekranda üst çubuk ve çekmece): sabit öğeler
+  const stripStart = useMemo(() => <HistoryButtons />, [])
+  const stripEnd = useMemo(
+    () => <ShellActions panel={panel} onPanel={setPanel} onTheme={openTheme} />,
+    [panel, openTheme],
+  )
 
   return (
     // Kabuğun yönlendiricisi: yeri sabit, bağlantılar çalışma alanında açar. Seçili ekranın adresi
@@ -1104,9 +1052,6 @@ function Frame({
                 place={place}
                 actions={startActions}
                 onApp={openDock}
-                panel={panel}
-                onPanel={setPanel}
-                onTheme={openTheme}
                 appsOpen={appsOpen}
                 onApps={openApps}
               />
@@ -1125,7 +1070,12 @@ function Frame({
                 wide && place === 'top' ? '[--chrome-top:68px]' : '[--chrome-top:0px]',
               )}
             >
-              <Workspace state={ws} act={act} />
+              <Workspace
+                state={ws}
+                act={act}
+                start={wide ? stripStart : undefined}
+                end={wide ? stripEnd : undefined}
+              />
             </Flex>
 
             {/* Dar ekranda raf çekmecede */}

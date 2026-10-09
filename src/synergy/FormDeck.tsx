@@ -9,7 +9,6 @@ import { FileText, X } from 'lucide-react'
 import { Button, Flex, Modal, Typography } from 'antd'
 import { FLOATING_SURFACE, IC, MotionFlex, Scroll, TintIcon, Tip, cn } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
-import { useLook } from '@/synergy/shared/themeSettings'
 import { APP_EVENTS, AppFormBody, useAppEvent } from '@/synergy/AppForm'
 import { APP_FORM_TEXT, deckFormOf, deckTitleOf } from '@/synergy/shared/appForms'
 import {
@@ -102,9 +101,7 @@ function DeckHost({ deck }: { deck: Deck }) {
   const overhang = Math.min(deck.order.length - 1, step.shown) * step.shift
 
   // Park yeri: küçülmüş destenin sol kenarı (drawer'da en arkadaki kartın görünen kenarı) ekranın
-  // sağ kenarından şerit kadar içeride; gezinme sağdaysa sağ kenarı (öndeki kart) sol kenardan şerit
-  // kadar içeride. Ölçü antd kutusundan (dönüşümsüz), pencereyle güncellenir
-  const atStart = useLook().nav === 'right'
+  // sağ kenarından şerit kadar içeride. Ölçü antd kutusundan (dönüşümsüz), pencereyle güncellenir
   const box = useRef<HTMLDivElement>(null)
   const [parkX, setParkX] = useState(0)
   useLayoutEffect(() => {
@@ -114,17 +111,12 @@ function DeckHost({ deck }: { deck: Deck }) {
       if (!host) return
       const rect = host.getBoundingClientRect()
       const left = rect.left - (drawer ? overhang * PARK.scale : 0)
-      // Küçülme soldan (`origin-left`): sağ kenar sol kenarın genişlik × ölçek kadar sağında
-      setParkX(
-        atStart
-          ? PARK.sliver - rect.left - rect.width * PARK.scale
-          : window.innerWidth - PARK.sliver - left,
-      )
+      setParkX(window.innerWidth - PARK.sliver - left)
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [parked, drawer, overhang, atStart])
+  }, [parked, drawer, overhang])
 
   const hidden: TargetAndTransition = drawer ? { x: '110%' } : { opacity: 0, scale: 0.98, y: 12 }
   const target: TargetAndTransition = !isPresent
@@ -181,7 +173,7 @@ function DeckHost({ deck }: { deck: Deck }) {
           whileHover={
             parked && isPresent
               ? {
-                  x: parkX + (atStart ? PARK.peek : -PARK.peek),
+                  x: parkX - PARK.peek,
                   opacity: PARK.hoverOpacity,
                   transition: move,
                 }
@@ -219,7 +211,7 @@ function DeckHost({ deck }: { deck: Deck }) {
           </AnimatePresence>
           {/* Parkta destenin tamamı (arkadaki kartların taşan kenarları dahil) geri getirme düğmesi */}
           {parked && isPresent && frontTitle && (
-            <Tip label={frontTitle.caption} placement={atStart ? 'right' : 'left'}>
+            <Tip label={frontTitle.caption} placement="left">
               <Button
                 type="text"
                 aria-label={`Formu göster: ${frontTitle.caption}`}

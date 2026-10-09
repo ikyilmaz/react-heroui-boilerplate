@@ -44,8 +44,7 @@ export function Dashboard({
   const dash = useDashboard()
   const [editing, setEditing] = useState(false)
   const { ref: containerRef, el, width } = useWidth()
-  const mounted = width !== null
-  const narrow = mounted && width < MIN_GRID_WIDTH
+  const narrow = width < MIN_GRID_WIDTH
   const edit = editing && !narrow
   // Görüntü modunda boşluklar komşu widget'lar genişletilerek doldurulur (kayıtlı eski düzenler
   // dahil); düzenlemede ham yerleşim (kullanıcı serbestçe dizer), "Bitti" doldurulmuşu kaydeder
@@ -113,7 +112,7 @@ export function Dashboard({
           edit && 'bg-accent-soft/35',
         )}
       >
-        {!mounted || (room === null && !narrow) ? null : narrow ? (
+        {room === null && !narrow ? null : narrow ? (
           // Dar ekran: yerleşim sırasıyla alt alta, satır sayısı kadar yükseklik
           <Flex vertical gap={12} className="p-[12px]">
             {[...items]

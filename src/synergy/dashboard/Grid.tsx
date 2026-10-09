@@ -16,6 +16,9 @@ import { COLS, GAP, limitsOf, type PlacedWidget, type WidgetKind } from '@/syner
 /** Düzenleme modunda hücreyi taşımayan öğelerin sınıfı (düğmeler). */
 export const NO_DRAG = 'dash-no-drag'
 
+/** Ölçülmemiş kabın varsayılan genişliği (px). */
+const FALLBACK_WIDTH = 1280
+
 /** Sürüklemenin başlaması için gereken en küçük imleç kayması (px). */
 const THRESHOLD = 4
 
@@ -38,10 +41,14 @@ function arrange(items: PlacedWidget[], fixed?: PlacedWidget): PlacedWidget[] {
   return placed
 }
 
-/** Kabın genişliği (ResizeObserver); ölçülene kadar `null`. */
+/**
+ * Kabın genişliği (ResizeObserver). Ölçülene kadar `FALLBACK_WIDTH`: gizli bölmede (`content-visibility:
+ * hidden`) gözlemci hiç çalışmaz, pano yine çizilir (içindeki sayılar güncel kalır); bölme görününce
+ * ilk boyamadan önce gerçek ölçüye geçer.
+ */
 export function useWidth() {
   const [el, setEl] = useState<HTMLElement | null>(null)
-  const [width, setWidth] = useState<number | null>(null)
+  const [width, setWidth] = useState(FALLBACK_WIDTH)
   // Ayrılma (`null`) yok sayılır: öğe gidip gelince ölçü sıfırlanmasın
   const ref = useCallback((node: HTMLElement | null) => {
     if (node) setEl(node)

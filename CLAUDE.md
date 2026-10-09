@@ -74,7 +74,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
   (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
   on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
-  (root size + `--spacing` together), nav position (Solda / Sağda / Üstte / Altta, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
+  (root size + `--spacing` together), nav position (Solda / Üstte, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation: Animasyon Açık / Az / Kapalı ("Az"
   and "Açık" are presets for the controls below; Kapalı hides them), Sekme içeriği Tam / Solma /
@@ -133,20 +133,27 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `ChromeNavContext`, the selected screen's path reaches the start menu (closes when it changes) and
   the app tree (current app) through `PlaceContext`, so a tab switch doesn't re-render the chrome,
   the phone drawer or the panels). Chrome as separate
-  floating panels on one side, set by tema paneli › Gezinme (`ChromePlace`; "Sağda" mirrors "Solda",
-  "Altta" mirrors "Üstte": tooltips, panels and the start menu open toward the content, from the
-  chrome's side; `CHROME_TIP`, `PANEL_PLACEMENT`, `PLACE`): "Solda" = left column with logo + back /
-  forward, the dock (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
+  floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte only — Sağda / Altta
+  were removed, stored values move to Solda / Üstte; tooltips and the start menu open toward the
+  content; `CHROME_TIP`, `PLACE`). In both positions back / forward (`HistoryButtons`, two 32px buttons, 68px) sit in
+  the tab strip's row left of the Başlangıç tab and the actions / profile (`ShellActions`: Sohbet,
+  Duyurular, Tema ayarları, Koyu / Açık tema, avatar; 32px, tooltips and panels open downward) at
+  its right end, so they take no height (`Workspace` `start` / `end`); the actions sit 4px, back /
+  forward 2px above the tab centre. Back / forward look like part of the strip: no ring, the sheet's fill (`--tab-bg`) and
+  the tab radius (`--tab-r`); they overlap the strip's start inset (negative margin, `z-10`) and stay
+  4px from the Başlangıç tab, while the inset keeps at least `--tab-r` so the selected sheet's flare
+  isn't clipped by the strip's scroller (and whatever the container corner + tab radius still need). "Solda" = left column
+  with the logo (centred on the tab row) and the dock in the middle (three-row grid), the dock
+  (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
   high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its İş
   Akış Yönetimi section is the Başlangıç İş Akışları widget (`WorkBlock` from `StartPage.tsx`, in its
   own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana
-  sayfaya dön" inside) and actions / profile; "Üstte" = three columns: corner handle + back / forward
-  + logo | centered dock | actions / profile (the handle — added on explicit request, a trial — is
+  sayfaya dön" inside); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
+  handle — added on explicit request, a trial — is
   `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the "Tüm uygulamalar" panel
   floating 12px in from the edges, `AllAppsPanel floating`); the top bar is compact — 44px with 36px
-  dock circles (`DOCK_SIZE.top`), smaller logo, compact back / forward, 32px action buttons / avatar —
-  and content starts at 68px ("Altta": ends 68px above the bottom; the workspace height subtracts
-  `--chrome-bottom` and notifications start above the bar) (the bar's page-colour strip ends 1 spacing unit above: the card contour
+  dock circles (`DOCK_SIZE.top`), smaller logo — and content starts at 68px (the bar's page-colour
+  strip ends 1 spacing unit above: the card contour
   (`ring`) and shadow are drawn outside the box, so a strip ending exactly at the content would cover
   a card's top line). The dock is fixed circles (`DockApps`): Başlangıç and the apps, the selected
   tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
@@ -196,10 +203,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   once per screen. Strip: `TabStrip` › one `TabGroup` per unit (Başlangıç, a group, or an ungrouped tab;
   units drag as a whole from their first tab) › `Tab` with one `ScreenLabel` per screen (icon + name
   from `screenMeta`, the tooltip gives the full path, which replaced the breadcrumb); context menu:
-  Yan yana aç, Ayrı sekmelere ayır, Sola / Sağa taşı (Grubu … for a group's first tab), Bağlantıyı
+  Yan yana aç, Yer değiştir (a split tab, wide screens), Ayrı sekmelere ayır, Sola / Sağa taşı (Grubu … for a group's first tab), Bağlantıyı
   kopyala (the tab's own address), Kapat / Grubu kapat (built when it opens; "Yan yana aç" only while
   the selected tab is single; no pair button on the tab itself, so selecting never changes a tab's
-  width); swap / separate at the strip's end. Screens are elements built once per screen and
+  width; swap and separate only in this menu, no buttons at the strip's end). Screens are elements built once per screen and
   rebuilt only when that screen's state object changes, so a switch re-renders two tabs and two
   panes, never a page. Panes never move in the DOM: each has a fixed absolute box (single = whole
   container, split = left / right by its tab's ratio, inline `width`); hidden ones are
@@ -327,7 +334,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   - Hovering a behind card's visible edge lifts it (drawer: name in a tooltip), and clicking it
     raises the card.
   - Esc and a card's close button close the front card. Clicking outside parks the deck: it shrinks
-    to a faint 48px strip on the right edge (the left edge when the nav is on the right), the mask, trap, Esc and scroll lock turn off, and the
+    to a faint 48px strip on the right edge, the mask, trap, Esc and scroll lock turn off, and the
     page works. Hovering the strip peeks it out; clicking it brings the deck back.
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
