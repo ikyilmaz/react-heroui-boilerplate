@@ -390,6 +390,8 @@ export function TabStrip({
       )
       for (const { el, nat } of flex)
         el.toggleAttribute('data-compact', isCompact(Math.min(nat, share), rem))
+      // Sıkışık: herkesin payı ad eşiğinin altında; ikon kipindeki sekmeler payı doldurur (`TAB_SIZING`)
+      r.toggleAttribute('data-squeezed', isCompact(share, rem))
       latest.current.tight = isTight
       // Kalan sekmeler doğal genişliklerine sığdı: donma gereksiz
       if (!isTight && lockRef.current !== null) setFrozen(null)
@@ -727,7 +729,11 @@ export function TabStrip({
           aria-label={label}
           onKeyDown={onKeyDown}
           style={lock === null ? undefined : { width: lock, flex: 'none' }}
-          className={cn('relative isolate flex items-end pt-1 select-none', ROW[sizing], inset)}
+          className={cn(
+            'group/row relative isolate flex items-end pt-1 select-none',
+            ROW[sizing],
+            inset,
+          )}
         >
           {R !== undefined && (
             <MotionFlex
@@ -772,7 +778,8 @@ const GroupContext = createContext<{
 
 /** Grubun genişlik davranışı: daralırken sekme sayısıyla orantılı pay (sekmeler eşit kalsın). */
 const GROUP_SIZING = {
-  chrome: 'max-w-max',
+  // Sıkışıkken ikon kipinde sekmesi olan grubun da tavanı yok (Başlangıç'ınki sabit kalır)
+  chrome: 'max-w-max group-data-[squeezed]/row:has-[[data-compact]]:max-w-none',
   content: 'flex-none',
   fill: 'flex-1',
 } as const
@@ -893,7 +900,11 @@ export const TabGroup = memo(function TabGroup({
 
 /** Sekmenin genişlik davranışı (`TabStrip` › `sizing`). */
 const TAB_SIZING = {
-  chrome: 'flex-[1_1_0px] max-w-max min-w-[2.75rem]',
+  // Sıkışıkken (satırda `data-squeezed`: pay ad eşiğinin altında) ikon kipindeki sekmenin doğal
+  // genişlik tavanı yok: adı gizli sekmenin doğal genişliği ikona iner; tavan kalsa sekmeler
+  // 2.75rem'de durur, satırın kalanı boş kalırdı. Eşit payı alır, ikon ortada
+  chrome:
+    'flex-[1_1_0px] max-w-max min-w-[2.75rem] group-data-[squeezed]/row:data-[compact]:max-w-none',
   content: 'flex-none',
   fill: 'flex-[1_1_0px] min-w-0',
 } as const

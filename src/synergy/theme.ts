@@ -17,7 +17,7 @@ export const APP_THEME: ThemeKit = {
     cardStyle: 'filled',
     shadow: 'none',
     border: 1,
-    nav: 'top',
+    nav: 'default',
     motion: 'full',
     motionSpeed: 1,
     tabContent: 'full',
@@ -29,6 +29,7 @@ export const APP_THEME: ThemeKit = {
   navOptions: [
     { id: 'default', label: 'Solda', side: 'left' },
     { id: 'top', label: 'Üstte', side: 'top' },
+    { id: 'compact', label: 'Kompakt', side: 'compact' },
   ],
   /*
    * Hazır temalar: her biri ayrı bir karakter; görünüşü belirleyen bütün ayarları verir (gezinme,

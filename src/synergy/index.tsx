@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderOpen,
+  History,
   House,
   Megaphone,
   Menu,
@@ -37,12 +38,21 @@ import {
   Palette,
   Search,
   SquareArrowOutUpRight,
+  Star,
   Sun,
   Users,
   Workflow,
   type LucideIcon,
 } from 'lucide-react'
-import { CURRENT_USER, avatarColor, initials, menuApps } from '@/synergy/shared/workflowData'
+import {
+  APPS_LABELS,
+  CURRENT_USER,
+  avatarColor,
+  initials,
+  menuApps,
+  type MenuApp,
+} from '@/synergy/shared/workflowData'
+import { useMenuApps } from '@/synergy/shared/decisions'
 import { BASE, useOpenApp } from '@/synergy/paths'
 import { useMediaQuery } from '@/synergy/shared/hooks'
 import {
@@ -641,6 +651,77 @@ type DockOpen = (id: string, opts?: { force?: boolean; background?: boolean }) =
  * sekmede açılır (`onApp`); sağ tık "Yeni sekmede aç" sekmesi varken de yenisini, Ctrl / Cmd / orta
  * tık yenisini geçmeden açar. Sayfası olmayan uygulama pasif.
  */
+/** Raftaki favori / son kullanılan uygulamaların en çok sayısı. */
+const DOCK_LIMIT = 6
+
+/**
+ * Raftaki favoriler: ince bir ayraçtan sonra soluk bir yıldız ve favori uygulamalar (Başlangıç'taki
+ * Favoriler widget'ıyla aynı liste); yıldız / saat birincil renkte. Yıldıza basınca son kullanılan uygulamalar gelir (ikon saat),
+ * yine basınca favoriler. Uygulama basınca açılır (sayfası ya da form destesi, `useOpenApp`).
+ */
+const DockMenuApps = memo(function DockMenuApps({
+  place,
+  apps,
+  recent,
+  onToggle,
+}: {
+  place: ChromePlace
+  apps: MenuApp[]
+  recent: boolean
+  onToggle: () => void
+}) {
+  const openApp = useOpenApp()
+  const column = isColumn(place)
+  const size = DOCK_SIZE[column ? 'left' : 'top']
+  const tip = CHROME_TIP[place]
+  const label = recent ? APPS_LABELS.recent : APPS_LABELS.favorites
+  return (
+    <Flex
+      role="list"
+      aria-label={label}
+      className={cn('flex items-center gap-0.5', column && 'flex-col')}
+    >
+      <Tip
+        label={`${label} · ${recent ? APPS_LABELS.favorites : APPS_LABELS.recent} için basın`}
+        placement={tip}
+      >
+        <Button
+          type="text"
+          size="small"
+          aria-label={label}
+          aria-pressed={recent}
+          onClick={onToggle}
+          icon={recent ? <History {...IC} size={14} /> : <Star {...IC} size={14} />}
+          className="size-7 min-w-7 rounded-full text-accent hover:text-accent!"
+        />
+      </Tip>
+      {apps.map((a) => {
+        const Icon = a.icon
+        return (
+          <Flex key={a.id} role="listitem" className="flex shrink-0">
+            <Tip label={a.caption} placement={tip}>
+              <Button
+                type="text"
+                aria-label={a.caption}
+                onClick={() => openApp(a)}
+                className={cn(APP_CIRCLE, size.circle, 'min-w-0 p-0')}
+              >
+                {Icon ? (
+                  <Icon {...IC} size={size.icon} className="shrink-0" />
+                ) : (
+                  <Typography.Text className="text-xs font-semibold text-current">
+                    {initials(a.caption)}
+                  </Typography.Text>
+                )}
+              </Button>
+            </Tip>
+          </Flex>
+        )
+      })}
+    </Flex>
+  )
+})
+
 const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; onApp: DockOpen }) {
   const { current } = useContext(ChromeNavContext)
   const column = isColumn(place)
@@ -818,18 +899,27 @@ const Chrome = memo(function Chrome({
 
   // Raf (StartMenu): başlat, ardından uygulamalar (yerleri sabit; raf yalnızca yerleşim değişince
   // ölçülür, Motion `layoutDependency`)
+  // Raf: sabit uygulamalar | favoriler (ya da son kullanılanlar); başlat düğmesi rafın önünde, kendi
+  // kartında. Raf boyu liste değişince değişir: düzen imzası onunla
+  const lists = useMenuApps()
+  const [recent, setRecent] = useState(false)
+  const toggleRecent = useCallback(() => setRecent((r) => !r), [])
+  const apps = useMemo(
+    () => (recent ? lists.recent : lists.favorites).slice(0, DOCK_LIMIT),
+    [recent, lists],
+  )
   const dock = (
-    <StartDock place={place} actions={actions} layoutKey={place}>
-      {(start) => (
-        <>
-          {start}
-          <Divider
-            orientation={column ? 'horizontal' : 'vertical'}
-            className={column ? 'my-1 w-6 min-w-0' : 'top-0 mx-0.5 h-5'}
-          />
-          <DockApps place={place} onApp={onApp} />
-        </>
-      )}
+    <StartDock
+      place={place}
+      actions={actions}
+      layoutKey={`${place}:${recent}:${apps.map((a) => a.id).join(',')}`}
+    >
+      <DockApps place={place} onApp={onApp} />
+      <Divider
+        orientation={column ? 'horizontal' : 'vertical'}
+        className={column ? 'my-1 w-6 min-w-0' : 'top-0 mx-0.5 h-5'}
+      />
+      <DockMenuApps place={place} apps={apps} recent={recent} onToggle={toggleRecent} />
     </StartDock>
   )
 
@@ -911,7 +1001,7 @@ const PhoneDrawer = memo(function PhoneDrawer({
 })
 
 /** Tema paneli › Gezinme seçeneğinin kabuktaki yeri (`default` = Solda). */
-const NAV_PLACE: Record<string, ChromePlace> = { default: 'left', top: 'top' }
+const NAV_PLACE: Record<string, ChromePlace> = { default: 'left', top: 'top', compact: 'compact' }
 
 /** Adresin raftaki uygulaması (talep kendi sekmesinde de İş Akış Yönetimi'nin). */
 function appOf(path: string) {
@@ -1033,6 +1123,14 @@ function Frame({
   )
   // Sekme şeridinin iki yanı (geniş ekranda; dar ekranda üst çubuk ve çekmece): sabit öğeler
   const stripStart = useMemo(() => <HistoryButtons />, [])
+  // Kompakt: logo ve raf yok; başlat düğmesi sekme satırının başında (kutu ondan dönüşür)
+  const stripLead = useMemo(
+    () =>
+      place === 'compact' ? (
+        <StartDock place="compact" actions={startActions} layoutKey="compact" />
+      ) : undefined,
+    [place, startActions],
+  )
   const stripEnd = useMemo(
     () => <ShellActions panel={panel} onPanel={setPanel} onTheme={openTheme} />,
     [panel, openTheme],
@@ -1050,7 +1148,7 @@ function Frame({
             vertical
             className="isolate min-h-screen bg-background text-foreground antialiased before:pointer-events-none before:fixed before:inset-0 before:-z-10 before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:content-['']"
           >
-            {wide ? (
+            {wide && place === 'compact' ? null : wide ? (
               <Chrome
                 place={place}
                 actions={startActions}
@@ -1076,6 +1174,7 @@ function Frame({
               <Workspace
                 state={ws}
                 act={act}
+                lead={wide ? stripLead : undefined}
                 start={wide ? stripStart : undefined}
                 end={wide ? stripEnd : undefined}
               />

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * Sekme şeritlerinin görüntüleri (rapor ve göz denetimi için): çalışma alanının şeridi (tek sekme,
- * renkli grup, yan yana sekme, dar pencere: ikon kipi), iş akışı kutuları, Başlangıç kategorileri;
+ * renkli grup, yan yana sekme, dar pencere: ikon kipi), Başlangıç kategorileri;
  * açık / koyu, DPR 1 / 2, Chrome yolu (`corner-shape`) ve zorlanmış yedek yol (kapakların
  * `supports-[corner-shape:scoop]` sınıfları sayfada silinir: Safari / Firefox'un çizdiği yol). Her
  * biri şeridin tamamı ve seçili sekmenin kavisleri büyütülmüş. Görüntü alanı yakalarken değişmez
@@ -80,11 +80,7 @@ for (const mode of MODES)
         if (path === 'fallback') await fallback(page)
         await capture(page, `${name}-${tag}`, STRIP)
       }
-      // İş akışı kutuları ve Başlangıç kategorileri
-      await page.goto(`${URL_BASE}/is-akislari/bekleyen`, { waitUntil: 'networkidle0' })
-      await sleep(1200)
-      if (path === 'fallback') await fallback(page)
-      await capture(page, `agenda-${tag}`, '[role=navigation][aria-label="İş Akış Yönetimi"]')
+      // Başlangıç kategorileri (iş akışı kutuları artık sekme değil, çip)
       await page.goto(`${URL_BASE}/calisma-alani`, { waitUntil: 'networkidle0' })
       await sleep(1500)
       if (path === 'fallback') await fallback(page)

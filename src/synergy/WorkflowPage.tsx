@@ -27,12 +27,12 @@ import { AgendaTabs, type AgendaTab } from '@/synergy/AgendaTabs'
 import { Count, Indicator } from '@/synergy/ant/motion'
 
 /*
- * İş Akış Yönetimi (/is-akislari/:box/:processId), antd. Kutular üstte ajanda sekmeleri (geçmiş kutuları
- * "Geçmiş" başlığıyla şeridin sağında); seçili sekme içeriği saran kaba kaynaşır. Kabın içinde
- * ayrı bir başlık bandı yok (kutunun adı sekmede); solda süreç listesi (%20; üstünde arama,
+ * İş Akış Yönetimi (/is-akislari/:box/:processId), antd. Kutular üstte araç çubuğunda çipler
+ * (`AgendaTabs`; geçmiş kutuları "Geçmiş" başlığıyla ayraçtan sonra). Ayrı bir başlık bandı yok
+ * (kutunun adı seçili çipte); solda süreç listesi (%20; üstünde arama,
  * sıralama, geçmişte tarih aralığı), sağda seçili sürecin talep ızgarası. Hiçbir şey kendiliğinden
  * seçilmez: `/is-akislari`'de kutu, kutuda süreç seçili değildir (boş durum; raf ve uygulama
- * bağlantıları buraya gelir). Kutu değişince içerik seçilen sekmenin yönünden gelir. Talebe basınca
+ * bağlantıları buraya gelir). Kutu değişince içerik seçilen çipin yönünden gelir. Talebe basınca
  * talep bu sekmede listenin üstünde açılır (liste altta kalır, "Kapat" ona döner).
  */
 
@@ -99,11 +99,10 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
   // Süreç kendiliğinden seçilmez; adresteki süreç yoksa kutunun boş durumuna dönülür (aşağıda)
   const process = findProcess(processId)
 
-
   if (processId && !process) return <Navigate to={boxLink(box.id)} replace />
   return (
     <Flex className="flex flex-col gap-3 @4xl:min-h-0 @4xl:flex-1">
-      {/* Kutunun adı sekmede yazıyor; sayfa başlığı yalnızca ekran okuyucu için */}
+      {/* Kutunun adı seçili çipte yazıyor; sayfa başlığı yalnızca ekran okuyucu için */}
       <Typography.Title level={1} className="sr-only">
         {box.title}
       </Typography.Title>
@@ -172,7 +171,10 @@ function ProcessList({
   const countLabel = isDraft ? 'Taslak Sayısı' : 'Talep Sayısı'
   return (
     <Card
-      className={cn(CARD, 'w-full shrink-0 @4xl:flex @4xl:min-h-0 @4xl:w-1/5 @4xl:min-w-56 @4xl:flex-col')}
+      className={cn(
+        CARD,
+        'w-full shrink-0 @4xl:flex @4xl:min-h-0 @4xl:w-1/5 @4xl:min-w-56 @4xl:flex-col',
+      )}
       classNames={{ body: 'flex flex-col gap-1 p-2 @4xl:min-h-0 @4xl:flex-1' }}
     >
       {/* Üstte süzgeçler: arama ve sıralama (geçmiş kutularında tarih aralığı da) */}

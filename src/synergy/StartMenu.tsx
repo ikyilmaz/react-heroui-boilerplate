@@ -93,14 +93,17 @@ const SHELL = 'border border-border bg-surface shadow-(--overlay-shadow)'
 
 /* --- Raf --------------------------------------------------------------------------------------- */
 
-/** Kabuğun yeri (tema paneli › Gezinme): solda sütun ya da üstte çubuk. */
-export type ChromePlace = 'left' | 'top'
+/**
+ * Kabuğun yeri (tema paneli › Gezinme): solda sütun, üstte çubuk ya da kompakt (raf ve logo yok;
+ * yalnızca başlat düğmesi, sekme satırının başında; içerik ekranın soluna kadar).
+ */
+export type ChromePlace = 'left' | 'top' | 'compact'
 
 /** Kabuk sütun mu (solda). */
 export const isColumn = (place: ChromePlace) => place === 'left'
 
 /** Kabuktaki ipuçlarının yönü: içeriğe doğru. */
-export const CHROME_TIP = { left: 'right', top: 'bottom' } as const
+export const CHROME_TIP = { left: 'right', top: 'bottom', compact: 'bottom' } as const
 
 /**
  * Rafın tek yayı: başlat dönüşümü ve raf boyunun değişmesi aynı yayla (ayrı zamanlamalar üst üste
@@ -144,6 +147,13 @@ const BAR_PANEL =
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
   left: { ...COLUMN, panel: cn('start-3', SIDE_PANEL) },
   top: { ...BAR, panel: cn('top-3', BAR_PANEL) },
+  // Kompakt: sekme satırındaki 32px düğmeden sol üstte açılan kutu
+  compact: {
+    shell: '',
+    start: 'size-[32px] min-w-[32px]',
+    icon: 16,
+    panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
+  },
 }
 
 /**
@@ -153,6 +163,7 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
 export const CHROME_SPACE: Record<ChromePlace, string> = {
   left: 'sm:ps-[76px] sm:pt-3',
   top: 'sm:ps-3 sm:pt-[68px]',
+  compact: 'sm:ps-3 sm:pt-3',
 }
 
 /**
@@ -184,7 +195,11 @@ export function StartDock({
   actions: StartActions
   /** Rafın içeriğinin düzen imzası: raf yalnızca bu değişince ölçülür (Motion `layoutDependency`). */
   layoutKey?: string
-  children: (start: ReactNode) => ReactNode
+  /**
+   * Rafın içeriği (başlat düğmesi rafta değil: kendi beyaz kartında, rafın önünde yüzer). Kompaktta
+   * raf yok: yalnızca düğme, kutu ondan dönüşür.
+   */
+  children?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -200,6 +215,8 @@ export function StartDock({
   // Raf ve kutunun ortak yarıçapı (px; ölçülene kadar sınıftaki)
   const radiusPx = useRadiusPx(CARD_RADIUS)
   const radius = radiusPx === undefined ? undefined : { borderRadius: radiusPx }
+  const column = isColumn(place)
+  const compact = place === 'compact'
   const trigger = useRef<HTMLButtonElement>(null)
   const dockRef = useRef<HTMLElement>(null)
   const [holder, setHolder] = useState<{ w: number; h: number } | null>(null)
@@ -240,7 +257,7 @@ export function StartDock({
       />
     </Tip>
   )
-  return (
+  const body = (
     <>
       {/* Raf açıkken yerini koruyan boş tutucu */}
       {open && holder && (
@@ -253,7 +270,20 @@ export function StartDock({
       )}
       {/* `popLayout`: çıkan raf / kutu solarken akıştan çıkar (yerini tutucu korur, sütun kaymaz) */}
       <AnimatePresence initial={false} mode="popLayout">
-        {!open ? (
+        {!open && compact ? (
+          // Kompakt: dönüşen öğe başlat düğmesinin kendisi
+          <MotionFlex
+            key="dock"
+            ref={dockRef}
+            layoutId="start-menu"
+            layoutDependency={layoutKey}
+            transition={morph}
+            style={{ borderRadius: 16 }}
+            className="flex shrink-0"
+          >
+            {start}
+          </MotionFlex>
+        ) : !open ? (
           <MotionFlex
             key="dock"
             ref={dockRef}
@@ -277,7 +307,7 @@ export function StartDock({
                 isColumn(place) ? 'flex-col items-center' : 'items-center',
               )}
             >
-              {children(start)}
+              {children}
             </MotionFlex>
           </MotionFlex>
         ) : (
@@ -334,6 +364,16 @@ export function StartDock({
         )}
       </AnimatePresence>
     </>
+  )
+  if (compact) return body
+  // Başlat düğmesi kendi beyaz kartında yüzer (rafın önünde: solda üstünde, üstte solunda)
+  return (
+    <Flex className={cn('flex shrink-0 items-center gap-2', column && 'flex-col')}>
+      <Flex className={cn('flex shrink-0', column ? 'p-[6px]' : 'p-[4px]', CHROME_PANEL)}>
+        {start}
+      </Flex>
+      {body}
+    </Flex>
   )
 }
 

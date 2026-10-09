@@ -52,7 +52,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`;
   with no stored choice the mode is light, not the system's).
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
-  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok) — the theme file's
+  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok), Gezinme Solda — the theme file's
   `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
   positions and four presets in `theme.ts`): presets (Atölye, Kuzey Işığı, Şafak, Lacivert; each sets
   the look keys only (texture included), never nav / corner shape / motion; cards with a live preview drawn by writing
@@ -75,7 +75,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
   (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
   on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
-  (root size + `--spacing` together), nav position (Solda / Üstte, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
+  (root size + `--spacing` together), nav position (Solda / Üstte / Kompakt, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation: Animasyon Açık / Az / Kapalı ("Az"
   and "Açık" are presets for the controls below; Kapalı hides them), Sekme içeriği Tam / Solma /
@@ -86,7 +86,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
-  Every tab strip (the workspace, workflow boxes, Başlangıç categories) is the shared `tabs/` module (see
+  Every tab strip (the workspace, Başlangıç categories) is the shared `tabs/` module (see
   below); strips start container corner + tab radius in, so the selected sheet's flare lands on the
   container's straight edge. Only the variables of changed settings are written
   inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position and
@@ -134,7 +134,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `ChromeNavContext`, the selected screen's path reaches the start menu (closes when it changes) and
   the app tree (current app) through `PlaceContext`, so a tab switch doesn't re-render the chrome,
   the phone drawer or the panels). Chrome as separate
-  floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte only — Sağda / Altta
+  floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte / Kompakt — Kompakt: no logo and no dock, only the start
+  button at the head of the tab row (`Workspace` `lead`, before back / forward; the start menu morphs
+  from that button, `StartDock place="compact"`, and opens top left), content runs to the screen's
+  left edge (`CHROME_SPACE.compact`); Sağda / Altta
   were removed, stored values move to Solda / Üstte; tooltips and the start menu open toward the
   content; `CHROME_TIP`, `PLACE`). In both positions back / forward (`HistoryButtons`, two 32px buttons, 68px) sit in
   the tab strip's row left of the Başlangıç tab and the actions / profile (`ShellActions`: Sohbet,
@@ -158,7 +161,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   dock circles (`DOCK_SIZE.top`), smaller logo — and content starts at 68px (the bar's page-colour
   strip ends 1 spacing unit above: the card contour
   (`ring`) and shadow are drawn outside the box, so a strip ending exactly at the content would cover
-  a card's top line). The dock is fixed circles (`DockApps`): Başlangıç and the apps, the selected
+  a card's top line). The start button sits in its own white card in front of the dock (above it on the left, left of it on top). The dock is fixed circles (`DockApps`), a thin divider, then the favourite apps (`DockMenuApps`, at most 6, the Favoriler widget's list) behind a star in the accent colour; pressing the star swaps them for the recent apps (clock icon) and back; an app opens like its menu entry (`useOpenApp`). Fixed circles: Başlangıç and the apps, the selected
   tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
   app's tab (its list under a form counts) or opens one; Başlangıç and the logo select Başlangıç.
   Back / forward act on the selected tab's own history. Other shell links and `useNavigate` (start
@@ -261,9 +264,11 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   8×3, then İş Akışları 9×7 beside Saat 3×1 and Notlar 3×6; the others 12 × 9) and `fillGaps` grows neighbours into any empty cell (view mode and on
   "Bitti"); resize is free (min = smallest supported size), the view picks the nearest supported size;
   stacked below 960px), `widgets.tsx` (the extra widgets).
-- İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as agenda tabs incl.
-  Geçmiş (`AgendaTabs.tsx`: the shared `TabStrip` with links, `sizing="content"`, a "Geçmiş" group
-  label; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
+- İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as chips in a white
+  toolbar card above the page — not tabs: a tab strip inside a workspace tab blurred the hierarchy;
+  `AgendaTabs.tsx`: links, the selected box filled with the accent, the others light grey, a
+  separator + the "Geçmiş" label before the history boxes (no fill), font weight never changes with
+  selection, the bar scrolls sideways when it doesn't fit; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
   (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete). Nothing is
   selected automatically: `/is-akislari` (`WF_HOME`; dock and app links) has no box
   selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
@@ -392,7 +397,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     Icon-only below 5rem (`data-compact`, written by the observer, no React render) from the width
     the tab would get (`fairShare`: equal share of the row, capped at each tab's natural width with
     its hidden / truncated label counted), not its own width (an icon-only tab's own width can't
-    grow back); the selected icon-only tab shows its close button in place of the icon. `content`
+    grow back); the selected icon-only tab shows its close button in place of the icon. When every
+    share is below that threshold (`data-squeezed` on the row, also written by the observer) icon-only
+    tabs and their groups drop the natural-width cap and fill their share (otherwise they stopped at
+    the icon's width and left the rest of the row empty). `content`
     natural width; `fill` equal shares. Closing freeze: a pointer close while tabs are squeezed locks the row's width
     (minus the closed tab or group) until the pointer leaves the strip (+40px below, +60px at the
     end), 2s after a touch close, or the structure changes. Drag is manual (Motion `drag` measures on
@@ -503,8 +511,7 @@ The tab radius cap (`TAB_RADIUS`); 2px group ring and underline (card contours s
 selected label in coloured strips; separators and a hover pill on inactive tabs; close button only on
 hover / focus for inactive tabs; Chrome-style width distribution with icon-only tabs (selection never
 changes widths: no bold label, no pair button on the tab, no larger selected tab); the closing
-freeze; the shared `tabs/` module replacing `AgendaTabs.tsx`'s `FLARES` / `AGENDA_PAGE`, the
-StartPage category constants, `SwitchPanel` and `DirectionalPanels`.
+freeze; the shared `tabs/` module replacing the StartPage category constants, `SwitchPanel` and `DirectionalPanels`.
 
 ## Gotchas
 

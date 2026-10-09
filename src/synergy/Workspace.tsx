@@ -328,11 +328,14 @@ const ScreenView = memo(function ScreenView({ screen }: { screen: Screen }) {
 export function Workspace({
   state: st,
   act,
+  lead,
   start,
   end,
 }: {
   state: WorkspaceState
   act: Act
+  /** Geri / ileriden önce (kompakt gezinmede başlat düğmesi). */
+  lead?: ReactNode
   start?: ReactNode
   end?: ReactNode
 }) {
@@ -616,6 +619,7 @@ export function Workspace({
          * aradaki kanal her yerde eşit. Şeridin kavis payının üstüne biner (eksi kenar boşluğu;
          * kabın köşesine yetmezse o kadar ileride), üstte (`z-10`), tıklamayı şerit almaz
          */}
+        {lead && <Flex className="h-[2.5rem] shrink-0 items-center pe-2 pb-1">{lead}</Flex>}
         {start && (
           <Flex
             className={cn(

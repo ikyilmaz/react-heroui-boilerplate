@@ -530,7 +530,9 @@ await test('kapatırken genişlik donması (dar pencere, çok sekme)', async (pa
   expect(tight, 'şerit daralmadı (sınama geçersiz)')
   expect(frozen, `genişlikler değişti: ${JSON.stringify(w0)} → ${JSON.stringify(w1)}`)
   expect(grew, `imleç ayrılınca genişlemedi: ${JSON.stringify(w1)} → ${JSON.stringify(w2)}`)
-}, { width: 1100 })
+  // Sekmeler sıkışık ama adlı (kapatma düğmeli) kalacak genişlik: gezinme solda (sol sütun 76px);
+  // daha darda ikon kipine düşerler, seçili olmayanın kapatması olmaz
+}, { width: 1180 })
 
 /* --- Adres ---------------------------------------------------------------------------------------- */
 
@@ -600,7 +602,8 @@ await test('tüm uygulamalar: seçili sekmenin uygulaması işaretli', async (pa
   )
   expect(current.join() === 'Personel Rehberi', `işaretli: ${current}`)
   await page.keyboard.press('Escape')
-})
+  // Köşedeki "Tüm uygulamalar" tutamacı yalnızca gezinme üstteyken
+}, { theme: { nav: 'top' } })
 
 await test('karar: gizli liste ve Başlangıç’ın sayıları güncellenir', async (page, expect) => {
   await goto(page, '/is-akislari/bekleyen/izin')

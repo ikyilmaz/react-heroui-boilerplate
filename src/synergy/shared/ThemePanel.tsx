@@ -295,6 +295,8 @@ function Segments<T extends string | number>({
 const NAV_BAR = {
   left: 'inset-y-[2px] start-[2px] w-[3px]',
   top: 'inset-x-[2px] top-[2px] h-[3px]',
+  // Kompakt: yalnızca sol üstte küçük düğme
+  compact: 'start-[2px] top-[2px] size-[3px]',
 } as const
 
 /** Gezinme seçeneğinin küçük önizlemesi: ekran ve kabuğun durduğu kenar (yazı renginde). */
@@ -587,7 +589,7 @@ export const ThemePanel = memo(function ThemePanel({
             icon: o.side && <NavPreview side={o.side} />,
           }))}
           onChange={(nav) => set({ nav })}
-          grid={2}
+          grid={3}
         />
       </Section>
 

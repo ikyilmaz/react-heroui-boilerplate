@@ -128,7 +128,7 @@ export interface ThemeKit {
   /** Tema dosyasının karşılığı; bu değerlerde hiçbir değişken yazılmaz. */
   defaults: ThemeSettings
   /** Gezinme konumu seçenekleri (ilki `default`); `side`: önizlemede kabuğun durduğu kenar. */
-  navOptions: { id: string; label: string; side?: 'left' | 'top' }[]
+  navOptions: { id: string; label: string; side?: 'left' | 'top' | 'compact' }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
   /** Hazır temalar (tema panelinin başında). */
