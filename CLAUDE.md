@@ -240,9 +240,11 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   menu, so its DOM ids come from `useId`; it is its own `@container`: two columns from `@xl`,
   category labels from `@3xl` of the block's width, in the dashboard and the start menu alike).
 - `dashboard/`: `model.ts` (widget kinds with supported sizes, presets, per-preset layout saved in the
-  browser), `Dashboard.tsx` (react-grid-layout board with edit mode — drag, resize snapping to the
-  nearest supported size, size menu, add / remove, reset — styled through Tailwind selectors on its
-  classes, no library CSS; row height fitted to the visible area so the page never scrolls, presets
+  browser), `Grid.tsx` (our own small grid, no library: absolute cells on a 12-column grid, drag and
+  a corner resize handle with pointer events — the dragged cell is written directly, React renders
+  only when the target cell changes —, placeholder, vertical compaction; `useWidth`),
+  `Dashboard.tsx` (the board with edit mode — drag, resize snapping to the nearest supported size,
+  size menu, add / remove, reset; row height fitted to the visible area so the page never scrolls, presets
   tile 12 × 9 with no gaps and `fillGaps` grows neighbours into any empty cell (view mode and on
   "Bitti"); resize is free (min = smallest supported size), the view picks the nearest supported size;
   stacked below 960px), `widgets.tsx` (the extra widgets).

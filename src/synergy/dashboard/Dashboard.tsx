@@ -1,15 +1,5 @@
 import { useLayoutEffect, useState, type ReactNode, type Ref } from 'react'
-import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout'
-import {
-  Check,
-  GripVertical,
-  LayoutTemplate,
-  Maximize2,
-  Pencil,
-  Plus,
-  RotateCcw,
-  X,
-} from 'lucide-react'
+import { Check, GripVertical, LayoutTemplate, Pencil, Plus, RotateCcw, X } from 'lucide-react'
 import { Button, Dropdown, Flex, Popover, Select, Typography } from 'antd'
 import { IC, Tip, cn } from '@/synergy/ant/ui'
 import { useTabScroller } from '@/synergy/tabs/context'
@@ -22,43 +12,25 @@ import {
   WIDGETS,
   WIDGET_ORDER,
   fillGaps,
-  limitsOf,
   sizeOf,
   useDashboard,
   type PlacedWidget,
   type WidgetKind,
   type WidgetSize,
 } from '@/synergy/dashboard/model'
+import { Grid, NO_DRAG, useWidth } from '@/synergy/dashboard/Grid'
 
 /*
- * Başlangıç widget panosu (react-grid-layout). Görüntü modunda widget'lar yerinde ve etkileşimli.
+ * Başlangıç widget panosu (`Grid.tsx`). Görüntü modunda widget'lar yerinde ve etkileşimli.
  * "Düzenle" ile düzenleme moduna geçilir: widget sürüklenerek taşınır, sağ alt köşeden
  * boyutlandırılır (bırakınca desteklenen en yakın boyuta oturur) ya da üstteki boyut menüsünden
  * boyut seçilir, çarpıyla kaldırılır, "Widget ekle" ile eklenir. Hazır düzenler arasında geçilir;
  * değişiklik o düzene yazılır, "Sıfırla" hazır hâline döndürür. Dar ekranda (ızgara 12 sütuna
  * sığmıyorsa) widget'lar sırayla alt alta dizilir, düzenleme kapalı.
- *
- * Kütüphanenin CSS'i kullanılmaz (proje kuralı): öğeler satır içi stille konumlanır; geçiş, yer
- * tutucu ve sürüklenen öğe kabın üzerindeki Tailwind seçicileriyle.
  */
 
 /** Izgaranın düzgün çalıştığı en küçük genişlik (daha dar ekranda alt alta). */
 const MIN_GRID_WIDTH = 960
-
-/** Kabın öğe / yer tutucu / tutamak stilleri (kütüphanenin sınıflarına). */
-const GRID_SKIN = cn(
-  'relative',
-  '[&_.react-grid-item]:transition-[transform,width,height] [&_.react-grid-item]:duration-[calc(220ms*var(--motion-time,1))] [&_.react-grid-item]:ease-[cubic-bezier(0.22,1,0.36,1)]',
-  '[&_.react-grid-item.resizing]:z-20 [&_.react-grid-item.resizing]:transition-none',
-  '[&_.react-draggable-dragging]:z-30 [&_.react-draggable-dragging]:transition-none',
-  '[&_.react-grid-placeholder]:rounded-3xl [&_.react-grid-placeholder]:bg-accent/12 [&_.react-grid-placeholder]:ring-2 [&_.react-grid-placeholder]:ring-accent/40 [&_.react-grid-placeholder]:ring-inset',
-  '[&_.react-grid-placeholder]:transition-[transform,width,height] [&_.react-grid-placeholder]:duration-100',
-  // Boyutlandırma kapalıyken (görüntü modu) tutamak gizli
-  '[&_.react-resizable-hide_.dash-handle]:hidden',
-)
-
-/** Düzenleme modunda widget'ı taşımayan öğeler (düğmeler). */
-const NO_DRAG = 'dash-no-drag'
 
 export function Dashboard({
   render,
@@ -71,7 +43,8 @@ export function Dashboard({
 }) {
   const dash = useDashboard()
   const [editing, setEditing] = useState(false)
-  const { width, containerRef, mounted } = useContainerWidth()
+  const { ref: containerRef, el, width } = useWidth()
+  const mounted = width !== null
   const narrow = mounted && width < MIN_GRID_WIDTH
   const edit = editing && !narrow
   // Görüntü modunda boşluklar komşu widget'lar genişletilerek doldurulur (kayıtlı eski düzenler
@@ -79,36 +52,10 @@ export function Dashboard({
   const items = edit ? dash.items : fillGaps(dash.items)
   // Satır yüksekliği görünen alana göre: pano ekranın altına kadar uzanır, sayfa kaymaz
   const rows = Math.max(1, ...items.map((p) => p.y + p.h))
-  const room = useRoomBelow(containerRef.current, useTabScroller())
+  const room = useRoomBelow(el, useTabScroller())
   // n satır + n boşluk görünen alana sığar (kabın iç payı ve negatif kenar boşluğu birbirini götürür)
   const rowHeight =
     room === null ? MIN_ROW_HEIGHT : Math.max(MIN_ROW_HEIGHT, Math.floor(room / rows - GAP))
-
-  // Boyutlandırma serbest: en küçük desteklenen boyuttan tam genişliğe kadar (görünüm en yakın
-  // desteklenen boyuta göre seçilir)
-  const layout: Layout = items.map((p) => ({
-    i: p.kind,
-    x: p.x,
-    y: p.y,
-    w: p.w,
-    h: p.h,
-    minW: limitsOf(p.kind).minW,
-    minH: limitsOf(p.kind).minH,
-    maxW: COLS,
-  }))
-
-  // Kütüphanenin yerleşimi (taşıma, boyutlandırma, sıkıştırma sonrası) kaydedilir. Yalnızca
-  // düzenlemede (açılıştaki bildirim düzeni "değiştirildi" saymasın) ve gerçekten farklıysa.
-  const commit = (next: Layout) => {
-    const placed = next.map((l) => ({ kind: l.i as WidgetKind, x: l.x, y: l.y, w: l.w, h: l.h }))
-    const same =
-      placed.length === dash.items.length &&
-      placed.every((a) => {
-        const b = dash.items.find((p) => p.kind === a.kind)
-        return b && b.x === a.x && b.y === a.y && b.w === a.w && b.h === a.h
-      })
-    if (!same) dash.setItems(placed)
-  }
 
   // Düzenlemeden çıkarken boşluklar doldurulup kaydedilir
   const setEdit = (on: boolean) => {
@@ -128,20 +75,16 @@ export function Dashboard({
   }
   const missing = WIDGET_ORDER.filter((k) => !dash.items.some((p) => p.kind === k))
 
-  // Izgaranın çocuğu düz bir kutu: kütüphane ona ref / konum / olayları ekler ve boyutlandırma
-  // tutamağını içine (içeriğin kardeşi olarak) koyar. `block`: antd `Flex` ref / stil / sınıfı
-  // iletir; flex olmasın, içerik hücreyi tam doldursun
+  // Hücrenin içeriği (ızgara konumlar, tutamağı kendisi ekler)
   const cell = (p: PlacedWidget) => (
-    <Flex key={p.kind} className="block">
-      <CellContent
-        item={p}
-        editing={edit}
-        onSize={(s) => setSize(p.kind, s)}
-        onRemove={() => remove(p.kind)}
-      >
-        {render(p.kind, sizeOf(p))}
-      </CellContent>
-    </Flex>
+    <CellContent
+      item={p}
+      editing={edit}
+      onSize={(s) => setSize(p.kind, s)}
+      onRemove={() => remove(p.kind)}
+    >
+      {render(p.kind, sizeOf(p))}
+    </CellContent>
   )
 
   return (
@@ -186,35 +129,14 @@ export function Dashboard({
               ))}
           </Flex>
         ) : (
-          <ReactGridLayout
-            layout={layout}
+          <Grid
+            items={items}
             width={width}
-            gridConfig={{
-              cols: COLS,
-              rowHeight,
-              margin: [GAP, GAP],
-              containerPadding: [GAP, GAP],
-            }}
-            dragConfig={{ enabled: edit, cancel: `.${NO_DRAG}`, threshold: 4 }}
-            resizeConfig={{
-              enabled: edit,
-              handles: ['se'],
-              handleComponent: (_axis, ref) => (
-                <Flex
-                  ref={ref as Ref<HTMLElement>}
-                  aria-hidden
-                  // `react-resizable-handle`: sürükleme bu sınıfı taşımadan ayırır (özel tutamağa kendisi eklemiyor)
-                  className="dash-handle react-resizable-handle absolute end-1.5 bottom-1.5 z-20 grid size-6 cursor-se-resize place-items-center rounded-full bg-accent text-accent-foreground shadow-sm"
-                >
-                  <Maximize2 {...IC} size={12} className="rotate-90" />
-                </Flex>
-              ),
-            }}
-            onLayoutChange={(next) => edit && commit(next)}
-            className={GRID_SKIN}
-          >
-            {items.map(cell)}
-          </ReactGridLayout>
+            rowHeight={rowHeight}
+            edit={edit}
+            onCommit={dash.setItems}
+            renderCell={cell}
+          />
         )}
       </Flex>
     </Flex>
