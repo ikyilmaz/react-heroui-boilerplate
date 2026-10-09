@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button, Dropdown, Flex, Popover, Select, Typography } from 'antd'
 import { IC, Tip, cn } from '@/synergy/ant/ui'
+import { useTabScroller } from '@/synergy/tabs/context'
 import {
   COLS,
   GAP,
@@ -78,7 +79,7 @@ export function Dashboard({
   const items = edit ? dash.items : fillGaps(dash.items)
   // Satır yüksekliği görünen alana göre: pano ekranın altına kadar uzanır, sayfa kaymaz
   const rows = Math.max(1, ...items.map((p) => p.y + p.h))
-  const room = useRoomBelow(containerRef.current)
+  const room = useRoomBelow(containerRef.current, useTabScroller())
   // n satır + n boşluk görünen alana sığar (kabın iç payı ve negatif kenar boşluğu birbirini götürür)
   const rowHeight =
     room === null ? MIN_ROW_HEIGHT : Math.max(MIN_ROW_HEIGHT, Math.floor(room / rows - GAP))
@@ -222,30 +223,39 @@ export function Dashboard({
 
 /** Ana alanın alt boşluğu (kabuktaki `pb-6`). */
 const PAGE_BOTTOM = 24
+/** Sekmeler açıkken bölmenin alt iç payı (0.75rem). */
+const PANE_BOTTOM = 12
 
 /**
- * Öğenin üstünden görünen alanın altına kadar kalan yükseklik (px); pencere boyu değişince ve
- * öğe yer değiştirince yeniden ölçülür.
+ * Öğenin üstünden görünen alanın (sekmeler açıkken bölmenin) altına kadar kalan yükseklik (px);
+ * pencere boyu değişince ve öğe yer değiştirince yeniden ölçülür.
  */
-function useRoomBelow(el: HTMLElement | null) {
+function useRoomBelow(el: HTMLElement | null, root: HTMLElement | null) {
   // Ölçülene kadar `null` (ızgara çizilmez; ilk karede taşıp sonra küçülmesin)
   const [room, setRoom] = useState<number | null>(null)
   useLayoutEffect(() => {
     if (!el) return
-    const measure = () =>
+    const measure = () => {
+      // Gizli bölmede kutu yok: son ölçü kalır
+      if (!el.getClientRects().length) return
       setRoom(
-        // Sayfa başından ölçülür (kaydırılmışsa da doğru)
-        window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - PAGE_BOTTOM,
+        root
+          ? root.clientHeight -
+              (el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop) -
+              PANE_BOTTOM
+          : // Sayfa başından ölçülür (kaydırılmışsa da doğru)
+            window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - PAGE_BOTTOM,
       )
+    }
     measure()
     window.addEventListener('resize', measure)
     const ro = new ResizeObserver(measure)
-    ro.observe(document.documentElement)
+    ro.observe(root ?? document.documentElement)
     return () => {
       window.removeEventListener('resize', measure)
       ro.disconnect()
     }
-  }, [el])
+  }, [el, root])
   return room
 }
 

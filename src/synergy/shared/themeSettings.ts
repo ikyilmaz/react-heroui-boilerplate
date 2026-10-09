@@ -47,8 +47,6 @@ export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
 export type CornerShape = 'round' | 'squircle'
 /** Animasyon: tam, az (yalnızca solma; kayma / ölçek yok), kapalı. */
 export type MotionLevel = 'full' | 'reduced' | 'off'
-/** Raftaki konum hapları: yumuşak ton ya da dolu birincil renk. */
-export type TrailStyle = 'soft' | 'solid'
 /**
  * Zemin dokusu (zeminin üstünde, kartların arkasında): düz, nokta / çizgi ızgarası ya da birincil
  * renkten geçişler (üstten, alttan, köşeden, tepeden ışık, çapraz iki köşe, aurora).
@@ -78,8 +76,6 @@ export interface ThemeSettings {
   border: number
   /** Gezinme konumu; seçenekler `ThemeKit.navOptions`, `default` uygulamanın kendisi. */
   nav: string
-  /** Raftaki konum haplarının rengi (Yumuşak / Dolu). */
-  trail: TrailStyle
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. */
   motion: MotionLevel
   /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
@@ -92,8 +88,8 @@ export interface ThemeKit {
   storageKey: string
   /** Tema dosyasının karşılığı; bu değerlerde hiçbir değişken yazılmaz. */
   defaults: ThemeSettings
-  /** Gezinme konumu seçenekleri (ilki `default`). */
-  navOptions: { id: string; label: string }[]
+  /** Gezinme konumu seçenekleri (ilki `default`); `side`: önizlemede kabuğun durduğu kenar. */
+  navOptions: { id: string; label: string; side?: 'left' | 'right' | 'top' | 'bottom' }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
   /** Hazır temalar (tema panelinin başında). */
@@ -524,7 +520,6 @@ const NOTHING = {
   shadow: '',
   border: -1,
   nav: '',
-  trail: '',
   motion: 'full',
   motionSpeed: 1,
 } as unknown as ThemeSettings
@@ -567,6 +562,8 @@ function load(kit: ThemeKit): ThemeSettings {
       density: Object.keys(DENSITIES),
       shadow: Object.keys(SHADOWS),
       cardStyle: Object.keys(FIELD_FILL),
+      // Kaldırılmış gezinme konumu (ör. "İkisi de") varsayılana döner
+      nav: kit.navOptions.map((o) => o.id),
     }
     const keys = Object.keys(kit.defaults) as (keyof ThemeSettings)[]
     return Object.fromEntries(
@@ -590,8 +587,6 @@ function clear(root: HTMLElement) {
 
 export interface Look {
   nav: string
-  /** Raftaki konum haplarının rengi. */
-  trail: TrailStyle
   /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
   motion: MotionLevel
   /** Animasyon hızı çarpanı. */
@@ -600,7 +595,6 @@ export interface Look {
 
 export const LookContext = createContext<Look>({
   nav: 'default',
-  trail: 'soft',
   motion: 'full',
   speed: 1,
 })
@@ -730,7 +724,7 @@ export function useThemeSettings(kit: ThemeKit) {
 
   // Bağlamın değeri yalnızca görünüm değişince yenilenir: kabuk her çizildiğinde (ör. konum
   // değişince) `useLook` okuyan her bileşen, gizli form sekmeleri dahil, yeniden çizilmesin
-  const { nav, trail, motionSpeed: speed } = settings
-  const look = useMemo<Look>(() => ({ nav, trail, motion, speed }), [nav, trail, motion, speed])
+  const { nav, motionSpeed: speed } = settings
+  const look = useMemo<Look>(() => ({ nav, motion, speed }), [nav, motion, speed])
   return [settings, update, look] as const
 }

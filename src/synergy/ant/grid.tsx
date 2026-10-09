@@ -157,10 +157,13 @@ export function GridCard({
   actions,
   selected = false,
   strong = false,
+  openPath,
   className,
 }: {
   title: ReactNode
   onOpen?: () => void
+  /** Çalışma alanında açılış hedefi (sağ tık menüsü, Ctrl / Cmd / orta tık; Workspace.tsx). */
+  openPath?: string
   eyebrow?: ReactNode
   badge?: ReactNode
   lead?: ReactNode
@@ -185,8 +188,9 @@ export function GridCard({
   return (
     <Card
       role="listitem"
+      data-open-path={openPath}
       className={cn(
-        'relative rounded-2xl bg-surface-secondary/70 ring-(length:--border-width) ring-border transition-[box-shadow,translate,background-color] duration-200',
+        'group/row relative rounded-2xl bg-surface-secondary/70 ring-(length:--border-width) ring-border transition-[box-shadow,translate,background-color] duration-200',
         onOpen &&
           'hover:-translate-y-px hover:bg-surface hover:shadow-[0_12px_28px_-18px_color-mix(in_oklab,var(--foreground)_45%,transparent),0_0_0_1px_color-mix(in_oklab,var(--accent)_45%,transparent)]',
         selected && 'bg-accent/10 ring-2 ring-accent hover:bg-accent/10',
@@ -206,6 +210,7 @@ export function GridCard({
           <Button
             type="text"
             onClick={onOpen}
+            data-open-click
             // Örtü tüm kartı kaplar (kart `relative`, düğme `static`)
             className="static h-auto min-w-0 flex-1 justify-start p-0 text-foreground whitespace-normal after:absolute after:inset-0 after:z-1 after:rounded-2xl after:content-[''] hover:bg-transparent! focus-visible:outline-none focus-visible:after:shadow-[inset_0_0_0_2px_var(--focus)]"
           >

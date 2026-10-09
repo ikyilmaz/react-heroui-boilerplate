@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useState, type CSSProperties } from 'react'
-import { useLocation, useNavigationType } from 'react-router'
 
 /** Medya sorgusu eşleşiyor mu; değişince yeniden çizer. */
 export function useMediaQuery(query: string) {
@@ -14,6 +13,29 @@ export function useMediaQuery(query: string) {
     return () => m.removeEventListener('change', on)
   }, [query])
   return match
+}
+
+/**
+ * Bölme en az `rem` genişlikte mi: sayfanın bölmeye göre kap sorgularıyla (`@6xl` = 72rem…) aynı
+ * eşik, böylece yerleşim ve davranış birlikte değişir. `pane`: ekranın kaydırma kabı
+ * (`useTabScroller`); yoksa (çalışma alanının dışında) ekranın genişliği. Gizli bölmede son değer kalır.
+ */
+export function usePaneMin(rem: number, pane: HTMLElement | null) {
+  const viewport = useMediaQuery(`(min-width: ${rem}rem)`)
+  const [match, setMatch] = useState<boolean | null>(null)
+  useLayoutEffect(() => {
+    if (!pane) return
+    const measure = () => {
+      if (!pane.getClientRects().length) return
+      const px = rem * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16)
+      setMatch(pane.clientWidth >= px)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(pane)
+    return () => ro.disconnect()
+  }, [pane, rem])
+  return pane && match !== null ? match : viewport
 }
 
 /**
@@ -96,42 +118,4 @@ export function useFillHeight(bottom = '1.5rem', root?: HTMLElement | null) {
     attach,
     { '--fill-h': `calc(${total} - ${box.top}px - ${bottom})` } as CSSProperties,
   ] as const
-}
-
-const HISTORY_MAX_KEY = 'synergy-history-max'
-
-/** Tarayıcı geçmişindeki sıra (react-router her kayda `idx` yazar). */
-const historyIndex = () => (window.history.state as { idx?: number } | null)?.idx ?? 0
-
-/**
- * Uygulama içi geri / ileri gidilebilir mi (yalnızca rota geçmişi). Geri: sıra 0'dan büyükse.
- * İleri: tarayıcı ileride kaç kayıt olduğunu söylemez; gidilen en ileri sıra tutulur. Yeni bir
- * yere gidince (PUSH) ilerideki kayıtlar silindiği için en ileri sıra şimdiki olur. Sayfa
- * yenilenince ilerideki kayıtlar durduğu için değer oturumda (`sessionStorage`) saklanır.
- */
-export function useRouteHistory() {
-  const { key } = useLocation()
-  const type = useNavigationType()
-  const idx = historyIndex()
-  const [max, setMax] = useState(() => {
-    try {
-      return Math.max(idx, Number(sessionStorage.getItem(HISTORY_MAX_KEY) ?? 0))
-    } catch {
-      return idx
-    }
-  })
-  useEffect(() => {
-    setMax((m) => {
-      const next = type === 'PUSH' ? idx : Math.max(m, idx)
-      try {
-        sessionStorage.setItem(HISTORY_MAX_KEY, String(next))
-      } catch {
-        // Depolama kapalıysa yalnızca bu oturumda
-      }
-      return next
-    })
-    // Her gezinmede (konum anahtarı değişince) yeniden hesaplanır
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
-  return { canBack: idx > 0, canForward: idx < max }
 }

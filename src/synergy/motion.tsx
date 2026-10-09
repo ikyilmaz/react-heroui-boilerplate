@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { AnimatePresence, MotionConfig, useIsPresent, type Transition } from 'framer-motion'
-import { useOutlet } from 'react-router'
-import { MotionFlex, cn } from '@/synergy/ant/ui'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { MotionConfig, type Transition } from 'framer-motion'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { INSTANT, scaleTransition } from '@/synergy/shared/transition'
 
@@ -84,41 +82,4 @@ export function useLeaving<T extends { id: string }>(rows: T[]) {
   /** Çıkmakta olan satırın sınıfı. */
   const leaving = (id: string) => gone?.item.id === id && 'pointer-events-none animate-leave'
   return [shown, leaving] as const
-}
-
-/* --- Sayfa geçişi ------------------------------------------------------------------------------ */
-
-/** Çıkan sayfa son hâlinde donar (yoksa çıkarken yeni adresin içeriğini gösterirdi). */
-function PageOutlet() {
-  const outlet = useOutlet()
-  const present = useIsPresent()
-  const last = useRef(outlet)
-  if (present) last.current = outlet
-  return last.current
-}
-
-const PAGE_IN: Transition = { duration: 0.34, ease: [0.22, 1, 0.36, 1] }
-const PAGE_OUT: Transition = { duration: 0.16, ease: [0.55, 0, 1, 0.45] }
-
-/**
- * Sayfa geçişi: ekran tümüyle değişince (`page` değişince; ör. Başlangıç → İş Akış → talep) eski
- * sayfa söner, sonra yenisi belirir. Aynı sayfa içindeki gezinme (kutu, süreç değişimi) geçiş
- * oynatmaz. Geçiş arasında sayfa başa kaydırılır.
- */
-export function PageTransition({ page, className }: { page: string; className?: string }) {
-  const pageIn = useTransition(PAGE_IN)
-  const pageOut = useTransition(PAGE_OUT)
-  return (
-    <AnimatePresence mode="wait" initial={false} onExitComplete={() => window.scrollTo(0, 0)}>
-      <MotionFlex
-        key={page}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: pageIn }}
-        exit={{ opacity: 0, transition: pageOut }}
-        className={cn('block', className)}
-      >
-        <PageOutlet />
-      </MotionFlex>
-    </AnimatePresence>
-  )
 }

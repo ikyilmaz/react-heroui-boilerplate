@@ -154,8 +154,8 @@ export function ItemsTable({ items }: { items: LineItem[] }) {
 
 /**
  * Formun içindeki child form düğmesi (orijinalde form tasarımcısının koyduğu eylem düğmesi):
- * ilgili alanın hemen altında; basınca child açılır (talepte `FormTabs.tsx`, modal / drawer
- * formunda `FormDeck.tsx`).
+ * ilgili alanın hemen altında; basınca child açılır (talepte çalışma alanında, `Workspace.tsx`;
+ * modal / drawer formunda `FormDeck.tsx`).
  */
 export function ChildButton({ link, onOpen }: { link: ChildLink; onOpen: (id: string) => void }) {
   const Icon = link.action === 'add' ? FilePlus2 : SquareArrowOutUpRight
@@ -317,7 +317,7 @@ export function FormSkeleton() {
       <Flex className="flex flex-col gap-3 @[52rem]:flex-row @[52rem]:items-start">
         <Card
           className={cn(CARD, 'min-w-0 flex-1')}
-          classNames={{ body: 'flex flex-col gap-6 p-6 sm:p-8' }}
+          classNames={{ body: 'flex flex-col gap-6 p-6 @xl:p-8' }}
         >
           <BoneField active={active} />
           <Flex className="grid grid-cols-1 gap-x-6 gap-y-5 @xl:grid-cols-2">

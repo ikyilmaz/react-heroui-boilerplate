@@ -23,7 +23,6 @@ import {
   type Texture,
   type ThemeKit,
   type ThemeSettings,
-  type TrailStyle,
 } from '@/synergy/shared/themeSettings'
 
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
@@ -138,12 +137,6 @@ const MOTIONS: { id: MotionLevel; label: string }[] = [
   { id: 'full', label: 'Tam' },
   { id: 'reduced', label: 'Az' },
   { id: 'off', label: 'Kapalı' },
-]
-
-/** Raftaki konum hapları (index.tsx › DockPath). */
-const TRAILS: { id: TrailStyle; label: string }[] = [
-  { id: 'soft', label: 'Yumuşak' },
-  { id: 'solid', label: 'Dolu' },
 ]
 
 const { Text } = Typography
@@ -264,6 +257,27 @@ function Segments<T extends string | number>({
       options={options.map((o) => ({ value: String(o.id), label: o.label }))}
       className={SEGMENT}
     />
+  )
+}
+
+/** Gezinme önizlemesindeki kabuk: ekranın o kenarında ince çubuk. */
+const NAV_BAR = {
+  left: 'inset-y-[2px] start-[2px] w-[3px]',
+  right: 'inset-y-[2px] end-[2px] w-[3px]',
+  top: 'inset-x-[2px] top-[2px] h-[3px]',
+  bottom: 'inset-x-[2px] bottom-[2px] h-[3px]',
+} as const
+
+/** Gezinme seçeneğinin küçük önizlemesi: ekran ve kabuğun durduğu kenar (yazı renginde). */
+function NavPreview({ side }: { side: keyof typeof NAV_BAR }) {
+  return (
+    <Flex
+      component="span"
+      aria-hidden
+      className="relative block h-3 w-[18px] shrink-0 rounded-[3px] ring-1 ring-current/45"
+    >
+      <Flex component="span" className={cn('absolute block rounded-[1px] bg-current', NAV_BAR[side])} />
+    </Flex>
   )
 }
 
@@ -524,17 +538,13 @@ export function ThemePanel({
         <Segments
           label="Gezinme"
           value={settings.nav}
-          options={kit.navOptions}
+          options={kit.navOptions.map((o) => ({
+            id: o.id,
+            label: o.label,
+            icon: o.side && <NavPreview side={o.side} />,
+          }))}
           onChange={(nav) => set({ nav })}
-        />
-      </Section>
-
-      <Section title="Konum">
-        <Segments
-          label="Konum"
-          value={settings.trail}
-          options={TRAILS}
-          onChange={(trail) => set({ trail })}
+          grid={kit.navOptions.length > 3 ? 4 : undefined}
         />
       </Section>
 

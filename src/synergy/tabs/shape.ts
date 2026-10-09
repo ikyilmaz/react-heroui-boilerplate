@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------------------------------------
  * Sekme şeridinin biçimleri (Chrome'un sekme şeridi, Synergy derisi). Hepsi sabit sınıf metni
  * (Tailwind görsün); ölçüler şeridin satırındaki değişkenlerden:
- *   --tab-h   sekmenin boyu (FormTabs / ajanda `h-10`, Başlangıç kategorileri `h-16`)
+ *   --tab-h   sekmenin boyu (çalışma alanı / ajanda `h-10`, Başlangıç kategorileri `h-16`)
  *   --tab-r   köşe ve kavis yarıçapı (`TAB_RADIUS`; yaprakta JS'in yuvarladığı px değeri)
  *   --sheet   seçili yaprağın dolgusu (kabın rengi ya da kartın yüzeyi)
  *   --ring / --ring-w   yaprağın çerçevesi (renkli grupta grubun rengi 2px, Başlangıç'ta kartın
@@ -22,7 +22,7 @@ export const STRIP_VARS =
 /** Kabın (ve seçili yaprağın) rengi: birincil rengin zemine karışmış çok açık tonu. */
 export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
 
-/** Yaprak kabın renginde (FormTabs, ajanda), çerçevesiz. */
+/** Yaprak kabın renginde (çalışma alanı, ajanda), çerçevesiz. */
 export const SHEET = '[--sheet:var(--tab-bg)] [--ring-w:0px]'
 /** Renkli grupta yaprak grubun renginde 2px çerçeveli (alt çizgiyle aynı kalınlık). */
 export const SHEET_RING = '[--sheet:var(--tab-bg)] [--ring:var(--g)] [--ring-w:2px]'

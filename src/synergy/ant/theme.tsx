@@ -344,6 +344,8 @@ const BUTTON = { className: '[&.ant-btn-variant-outlined]:border-(length:--field
 /** Dalga yok, kartlar çerçevesiz (sabit nesneler: ConfigProvider bağlamı her çizimde değişmesin). */
 const WAVE = { disabled: true }
 const CARD_CONFIG = { variant: 'borderless' } as const
+/** Gezinme alttayken bildirimler çubuğun üstünden başlar (çubuk alttan 12 + 44px; içerik 68px'te biter). */
+const ABOVE_BAR = { bottom: 68 }
 
 /**
  * Kabukta: antd bileşenlerine tema, Türkçe yerelleştirme ve düz varsayılanlar (alanlar kart
@@ -353,7 +355,7 @@ const CARD_CONFIG = { variant: 'borderless' } as const
 export function AntTheme({ children }: { children: ReactNode }) {
   const vars = useResolved()
   const dark = useIsDark()
-  const { motion, speed } = useLook()
+  const { motion, speed, nav } = useLook()
   const animated = motion !== 'off'
   // Yapılandırma yalnızca girdileri değişince yenilenir: ConfigProvider'a her çizimde yeni nesne
   // gelirse bütün antd bileşenleri (gizli form sekmelerindekiler dahil) yeniden çizilir
@@ -381,7 +383,9 @@ export function AntTheme({ children }: { children: ReactNode }) {
         mentions={FIELD}
         button={BUTTON}
       >
-        <App component={false}>{children}</App>
+        <App component={false} notification={nav === 'bottom' ? ABOVE_BAR : undefined}>
+          {children}
+        </App>
       </ConfigProvider>
     </StyleProvider>
   )

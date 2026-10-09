@@ -27,7 +27,8 @@ import {
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import { requestLink } from '@/synergy/paths'
-import { DeleteButton, FastMenu } from '@/synergy/rows'
+import { DeleteButton, FastMenu, OpenTabButton } from '@/synergy/rows'
+import { useScreen } from '@/synergy/tabs/context'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useLeaving } from '@/synergy/motion'
 import { searchText } from '@/synergy/shared/grid'
@@ -80,6 +81,7 @@ export function RequestGrid({
   range?: DateRange
 }) {
   const navigate = useNavigate()
+  const screen = useScreen()
   const all = useBoxRequests(box.id)
   const readIds = useReadIds()
   const columns = useMemo(() => columnsFor(box, process), [box, process])
@@ -130,15 +132,21 @@ export function RequestGrid({
     markRead(r.id)
     navigate(requestLink(r), { state: { ids: rows.map((x) => x.id) } satisfies DetailNavState })
   }
+  // Yeni sekmede (ya da sağ tık / Ctrl / Cmd / orta tıkla): talep kendi sekmesinde
+  const own = (r: WorkRequest) => `/talepler/${r.id}`
+  const openTab = (r: WorkRequest) =>
+    screen?.open(own(r), 'tab', { ids: rows.map((x) => x.id) } satisfies DetailNavState)
   const hasFilters = !!grid.search || !!grid.sort
   const rowHeader = box.draftDelete ? 'flowCaption' : 'Subject'
-  const hasActions = box.decisions || box.draftDelete
+  const hasActions = !!screen || box.decisions || box.draftDelete
   const span = columns.length + (hasActions ? 1 : 0)
+  // Eylemler tek satırda (dar sütunda alt alta binmesin)
   const actions = (r: WorkRequest) => (
-    <>
+    <Flex align="center" className="flex-nowrap justify-end">
+      {screen && <OpenTabButton title={r.template.title} onPress={() => openTab(r)} />}
       {box.decisions && <FastMenu request={r} onRun={(id) => flow.run(id, r)} />}
       {box.draftDelete && <DeleteButton title={r.template.title} onPress={() => setDeleting(r)} />}
-    </>
+    </Flex>
   )
   // Kartta: numara üstte, durum rozet, tarih altta; kalan sütunlar alan
   const lead = columns.find((c) => c.key === rowHeader)
@@ -190,8 +198,8 @@ export function RequestGrid({
 
   return (
     <Card
-      className={cn(CARD, 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col')}
-      classNames={{ body: 'flex flex-col gap-4 p-5 lg:min-h-0 lg:flex-1' }}
+      className={cn(CARD, '@4xl:flex @4xl:min-h-0 @4xl:flex-1 @4xl:flex-col')}
+      classNames={{ body: 'flex flex-col gap-4 p-5 @4xl:min-h-0 @4xl:flex-1' }}
     >
       <Flex wrap align="center" gap={8} className="shrink-0">
         {/* `min-w-48`: telefonda araçların yanında tek harfe ("S") sıkışıyordu; sığmazsa alt satıra iner */}
@@ -217,7 +225,7 @@ export function RequestGrid({
 
       {view === 'cards' ? (
         // Kart görünümü: tarih grupları başlıklı kart ızgaraları; geniş ekranda kendi içinde kayar
-        <CardList className="lg:min-h-0 lg:flex-1">
+        <CardList className="@4xl:min-h-0 @4xl:flex-1">
           {groups.length === 0 && <EmptyNote text="Gösterilecek veri yok." />}
           {groups.map(({ bucket, rows: items }) => (
             <CardGroup key={bucket.id} label={bucket.label} count={items.length} listLabel={label}>
@@ -225,6 +233,7 @@ export function RequestGrid({
                 <GridCard
                   key={r.id}
                   onOpen={() => open(r)}
+                  openPath={own(r)}
                   strong={!isRead(r, readIds)}
                   className={leaving(r.id) || undefined}
                   title={lead ? <CellValue r={r} col={lead} /> : r.template.title}
@@ -243,7 +252,7 @@ export function RequestGrid({
         </CardList>
       ) : (
         // Geniş ekranda tablo kalan yüksekliği doldurur ve kabın içinde kayar; başlık satırı üstte kalır
-        <Flex vertical className="overflow-auto lg:min-h-0 lg:flex-1">
+        <Flex vertical className="overflow-auto @4xl:min-h-0 @4xl:flex-1">
           <Table<GridRow>
             aria-label={label}
             size="middle"
@@ -255,12 +264,17 @@ export function RequestGrid({
             rowClassName={(row) =>
               row.group
                 ? GRID_GROUP_ROW
-                : (cn(GRID_ROW, leaving(row.key), !isRead(row.r!, readIds) && 'font-semibold') ??
-                  '')
+                : (cn(
+                    GRID_ROW,
+                    'group/row',
+                    leaving(row.key),
+                    !isRead(row.r!, readIds) && 'font-semibold',
+                  ) ?? '')
             }
             onRow={(row) =>
               row.r
                 ? {
+                    'data-open-path': own(row.r),
                     onClick: () => open(row.r!),
                     onKeyDown: (e) => {
                       if (e.key === 'Enter' && e.target === e.currentTarget) open(row.r!)

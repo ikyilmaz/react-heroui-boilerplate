@@ -18,15 +18,14 @@ export const APP_THEME: ThemeKit = {
     shadow: 'subtle',
     border: 1,
     nav: 'top',
-    trail: 'solid',
     motion: 'full',
     motionSpeed: 1,
   },
   navOptions: [
-    { id: 'default', label: 'Solda' },
-    { id: 'top', label: 'Üstte' },
-    // Solda kolon (raf, eylemler), üstte ince konum çubuğu (geri / ileri ve konum)
-    { id: 'both', label: 'İkisi de' },
+    { id: 'default', label: 'Solda', side: 'left' },
+    { id: 'right', label: 'Sağda', side: 'right' },
+    { id: 'top', label: 'Üstte', side: 'top' },
+    { id: 'bottom', label: 'Altta', side: 'bottom' },
   ],
   /*
    * Hazır temalar: her biri ayrı bir karakter; görünüşü belirleyen bütün ayarları verir (gezinme,
@@ -49,7 +48,6 @@ export const APP_THEME: ThemeKit = {
         cardStyle: 'outlined',
         shadow: 'none',
         border: 1,
-        trail: 'solid',
       },
     },
     {
@@ -67,7 +65,6 @@ export const APP_THEME: ThemeKit = {
         cardStyle: 'filled',
         shadow: 'soft',
         border: 0,
-        trail: 'soft',
       },
     },
     {
@@ -85,7 +82,6 @@ export const APP_THEME: ThemeKit = {
         cardStyle: 'elevated',
         shadow: 'subtle',
         border: 0,
-        trail: 'solid',
       },
     },
     {
@@ -103,7 +99,6 @@ export const APP_THEME: ThemeKit = {
         cardStyle: 'tinted',
         shadow: 'soft',
         border: 0.5,
-        trail: 'soft',
       },
     },
   ],

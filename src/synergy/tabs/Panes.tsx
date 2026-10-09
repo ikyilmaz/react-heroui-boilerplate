@@ -22,25 +22,26 @@ import {
 } from 'framer-motion'
 import { Flex } from 'antd'
 import { cn, MotionFlex } from '@/synergy/ant/ui'
-import { clampRatio, SPLIT_MAX, SPLIT_MIN } from '@/synergy/shared/formTabs'
+import { clampRatio, SPLIT_MAX, SPLIT_MIN } from '@/synergy/shared/workspace'
 import { PaneContext } from '@/synergy/tabs/context'
 import { TRAVEL, type TabMotion } from '@/synergy/tabs/motion'
 
 /* -------------------------------------------------------------------------------------------------
- * Form sekmelerinin bölmeleri (FormTabs.tsx kurar). Bölmeler DOM'da hiç yer değiştirmez ve kimlik
- * başına bir kez çizilir; sekme geçişi yalnızca görünürlüğü değiştirir.
+ * Çalışma alanının bölmeleri (Workspace.tsx kurar): her ekran bir bölme. Bölmeler DOM'da hiç yer
+ * değiştirmez ve ekran başına bir kez çizilir; sekme geçişi yalnızca görünürlüğü değiştirir.
  *
- * Sekme alanında her bölmenin kabın içinde kendi sabit kutusu var (mutlak konum): tek formlu
- * sekmenin formu kabın tamamında, yan yana sekmenin formları solda / sağda (kendi paylarıyla).
+ * Her bölmenin kabın içinde kendi sabit kutusu var (mutlak konum) ve kendi içinde kayar: tek
+ * ekranlı sekmenin ekranı kabın tamamında, yan yana sekmenin ekranları solda / sağda (kendi
+ * paylarıyla).
  * Gizli bölme `content-visibility: hidden`: içi atlanır (çizilmez, isabet testine girmez, odak ve
  * ekran okuyucu giremez) ama işleme durumu (stil, düzen, kaydırma yeri) korunur; kutusu sabit
  * olduğundan (mutlak, boyu içeriğinden değil) boyut sınırlaması bir şey değiştirmez. Açıp kapamak
  * yalnızca bölmenin kendi stilini değiştirir; `visibility`, `pointer-events` ya da `inert` bütün alt
  * ağacın stilini yeniden hesaplatırdı (form başına 5–20 ms), `display: none` görününce yeniden
- * dizerdi. İçindeki gözlemciler sıfır boyla tetiklenmez. Sekme alanı yokken (tek form) bölme sayfanın
- * akışında, sayfa kayar.
+ * dizerdi. İçindeki gözlemciler sıfır boyla tetiklenmez.
  *
- * Hareket: yalnızca dönüşüm ve saydamlık (MotionValue, React çizmez).
+ * Hareket: yalnızca dönüşüm ve saydamlık (MotionValue, React çizmez). Form (talep, menü uygulaması)
+ * sunucudan gelene kadar iskelet (`LOAD_MS`); liste ve sayfalar hemen.
  * - Sekme geçişi: yeni bölme sekmenin yönünden 30px kayıp solarak gelir, eski bölme yerinde
  *   söner (ikisi aynı kutuda üst üste; eskisi altta), bitince gizlenir.
  * - Yan bölme açılınca (aynı sekmede) kabın kenarından iterek girer, açan form aynı karede Motion
@@ -94,7 +95,6 @@ export const Pane = memo(function Pane({
   visible,
   slot,
   share,
-  sheet,
   moved,
   entered,
   dir,
@@ -107,16 +107,14 @@ export const Pane = memo(function Pane({
   children,
 }: {
   ref?: Ref<HTMLElement>
-  /** Bölmenin anahtarı (grup ve form). */
+  /** Bölmenin anahtarı (ekranın). */
   id: string
-  /** Seçili sekmenin formu. */
+  /** Seçili sekmenin ekranı. */
   visible: boolean
   /** Kutusu: görünürken bulunduğu, gizliyken sekmesinin yeri (gizliyken de kutusu değişmez). */
   slot: PaneSlot
   /** Yan yana sekmenin sol payı (0–1; bölücü sürüklenirken doğrudan genişliğe yazılır). */
   share: number
-  /** Sekme alanı var: bölme bir yaprak, kendi kaydırma kabı, sekme paneli olarak etiketli. */
-  sheet: boolean
   /** Bölmenin son ölçüldüğü adım (değişince Motion eski yerinden götürür). */
   moved: number
   /** Son görünüşü ve gelişi. */
@@ -130,8 +128,8 @@ export const Pane = memo(function Pane({
   /** Yaprağın köşesi (px; Motion ölçeğe göre düzeltir). */
   radius?: number
   motion: TabMotion
-  /** Form gelene kadar duran iskelet (sabit öğe). */
-  placeholder: ReactNode
+  /** Form gelene kadar duran iskelet (sabit öğe); yoksa içerik hemen. */
+  placeholder?: ReactNode
   /** Bölmeye tıklanınca / odaklanılınca (yan yanayken; sabit işlev). */
   onFocus?: (id: string) => void
   /** Form (sabit öğe: bölme yeniden çizilse de form çizilmez). */
@@ -158,7 +156,7 @@ export const Pane = memo(function Pane({
   const [leaving, setLeaving] = useState<PaneSlot | null>(null)
   if (seen.visible !== visible || (visible && seen.slot !== slot)) {
     setSeen({ visible, slot })
-    setLeaving(!visible && seen.visible && sheet && level !== 'off' ? seen.slot : null)
+    setLeaving(!visible && seen.visible && level !== 'off' ? seen.slot : null)
   }
   useLayoutEffect(() => {
     if (!leaving) return
@@ -222,30 +220,32 @@ export const Pane = memo(function Pane({
   }, [present, safeToRemove, paired, slot, level, motion, x, opacity])
 
   // Form sunucudan gelene kadar iskelet (bölme gizliyken de sürer). Form geçişle (`startTransition`)
-  // çizilir: React işi parçalara böler, uzun görev olmaz
-  const [loaded, setLoaded] = useState(false)
+  // çizilir: React işi parçalara böler, uzun görev olmaz. İskeletsiz bölme hemen
+  const waits = placeholder != null
+  const [loaded, setLoaded] = useState(!waits)
   useEffect(() => {
+    if (!waits) return
     const t = setTimeout(() => startTransition(() => setLoaded(true)), LOAD_MS)
     return () => clearTimeout(t)
-  }, [])
+  }, [waits])
 
   const shown = visible || leaving !== null
   const place = leaving ?? slot
   return (
     <MotionFlex
       ref={attach}
-      id={`form-pane-${id}`}
-      role={sheet ? 'tabpanel' : undefined}
-      aria-labelledby={sheet ? `form-tab-${id}` : undefined}
+      id={`screen-pane-${id}`}
+      role="tabpanel"
+      aria-labelledby={`screen-tab-${id}`}
       layout
-      layoutScroll={sheet}
+      layoutScroll
       layoutDependency={moved}
       transition={{ layout: motion.pane }}
       style={
         {
           x,
           opacity,
-          ...(sheet && { width: paneWidth(place, share) }),
+          width: paneWidth(place, share),
           ...(radius !== undefined && { borderRadius: radius }),
         } as MotionStyle
       }
@@ -254,29 +254,24 @@ export const Pane = memo(function Pane({
       aria-busy={!loaded || undefined}
       className={cn(
         '@container min-w-0 rounded-2xl',
-        // Sekme alanında: kendi kutusu, kendi içinde kayar (yan kaydırma yok: hareket boyunca içerik
-        // yaprağı taşar); yapışkan öğeler yaprağın tepesine yapışır. Zemini şeffaf: kartların
-        // arasında kabın rengi görünür
-        sheet
-          ? cn(
-              'absolute block min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [--chrome-top:0px]',
-              BOX[place],
-            )
-          : // Sayfa kipi (sekme yok): akışta, kabın tamamı (esnek kapta içeriğine daralmasın)
-            'relative block w-full flex-1 basis-full',
+        // Kendi kutusu, kendi içinde kayar (yan kaydırma yok: hareket boyunca içerik yaprağı taşar);
+        // yapışkan öğeler yaprağın tepesine yapışır. Zemini şeffaf: kartların arasında kabın rengi
+        // görünür
+        'absolute block min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [--chrome-top:0px]',
+        BOX[place],
         // Görünen üstte, sönen altında (yeni bölme aynı kutuda üstünü örter, imleci o alır); gizlinin
         // içi atlanır (`content-visibility`: çizilmez, odaklanmaz, durumu ve kaydırma yeri kalır)
         visible ? 'z-1' : shown ? 'z-0' : 'z-0 [content-visibility:hidden]',
         CUE,
       )}
     >
-      <PaneContext value={sheet ? scroller : null}>
+      <PaneContext value={scroller}>
         {/* `relative`: iskelet solarken formun üstünde durur (`popLayout`) */}
         <MotionFlex
           layout="position"
           layoutDependency={moved}
           transition={{ layout: motion.pane }}
-          className={cn('relative block', sheet && 'p-3')}
+          className="relative block p-3"
         >
           {/* İskelet: form gelince söner (`popLayout`: formun üstünde kalır) */}
           <AnimatePresence initial={false} mode="popLayout">
@@ -297,7 +292,8 @@ export const Pane = memo(function Pane({
            */}
           <Activity mode={loaded ? 'visible' : 'hidden'}>
             <MotionFlex
-              initial={level === 'off' ? false : { opacity: 0, y: level === 'full' ? 8 : 0 }}
+              // İskeletsiz bölmede belirme yok (bölmenin kendi gelişi yeter)
+              initial={!waits || level === 'off' ? false : { opacity: 0, y: level === 'full' ? 8 : 0 }}
               animate={{ opacity: 1, y: 0 }}
               transition={motion.reveal}
               className="block"
@@ -369,7 +365,7 @@ export function Divider({
       width: rect.width - 2.25 * rem,
       ratio,
       host,
-      sides: panes.map((key) => document.getElementById(`form-pane-${key}`)),
+      sides: panes.map((key) => document.getElementById(`screen-pane-${key}`)),
     }
     e.currentTarget.setPointerCapture(e.pointerId)
     // Sürüklerken imleç her yerde bölücünün; bölmeler imleci almaz (React çizmez)

@@ -115,7 +115,12 @@ interface DragSession extends DragSource {
 interface StripApi {
   sizing: StripSizing
   motion: TabMotion
-  register: (key: string, el: HTMLElement | null) => void
+  /**
+   * Öğe bağlandı (`el`) ya da ayrıldı (`el` yok, `prev` ayrılan). Aynı anahtar bir an iki öğede
+   * olabilir (sekme gruptan çıkınca ya da gruba girince yeni grubunda yeniden kurulur, eskisi çıkan
+   * grupla söner): ayrılan öğe yalnızca kayıtlı olan kendisiyse silinir.
+   */
+  register: (key: string, el: HTMLElement | null, prev?: HTMLElement | null) => void
   slot: (key: string) => Slot | undefined
   /** Kapatma düğmesine basıldı (genişlik donması): sekme ya da bütün grubu kalkar. */
   closing: (el: HTMLElement, pointer: string, removes: 'tab' | 'group') => void
@@ -504,17 +509,20 @@ export function TabStrip({
     () => ({
       sizing,
       motion,
-      register: (key, el) => {
+      register: (key, el, prev) => {
         const map = key.startsWith('group:') ? groups : tabs
-        const prev = map.get(key)
-        if (prev && prev !== el) observer.current?.unobserve(prev)
+        const cur = map.get(key)
         if (el) {
+          if (cur && cur !== el) observer.current?.unobserve(cur)
           map.set(key, el)
           observer.current?.observe(el)
-        } else {
-          map.delete(key)
-          slots.delete(key)
+          return
         }
+        if (prev) observer.current?.unobserve(prev)
+        // Anahtarda artık başka (yeni kurulan) öğe varsa ona dokunulmaz
+        if (cur && prev && cur !== prev) return
+        map.delete(key)
+        slots.delete(key)
       },
       slot: (key) => slots.get(key),
       closing: (el, pointer, removes) => {
@@ -540,7 +548,7 @@ export function TabStrip({
         })
         release.current?.()
         release.current = null
-        // Geçiş olarak: kapatma da geçişse (FormTabs) sekmenin kalkmasıyla aynı çizimde
+        // Geçiş olarak: kapatma da geçişse (Workspace) sekmenin kalkmasıyla aynı çizimde
         startTransition(() => setFrozen(width === null ? null : { width }))
         if (width === null) return
         if (pointer === 'touch') {
@@ -708,8 +716,9 @@ export const TabGroup = memo(function TabGroup({
   const key = `group:${id}`
   const attach = useCallback(
     (node: HTMLElement | null) => {
+      const prev = el.current
       el.current = node
-      api.register(key, node)
+      api.register(key, node, prev)
       if (typeof ref === 'function') ref(node)
       else if (ref) ref.current = node
     },
@@ -835,8 +844,9 @@ export const Tab = memo(function Tab({
   const el = useRef<HTMLElement | null>(null)
   const attach = useCallback(
     (node: HTMLElement | null) => {
+      const prev = el.current
       el.current = node
-      api.register(id, node)
+      api.register(id, node, prev)
       if (typeof ref === 'function') ref(node)
       else if (ref) ref.current = node
     },

@@ -9,6 +9,7 @@ import { FileText, X } from 'lucide-react'
 import { Button, Flex, Modal, Typography } from 'antd'
 import { FLOATING_SURFACE, IC, MotionFlex, Scroll, TintIcon, Tip, cn } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
+import { useLook } from '@/synergy/shared/themeSettings'
 import { APP_EVENTS, AppFormBody, useAppEvent } from '@/synergy/AppForm'
 import { APP_FORM_TEXT, deckFormOf, deckTitleOf } from '@/synergy/shared/appForms'
 import {
@@ -37,8 +38,9 @@ import type { PanelSize } from '@/synergy/shared/workflowData'
  *   basınca kart öne gelir (açan / child ilişkisi değişmez). Arkadaki kartın içeriği kullanılamaz
  *   (`inert`), zemin rengine doğru soluktur; klavyede de Tab ile kenarına gelinir.
  * - Esc ve kartın kapat düğmesi öndeki kartı child'larıyla kapatır; kök kapanınca deste kapanır.
- * - Dışarı tıklamak desteyi ekranın sağ kenarına çeker (park): perde kalkar, sayfa kullanılır,
- *   destenin yalnızca soluk bir şeridi görünür; üzerine gelince biraz çıkar, basınca geri gelir.
+ * - Dışarı tıklamak desteyi ekranın sağ kenarına (gezinme sağdaysa, rafın üstüne düşmesin diye sol
+ *   kenarına) çeker (park): perde kalkar, sayfa kullanılır, destenin yalnızca soluk bir şeridi
+ *   görünür; üzerine gelince biraz çıkar, basınca geri gelir.
  * ------------------------------------------------------------------------------------------------- */
 
 /**
@@ -100,7 +102,9 @@ function DeckHost({ deck }: { deck: Deck }) {
   const overhang = Math.min(deck.order.length - 1, step.shown) * step.shift
 
   // Park yeri: küçülmüş destenin sol kenarı (drawer'da en arkadaki kartın görünen kenarı) ekranın
-  // sağ kenarından şerit kadar içeride. Ölçü antd kutusundan (dönüşümsüz), pencereyle güncellenir
+  // sağ kenarından şerit kadar içeride; gezinme sağdaysa sağ kenarı (öndeki kart) sol kenardan şerit
+  // kadar içeride. Ölçü antd kutusundan (dönüşümsüz), pencereyle güncellenir
+  const atStart = useLook().nav === 'right'
   const box = useRef<HTMLDivElement>(null)
   const [parkX, setParkX] = useState(0)
   useLayoutEffect(() => {
@@ -108,13 +112,19 @@ function DeckHost({ deck }: { deck: Deck }) {
     const measure = () => {
       const host = box.current?.parentElement
       if (!host) return
-      const left = host.getBoundingClientRect().left - (drawer ? overhang * PARK.scale : 0)
-      setParkX(window.innerWidth - PARK.sliver - left)
+      const rect = host.getBoundingClientRect()
+      const left = rect.left - (drawer ? overhang * PARK.scale : 0)
+      // Küçülme soldan (`origin-left`): sağ kenar sol kenarın genişlik × ölçek kadar sağında
+      setParkX(
+        atStart
+          ? PARK.sliver - rect.left - rect.width * PARK.scale
+          : window.innerWidth - PARK.sliver - left,
+      )
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [parked, drawer, overhang])
+  }, [parked, drawer, overhang, atStart])
 
   const hidden: TargetAndTransition = drawer ? { x: '110%' } : { opacity: 0, scale: 0.98, y: 12 }
   const target: TargetAndTransition = !isPresent
@@ -170,7 +180,11 @@ function DeckHost({ deck }: { deck: Deck }) {
           animate={target}
           whileHover={
             parked && isPresent
-              ? { x: parkX - PARK.peek, opacity: PARK.hoverOpacity, transition: move }
+              ? {
+                  x: parkX + (atStart ? PARK.peek : -PARK.peek),
+                  opacity: PARK.hoverOpacity,
+                  transition: move,
+                }
               : undefined
           }
           onAnimationComplete={() => {
@@ -205,7 +219,7 @@ function DeckHost({ deck }: { deck: Deck }) {
           </AnimatePresence>
           {/* Parkta destenin tamamı (arkadaki kartların taşan kenarları dahil) geri getirme düğmesi */}
           {parked && isPresent && frontTitle && (
-            <Tip label={frontTitle.caption} placement="left">
+            <Tip label={frontTitle.caption} placement={atStart ? 'right' : 'left'}>
               <Button
                 type="text"
                 aria-label={`Formu göster: ${frontTitle.caption}`}

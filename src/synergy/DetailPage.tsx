@@ -1,17 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  type Ref,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import { LayoutGroup, motion } from 'framer-motion'
 import {
+  AppWindow,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -59,7 +51,6 @@ import {
   processCaption,
   propertiesOf,
   type Box,
-  type BoxId,
   type DetailNavState,
   type FlowDocument,
   type FlowEvent,
@@ -68,15 +59,7 @@ import {
 } from '@/synergy/shared/workflowData'
 import { useHistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
-import {
-  BASE,
-  START_CRUMB,
-  WF_CRUMB,
-  boxLink,
-  processLink,
-  requestLink,
-  useFrame,
-} from '@/synergy/paths'
+import { requestLink } from '@/synergy/paths'
 import { CellValue, EmptyNote, GroupLabel, SearchField, useBand } from '@/synergy/ant/parts'
 import {
   GRID_CELL,
@@ -92,22 +75,10 @@ import { CARD, CARD_RADIUS, cn, IC, MotionFlex, TintIcon, Tip } from '@/synergy/
 import { useTransition } from '@/synergy/motion'
 import { ConfirmDialog, useFlow } from '@/synergy/flow'
 import { useFillHeight, useMediaQuery, useRadiusPx, useScrolled } from '@/synergy/shared/hooks'
-import { FormTabs } from '@/synergy/FormTabs'
-import { useTabScroller } from '@/synergy/tabs/context'
-import {
-  MAX_GROUPS,
-  activeForm,
-  activeGroup,
-  canOpen,
-  formPath,
-  groupOf,
-  groupsReducer,
-  initGroups,
-  type Group,
-  type GroupNav,
-} from '@/synergy/shared/formGroups'
-import { useNotify } from '@/synergy/ant/hr'
-import { appFormOf, appIdOf, appOfRoot, appRoot } from '@/synergy/shared/appForms'
+import { useScreen, useTabScroller } from '@/synergy/tabs/context'
+import { ContentSwitch } from '@/synergy/tabs/ContentSwitch'
+import { useDirection } from '@/synergy/tabs/motion'
+import { appFormOf } from '@/synergy/shared/appForms'
 import { APP_EVENTS, AppFormBody, useAppEvent } from '@/synergy/AppForm'
 import {
   SIDE_LABEL,
@@ -121,16 +92,17 @@ import {
   DocumentsList,
   FileBody,
   FormBody,
-  FormSkeleton,
   HistoryTimeline,
   HistoryViewMenu,
   PropertiesList,
 } from '@/synergy/DetailTiles'
 
 /* -------------------------------------------------------------------------------------------------
- * Form çalışma alanı: talep ayrıntısı (Flow Viewer) ve menü uygulamalarının formları aynı form
- * gruplarında (`/is-akislari/:box/:processId/:requestId` ve `/uygulamalar/:appId` aynı sayfa: biri
- * açıkken öbürüne gidilince sayfa yeniden kurulmaz, yeni grup açılır; açıksa o gruba geçilir).
+ * Talep ayrıntısı (Flow Viewer) ve menü uygulamalarının formları: çalışma alanında birer ekran
+ * (screens.tsx). Talep listenin üstünde (`/is-akislari/:box/:processId/:requestId`: "Kapat" listeye
+ * döner) ya da kendi sekmesinde (`/talepler/:requestId`: "Kapat" sekmeyi kapatır; child form da
+ * böyle, açanı kapanınca kapanır). Formdaki düğmeyle açılan child'ın yeri panel boyutundan
+ * (Workspace.tsx).
  *
  * Talep ayrıntısı, antd: vurgu bandı + bento
  *
@@ -138,244 +110,88 @@ import {
  * şeridi. Kaydırınca 64px yapışkan şeride daralır. Bento: solda form (ya da tam tarihçe), sağda yan
  * bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı (DetailSide.tsx; bölme genişliğine göre
  * sütun ya da raf + çekmece, telefonda altta). 640px altında olaylar altta sabit. Karardan sonra
- * tarihçe açılır; taslakta şerit yerine "Sil" var. Form sunucudan gelene kadar iskelet (FormTabs);
+ * tarihçe açılır; taslakta şerit yerine "Sil" var. Form sunucudan gelene kadar iskelet (bölme);
  * Geri / İleri ile talep değişince içerik gidilen yönden kayarak gelir.
  * ------------------------------------------------------------------------------------------------- */
 
-export function DetailPage() {
-  const params = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const notify = useNotify()
-  const routeBox = findBox(params.box)
-  // Adresin formu: talep ya da menü uygulaması (`app:<uygulama>`)
-  const addressRoot = params.requestId ?? (params.appId ? appRoot(params.appId) : '')
-
-  // İlk grubun listesi: listeden gelindiyse onun sırası, yoksa kutudaki aynı süreçten talepler
-  // (ızgaranın varsayılanı gibi yeniden eskiye; tarih grupları bölünmesin)
-  const siblings = useBoxRequests((routeBox?.id ?? 'bekleyen') as BoxId)
-  const [st, dispatch] = useReducer(groupsReducer, undefined, () =>
-    initGroups({
-      root: addressRoot,
-      nav: params.requestId
-        ? {
-            ids:
-              (location.state as DetailNavState | null)?.ids ??
-              siblings
-                .filter((x) => x.processId === params.processId)
-                .sort((a, b) => dateOf(b).getTime() - dateOf(a).getTime())
-                .map((x) => x.id),
-            box: (routeBox?.id ?? 'bekleyen') as BoxId,
-          }
-        : null,
-    }),
-  )
-  // Olay işleyicileri ve adres eşlemesi son durumu okur (eski kapanışlar değil)
-  const latest = useRef(st)
-  useLayoutEffect(() => {
-    latest.current = st
-  }, [st])
-
-  const group = activeGroup(st)
-  const root = group.tabs.rootId
-  const rootReq = findRequest(root)
-  const rootApp = appOfRoot(root)
-
-  // Adres etkin grubun kökünü izler (geçmişe kayıt eklemeden: gruplar arası geçiş geri tuşunu doldurmasın)
-  useEffect(() => {
-    if (addressRoot === root) return
-    const to = linkOf(root)
-    if (!to) return
-    navigate(to, {
-      replace: true,
-      state: rootReq ? ({ ids: group.nav?.ids ?? [] } satisfies DetailNavState) : undefined,
-    })
-    // Yalnızca kök değişince
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [root])
-
-  // Adres dışarıdan başka bir forma değişince (menüden uygulama, tarayıcının geri tuşu) yeni grupta
-  // açılır; zaten bir grubun köküyse o gruba geçilir
-  useEffect(() => {
-    const id = addressRoot
-    if (!id) return
-    if (!canOpen(latest.current, id)) {
-      warnFull()
-      const back = linkOf(activeGroup(latest.current).tabs.rootId)
-      if (back) navigate(back, { replace: true })
-      return
-    }
-    dispatch({ type: 'open', root: id, nav: null })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressRoot])
-
-  // Konum çubuğundaki ata form (`?form=`): o formun sekmesi seçilir, adres temizlenir
-  const formParam = new URLSearchParams(location.search).get('form')
-  useEffect(() => {
-    if (!formParam) return
-    const owner = groupOf(latest.current, addressRoot)
-    if (owner) dispatch({ type: 'reveal', key: owner.key, form: formParam })
-    navigate({ pathname: location.pathname }, { replace: true, state: location.state })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formParam])
-
-  const warnFull = () =>
-    notify.warning(
-      `En çok ${MAX_GROUPS} form grubu açılabilir`,
-      'Yenisini açmak için açık gruplardan birini kapatın.',
-    )
-
-  /** Talebi yeni grupta açar (zaten açıksa o gruba geçer; sınırdaysa uyarır). */
-  const openGroup = (id: string, nav: GroupNav | null) => {
-    if (!canOpen(latest.current, id)) return warnFull()
-    dispatch({ type: 'open', root: id, nav })
-  }
-
-  /** Grubu kapatır; son grupsa sayfadan `leaveTo`ya çıkılır (gruplar sayfayla birlikte biter). */
-  const closeGroup = (key: string, leaveTo: string) => {
-    if (latest.current.groups.length <= 1) navigate(leaveTo)
-    else dispatch({ type: 'close', key })
-  }
-
-  // Konum: kutu › süreç › kök form › … › etkin form (açanlar zinciri; atalar o formun sekmesini açar);
-  // menü uygulamasının formunda Başlangıç › uygulama (orijinalde menü öğesinin paneli)
-  const rootProcess = rootReq && findProcess(rootReq.processId)
-  const box = findBox(group.nav?.box ?? rootReq?.box)
-  const path = formPath(group, activeForm(group))
-  const requestCrumbs =
-    rootReq && rootProcess && box
-      ? [
-          START_CRUMB,
-          WF_CRUMB,
-          { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
-          {
-            label: processCaption(rootProcess),
-            href: processLink(box.id, rootProcess.id),
-            icon: `process:${rootProcess.id}`,
-          },
-          // Formların adı (kodu değil; kod formun başlık kartında ve özelliklerde)
-          ...path.map((id, i) => {
-            const form = findRequest(id)
-            const p = form && findProcess(form.processId)
-            return {
-              label: p?.form ?? id,
-              icon: i === 0 || !p ? 'request' : `process:${p.id}`,
-              ...(i < path.length - 1 && {
-                href: `${requestLink(rootReq)}?form=${encodeURIComponent(id)}`,
-              }),
-            }
-          }),
-        ]
-      : []
-  useFrame(
-    rootApp ? [START_CRUMB, { label: rootApp.caption, icon: `app:${rootApp.id}` }] : requestCrumbs,
-    box?.id ?? null,
-  )
-
-  // Her grubun kök formu: FormTabs grup ve kök başına bir kez kurar (sabit işlev); olay işleyicileri
-  // son durumu okur (`actions`), kurulan form sekme geçişlerinde yeniden çizilmez
-  const actions = useRef({ openGroup, closeGroup })
-  useLayoutEffect(() => {
-    actions.current = { openGroup, closeGroup }
-  })
-  const renderRoot = useCallback((g: Group) => {
-    const appId = appIdOf(g.tabs.rootId)
-    // Menü uygulamasının formu: son grupsa kapanınca Başlangıç'a dönülür
-    if (appId !== undefined)
-      return <AppViewer appId={appId} onClose={() => actions.current.closeGroup(g.key, BASE)} />
-    return (
-      <RootViewer
-        group={g}
-        onReplace={(id) => dispatch({ type: 'replace', key: g.key, root: id })}
-        onOpen={(id) => actions.current.openGroup(id, g.nav)}
-        onClose={(leaveTo) => actions.current.closeGroup(g.key, leaveTo)}
-      />
-    )
-  }, [])
-
-  return (
-    <Flex className="relative flex flex-col">
-      <FormTabs
-        state={st}
-        dispatch={dispatch}
-        renderRoot={renderRoot}
-        renderTab={renderChild}
-        placeholder={SKELETON}
-        onCloseGroup={(key) => {
-          const g = latest.current.groups.find((x) => x.key === key)
-          const r = g && findRequest(g.tabs.rootId)
-          closeGroup(
-            key,
-            r
-              ? processLink(r.box, r.processId)
-              : g && appIdOf(g.tabs.rootId) !== undefined
-                ? BASE
-                : boxLink('bekleyen'),
-          )
-        }}
-      />
-    </Flex>
-  )
+/** Talebin ekranı: kök form (Geri / İleri, Süreçler izi) ya da child form. */
+export function RequestPage() {
+  const { requestId = '', box } = useParams()
+  const screen = useScreen()
+  if (screen?.child) return <ChildViewer id={requestId} onClose={screen.close} />
+  return <RootViewer id={requestId} boxId={box} />
 }
 
-/** Grubun kökünün adresi: talebin ayrıntısı ya da menü uygulaması. */
-function linkOf(root: string) {
-  const app = appOfRoot(root)
-  if (app) return app.href
-  const r = findRequest(root)
-  return r && requestLink(r)
+/** Menü uygulamasının formunun ekranı. */
+export function AppPage() {
+  const { appId = '' } = useParams()
+  const screen = useScreen()
+  const close = useCallback(() => screen?.close(), [screen])
+  return <AppViewer key={appId} appId={appId} onClose={close} />
 }
 
 /**
- * Grubun kök formu: Geri / İleri grubun kökünü değiştirir, Süreçler izinden seçilen talep yeni
- * grupta açılır, "Kapat" grubu kapatır. Kök bulunamaz ya da silinirse (taslak) grup kapanır.
+ * Kök form: Geri / İleri listedeki komşu talebe gider (yerinde; açtığı formlar kapanır), Süreçler
+ * izinden seçilen talep yeni sekmede açılır, "Kapat" ekranı kapatır. Talep bulunamaz ya da
+ * silinirse (taslak) ekran kapanır.
  */
-function RootViewer({
-  group,
-  onReplace,
-  onOpen,
-  onClose,
-}: {
-  group: Group
-  onReplace: (id: string) => void
-  onOpen: (id: string) => void
-  /** Grubu kapatır; son grupsa sayfadan bu adrese çıkılır. */
-  onClose: (leaveTo: string) => void
-}) {
-  const root = group.tabs.rootId
-  const { request: r, deleted } = useRequest(root)
+function RootViewer({ id, boxId }: { id: string; boxId: string | undefined }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const screen = useScreen()
+  const { request: r, deleted } = useRequest(id)
   const process = r && findProcess(r.processId)
-  useEffect(() => markRead(root), [root])
+  useEffect(() => markRead(id), [id])
   const gone = !r || !process || deleted
-  const leaveTo = deleted ? boxLink('taslaklar') : boxLink(group.nav?.box ?? r?.box ?? 'bekleyen')
   useEffect(() => {
-    if (gone) onClose(leaveTo)
-    // Yalnızca kök gidince
+    if (gone) screen?.close()
+    // Yalnızca talep gidince
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gone])
+  // Geri / İleri listesi: listeden gelindiyse onun sırası, yoksa kutudaki aynı süreçten talepler
+  // (ızgaranın varsayılanı gibi yeniden eskiye; tarih grupları bölünmesin)
+  const box = findBox(boxId ?? r?.box) ?? findBox('bekleyen')!
+  const siblings = useBoxRequests(box.id)
+  const given = (location.state as DetailNavState | null)?.ids
+  const processId = r?.processId
+  const ids = useMemo(
+    () =>
+      given ??
+      siblings
+        .filter((x) => x.processId === processId)
+        .sort((a, b) => dateOf(b).getTime() - dateOf(a).getTime())
+        .map((x) => x.id),
+    [given, siblings, processId],
+  )
+  const index = ids.indexOf(id)
+  const dir = useDirection(index)
   if (gone) return null
-  const ids = group.nav?.ids ?? []
-  const index = ids.indexOf(root)
-  const box = findBox(group.nav?.box ?? r.box)!
+  // Kendi sekmesindeki talep kendi sekmesinde, listenin üstündeki listenin üstünde kalır
+  const own = location.pathname.startsWith('/talepler/')
+  const go = (to: string) => {
+    const next = findRequest(to)
+    const path = own || !next ? `/talepler/${to}` : requestLink(next)
+    navigate(path, { replace: true, state: { ids } satisfies DetailNavState })
+  }
+  const open = (to: string) => screen?.open(`/talepler/${to}`, 'tab', { ids } satisfies DetailNavState)
   return (
-    <Viewer
-      r={r}
-      process={process}
-      caption={processCaption(process)}
-      nav={index >= 0 ? { ids, index, go: onReplace, open: onOpen, box, scope: group.key } : undefined}
-      onClose={() => onClose(processLink(box.id, process.id))}
-      onDeleted={() => onClose(boxLink('taslaklar'))}
-    />
+    <ContentSwitch id={id} dir={dir} className="relative flex flex-col">
+      <Viewer
+        r={r}
+        process={process}
+        caption={processCaption(process)}
+        nav={
+          index >= 0 ? { ids, index, go, open, box, scope: screen?.key ?? 'detail' } : undefined
+        }
+        onClose={() => screen?.close()}
+        onDeleted={() => screen?.close()}
+        onPopOut={own ? undefined : screen?.popOut}
+      />
+    </ContentSwitch>
   )
 }
 
-/** Form gelene kadar bölmede duran iskelet (sabit öğe: bölmeler yeniden çizilmesin). */
-const SKELETON = <FormSkeleton />
-
-/** Child sekmesinin görünümü (FormTabs her kimlik için bir kez çağırır; sabit işlev). */
-const renderChild = (id: string, close: () => void) => <ChildViewer id={id} onClose={close} />
-
-/** Child sekmesi: child talebin detayı (güncel hâliyle); Geri / İleri yok, kapat sekmede. */
+/** Child formun görünümü: child talebin detayı (güncel hâliyle); Geri / İleri yok, kapat sekmede. */
 function ChildViewer({ id, onClose }: { id: string; onClose: () => void }) {
   const { request: r } = useRequest(id)
   useEffect(() => markRead(id), [id])
@@ -480,7 +296,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
             level={1}
             title={app.caption}
             data-tab-cue
-            className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current sm:text-[1.75rem]"
+            className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current @xl:text-[1.75rem]"
           >
             {app.caption}
           </Typography.Title>
@@ -500,7 +316,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
       <Flex ref={attachFill} style={fillStyle} className="flex">
         <Card
           className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1')}
-          classNames={{ body: 'p-6 sm:p-8' }}
+          classNames={{ body: 'p-6 @xl:p-8' }}
         >
           <AppFormBody form={form} />
         </Card>
@@ -523,13 +339,13 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
 interface DetailNav {
   ids: string[]
   index: number
-  /** Geri / İleri: grubun kökü bu talep olur. */
+  /** Geri / İleri: ekran bu talebe gider. */
   go: (id: string) => void
-  /** Süreçler izinden seçilen talep: yeni grupta açılır. */
+  /** Süreçler izinden seçilen talep: yeni sekmede açılır. */
   open: (id: string) => void
   /** Listenin kutusu (ızgaranın sütunları ve tarih alanı). */
   box: Box
-  /** Grubun anahtarı: Süreçler izinin çizgisi (`layoutId`) yalnızca kendi grubunda kayar. */
+  /** Ekranın anahtarı: Süreçler izinin çizgisi (`layoutId`) yalnızca kendi ekranında kayar. */
   scope: string
 }
 
@@ -574,6 +390,7 @@ function Viewer({
   nav,
   onClose,
   onDeleted,
+  onPopOut,
   isChild = false,
 }: {
   r: WorkRequest
@@ -583,6 +400,8 @@ function Viewer({
   nav?: DetailNav
   onClose: () => void
   onDeleted: () => void
+  /** Listenin üstünde açıksa: kendi sekmesine taşır ("Ayrı sekmeye taşı"). */
+  onPopOut?: () => void
   /** Child sekmesi: başlıkta Geri / İleri gösterilmez. */
   isChild?: boolean
 }) {
@@ -757,12 +576,12 @@ function Viewer({
             >
               <process.icon {...IC} size={22} />
             </Flex>
-            {/* `data-tab-cue`: form sekmeleri arasında geçince kısa kayarak yenilenir (FormTabs.tsx) */}
+            {/* `data-tab-cue`: sekmeler arasında geçince kısa kayarak yenilenir (Panes.tsx) */}
             <Typography.Title
               level={1}
               title={caption}
               data-tab-cue
-              className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current sm:text-[1.75rem]"
+              className="m-0 min-w-0 truncate font-display text-2xl font-bold text-current @xl:text-[1.75rem]"
             >
               {isDraft ? process.form : process.name}
             </Typography.Title>
@@ -791,6 +610,17 @@ function Viewer({
                     onPress={next}
                     onStrip={solid}
                   />
+                  {/* Listenin üstündeki form kendi sekmesine geçer, liste yerine döner */}
+                  {onPopOut && (
+                    <Tip label="Ayrı sekmeye taşı" placement="bottom">
+                      <Button
+                        aria-label="Ayrı sekmeye taşı"
+                        onClick={onPopOut}
+                        icon={<AppWindow {...IC} size={18} />}
+                        className={cn(solid ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND, 'ms-2')}
+                      />
+                    </Tip>
+                  )}
                 </>
               )}
               {/* Dar bölmede yan bilgiler (Dokümanlar, Özellikler, Tarihçe) bu düğmeyle açılan
@@ -845,7 +675,7 @@ function Viewer({
             side.mode !== 'stack' && 'min-h-(--fill-h) flex-1',
             formHidden && 'hidden',
           )}
-          classNames={{ body: 'p-6 sm:p-8' }}
+          classNames={{ body: 'p-6 @xl:p-8' }}
         >
           <MotionFlex
             layout="position"
@@ -1119,7 +949,7 @@ function NavTrail({
   process: Process
   onStrip: boolean
 }) {
-  const { ids, index, open: openGroup, box } = nav
+  const { ids, index, open: openTab, box } = nav
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState<string | null>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -1178,10 +1008,10 @@ function NavTrail({
               box={box}
               process={process}
               onHover={setHovered}
-              // Seçilen talep yeni grupta açılır (açıksa o gruba geçilir); açık olan yalnızca kapatır
+              // Seçilen talep yeni sekmede açılır (açıksa ona geçilir); açık olan yalnızca kapatır
               onOpen={(id) => {
                 close()
-                if (id !== current) openGroup(id)
+                if (id !== current) openTab(id)
               }}
             />
           }
@@ -1382,6 +1212,7 @@ function NavGrid({
             const r = row.r
             if (!r) return {}
             return {
+              'data-open-path': `/talepler/${r.id}`,
               onClick: () => onOpen(r.id),
               onKeyDown: (e) => {
                 if (e.key === 'Enter' && e.target === e.currentTarget) onOpen(r.id)

@@ -1569,13 +1569,13 @@ export interface MenuApp {
   caption: string
   /** Yoksa kart baş harfleri (`initials`) ve `avatarColor` ile çizilir. */
   icon?: LucideIcon
-  /** Uygulamanın adresi; sayfası olmayanlar `/uygulamalar/:id` (formu form gruplarında, `appForms.ts`). */
+  /** Uygulamanın adresi; sayfası olmayanlar `/uygulamalar/:id` (formu kendi sekmesinde, `appForms.ts`). */
   href: string
   /** Başlangıçta favori mi (sunucudaki pinned). Güncel değer için `useMenuApps`. */
   pinned: boolean
   /**
    * Formun açıldığı yer (orijinal menü öğesinin "Şurada aç" seçeneği, `openOnType`): yoksa panel
-   * (form grupları); modal ya da drawer'da bulunulan sayfanın üstünde, destede (`FormDeck.tsx`).
+   * (kendi sekmesi); modal ya da drawer'da bulunulan sayfanın üstünde, destede (`FormDeck.tsx`).
    */
   openOn?: 'modal' | 'drawer'
   /** Modal / drawer'ın genişliği (orijinal menü öğesinin panel boyutu; `panelSizeToWidth`). */

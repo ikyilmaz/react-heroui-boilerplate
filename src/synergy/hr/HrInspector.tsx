@@ -145,7 +145,7 @@ export function HrInspector({
 
   return (
     <Card
-      className={cn(CARD, 'flex max-h-[80dvh] flex-col xl:h-full xl:max-h-none')}
+      className={cn(CARD, 'flex max-h-[80dvh] flex-col @6xl:h-full @6xl:max-h-none')}
       classNames={{ body: 'flex min-h-0 flex-1 flex-col p-0' }}
     >
       {/* Başlık: kaydın simgesi (kullanıcıda avatar), adı, durumu; kapat */}

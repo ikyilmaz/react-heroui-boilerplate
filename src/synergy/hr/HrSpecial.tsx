@@ -148,14 +148,14 @@ export function CompanyAdmins({
       {header(controls, list.length)}
       {/* Tam yükseklik; tablo (ya da kartlar) kendi içinde kayar, başlık satırı üstte kalır */}
       <Card
-        className={cn(CARD, 'xl:flex xl:min-h-0 xl:flex-1 xl:flex-col')}
-        classNames={{ body: 'flex flex-col gap-3 p-4 xl:min-h-0 xl:flex-1' }}
+        className={cn(CARD, '@6xl:flex @6xl:min-h-0 @6xl:flex-1 @6xl:flex-col')}
+        classNames={{ body: 'flex flex-col gap-3 p-4 @6xl:min-h-0 @6xl:flex-1' }}
       >
         <Flex align="center" className="shrink-0">
           <ViewSwitch view={view} onChange={setView} className="ms-auto" />
         </Flex>
         {view === 'cards' ? (
-          <CardList className="xl:min-h-0 xl:flex-1">
+          <CardList className="@6xl:min-h-0 @6xl:flex-1">
             {rows.length === 0 && <EmptyNote text={HR_LABELS.noData} />}
             {rows.length > 0 && (
               <CardGroup listLabel="Şirket Yöneticileri">
@@ -183,7 +183,7 @@ export function CompanyAdmins({
             )}
           </CardList>
         ) : (
-          <Flex vertical className="overflow-auto xl:min-h-0 xl:flex-1">
+          <Flex vertical className="overflow-auto @6xl:min-h-0 @6xl:flex-1">
             <Table<HrRecord>
               aria-label="Şirket Yöneticileri"
               size="middle"
@@ -240,7 +240,7 @@ export function PropertyRelations({
     <>
       {header(controls, linked.length)}
       {/* Bağlı ve bağlı olmayan özellikler tek kaydırma kabında (tam yükseklik) */}
-      <Scroll className="gap-3 xl:min-h-0 xl:flex-1">
+      <Scroll className="gap-3 @6xl:min-h-0 @6xl:flex-1">
         <Card className={box} classNames={boxBody}>
           {items.length === 0 ? (
             <EmptyNote text={HR_LABELS.noData} className="py-8" />

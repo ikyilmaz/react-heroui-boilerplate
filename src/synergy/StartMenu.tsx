@@ -92,11 +92,18 @@ const SHELL = 'border border-border bg-surface shadow-(--overlay-shadow)'
 
 /* --- Raf --------------------------------------------------------------------------------------- */
 
-export type ChromePlace = 'left' | 'top'
+/** Kabuğun yeri (tema paneli › Gezinme): yanda sütun (solda / sağda) ya da çubuk (üstte / altta). */
+export type ChromePlace = 'left' | 'right' | 'top' | 'bottom'
+
+/** Kabuk sütun mu (solda / sağda). */
+export const isColumn = (place: ChromePlace) => place === 'left' || place === 'right'
+
+/** Kabuktaki ipuçlarının yönü: içeriğe doğru. */
+export const CHROME_TIP = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' } as const
 
 /**
- * Rafın tek yayı: başlat dönüşümü, raf boyunun değişmesi ve konum seviyelerinin girip çıkması aynı
- * yayla (ayrı zamanlamalar üst üste binip sıçramasın).
+ * Rafın tek yayı: başlat dönüşümü ve raf boyunun değişmesi aynı yayla (ayrı zamanlamalar üst üste
+ * binip sıçramasın).
  */
 export const DOCK_SPRING: Transition = { type: 'spring', stiffness: 380, damping: 36, mass: 0.9 }
 
@@ -111,38 +118,37 @@ export const CHROME_PANEL = cn(
   SHELL,
 )
 
-/** Rafın içi, başlat düğmesi ve açılan kutunun konumu. */
+/** Sütun ve çubuk rafı: iç pay, başlat düğmesi (piksel: temanın boşluk ölçeği rafın oranını bozmasın). */
+const COLUMN = { shell: 'flex-col items-center p-[6px]', start: 'size-[40px] min-w-[40px]', icon: 18 }
+/** Çubukta kompakt: 44px (36px daireler, 4px pay). */
+const BAR = { shell: 'h-[44px] flex-row items-center p-[4px]', start: 'size-[36px] min-w-[36px]', icon: 16 }
+/** Yandaki kutu: dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile), ekranın %85'i boyunda. */
+const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]'
+/**
+ * Çubuktan açılan kutu: ortadan (`mx-auto`), ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki
+ * widget'a yer; en az 44rem).
+ */
+const BAR_PANEL =
+  'inset-x-0 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]'
+
+/** Rafın içi, başlat düğmesi ve açılan kutunun konumu (kutu rafın olduğu kenardan açılır). */
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
-  // Pay ve düğme boyu piksel: temanın boşluk ölçeği (kompakt / geniş) rafın oranını bozmasın
-  // Solda kutu dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
-  // ekranın %85'i boyunda
-  left: {
-    shell: 'flex-col items-center p-[6px]',
-    start: 'size-[40px] min-w-[40px]',
-    icon: 18,
-    panel: 'start-3 inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
-  },
-  // Üstte raf ortada; kutu da ortadan açılır (dönüşüm transform kullandığı için ortalama `mx-auto` ile),
-  // ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki widget'a yer; en az 44rem). Kompakt: 44px
-  // (36px daireler, 4px pay)
-  top: {
-    shell: 'h-[44px] flex-row items-center p-[4px]',
-    start: 'size-[36px] min-w-[36px]',
-    icon: 16,
-    panel:
-      'inset-x-0 top-3 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]',
-  },
+  left: { ...COLUMN, panel: cn('start-3', SIDE_PANEL) },
+  right: { ...COLUMN, panel: cn('end-3', SIDE_PANEL) },
+  top: { ...BAR, panel: cn('top-3', BAR_PANEL) },
+  bottom: { ...BAR, panel: cn('bottom-3', BAR_PANEL) },
 }
 
-/** Kabuğun yanına düşen alan (px; içerik bu kadar içeriden başlar). */
-export const CHROME_SPACE: Record<ChromePlace | 'both', string> = {
-  // Kabuk 12px içeride, 52px; aradaki boşluk 12px
+/**
+ * Kabuğun yanına düşen alan (px; içerik bu kadar içeriden başlar). Sütun 12px içeride, 52px; çubuk 12px
+ * içeride, 44px; aradaki boşluk 12px. Altta alt payın (1.5rem) üstüne kalan `--chrome-bottom`:
+ * çalışma alanının boyu okur.
+ */
+export const CHROME_SPACE: Record<ChromePlace, string> = {
   left: 'sm:ps-[76px] sm:pt-3',
-  // Üstte kabuk 12px içeride, 44px (kompakt); aradaki boşluk 12px
-  top: 'sm:pt-[68px]',
-  // Solda kolon, üstte logo boyunda (34px) konum çubuğu, 28px haplar; içerik 14 birim aşağıda (şerit
-  // 1 birim üstünde biter, kartların konturu görünsün; `CrumbBar`)
-  both: 'sm:ps-[76px] sm:pt-14',
+  right: 'sm:ps-3 sm:pe-[76px] sm:pt-3',
+  top: 'sm:ps-3 sm:pt-[68px]',
+  bottom: 'sm:ps-3 sm:pt-3 sm:pb-[68px] sm:[--chrome-bottom:44px]',
 }
 
 /**
@@ -155,15 +161,12 @@ export function StartDock({
   place,
   actions,
   layoutKey,
-  location,
   children,
 }: {
   place: ChromePlace
   actions: StartActions
   /** Rafın içeriğinin düzen imzası: raf yalnızca bu değişince ölçülür (Motion `layoutDependency`). */
   layoutKey?: string
-  /** Başlat kutusundaki "Buradasınız" satırı (bulunulan yolun tamamı). */
-  location?: ReactNode
   children: (start: ReactNode) => ReactNode
 }) {
   const { pathname } = useLocation()
@@ -191,7 +194,7 @@ export function StartDock({
     if (!open && wasOpen.current) trigger.current?.focus()
     wasOpen.current = open
   }, [open])
-  // Başka sayfaya gidilince kutu kapanır
+  // Başka yere gidilince (adres değişince: seçili sekme ya da yeri) kutu kapanır
   useEffect(() => setOpen(false), [pathname])
 
   const openStart = () => {
@@ -206,7 +209,7 @@ export function StartDock({
     exit: { opacity: 0, transition: { duration: 0.08 } },
   }
   const start = (
-    <Tip label={START_LABELS.start} placement={place === 'left' ? 'right' : 'bottom'}>
+    <Tip label={START_LABELS.start} placement={CHROME_TIP[place]}>
       <Button
         ref={trigger}
         type="primary"
@@ -256,7 +259,7 @@ export function StartDock({
               transition={morph}
               className={cn(
                 'relative flex gap-1',
-                place === 'left' ? 'flex-col items-center' : 'items-center',
+                isColumn(place) ? 'flex-col items-center' : 'items-center',
               )}
             >
               {children(start)}
@@ -308,7 +311,7 @@ export function StartDock({
                 {...content}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <StartPanel actions={actions} location={location} onClose={() => setOpen(false)} />
+                <StartPanel actions={actions} onClose={() => setOpen(false)} />
               </MotionFlex>
             </MotionFlex>
           </Flex>
@@ -384,15 +387,7 @@ function CountHint({ value }: { value: number | undefined }) {
   return <Text className="text-xs text-muted tabular-nums">{value}</Text>
 }
 
-function StartPanel({
-  actions,
-  location,
-  onClose,
-}: {
-  actions: StartActions
-  location?: ReactNode
-  onClose: () => void
-}) {
+function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () => void }) {
   const navigate = useNavigate()
   const { favorites, recent } = useMenuApps()
   const counts = useBoxCounts()
@@ -653,9 +648,6 @@ function StartPanel({
           </Tip>
         ))}
       </Flex>
-
-      {/* Buradasınız: bulunulan yolun tamamı (her seviyeye tıklanır) */}
-      {location && <Flex className="block shrink-0 px-4 pb-3">{location}</Flex>}
 
       <Flex className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
         {/* Sol: bölümler, yalnızca ikon (ad ipucunda); aramada bölüm seçimi geri planda */}

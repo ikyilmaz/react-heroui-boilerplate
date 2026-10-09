@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import { ChevronDown, FilterX, Plus, Trash2 } from 'lucide-react'
@@ -24,8 +24,8 @@ import {
   type HrRecord,
 } from '@/synergy/shared/hrData'
 import { useRemembered } from '@/synergy/shared/remembered'
-import { useMediaQuery } from '@/synergy/shared/hooks'
-import { START_CRUMB, useFrame } from '@/synergy/paths'
+import { useFillHeight, usePaneMin } from '@/synergy/shared/hooks'
+import { useTabScroller } from '@/synergy/tabs/context'
 import { useBand, EmptyNote, SearchField } from '@/synergy/ant/parts'
 import { ConfirmDialog } from '@/synergy/flow'
 import { useLeaving, useTransition } from '@/synergy/motion'
@@ -93,27 +93,20 @@ const initial = (): ListState => ({
 export function HrPage() {
   const params = useParams()
   const def = findModule(params.module)
-  // Geniş ekranda alan ekranın kalanını doldurur; paneller kendi içinde kayar
-  const [root, setRoot] = useState<HTMLElement | null>(null)
-  const [top, setTop] = useState(0)
-  useLayoutEffect(() => {
-    if (!root) return
-    const measure = () => setTop(root.getBoundingClientRect().top + window.scrollY)
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [root])
+  // Geniş ekranda alan ekranın (sekmeler açıkken bölmenin) kalanını doldurur; paneller kendi içinde kayar
+  const scroller = useTabScroller()
+  const [setFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   if (!def) return <Navigate to={hrLink('kullanicilar')} replace />
   return (
     <Flex
-      ref={setRoot}
+      ref={setFill}
       align="start"
       gap={12}
-      style={{ '--hr-h': `calc(100dvh - ${top}px - 1.5rem)` } as CSSProperties}
-      className="xl:h-(--hr-h) xl:items-stretch"
+      style={fillStyle}
+      className="@6xl:h-(--fill-h) @6xl:items-stretch"
     >
       <HrNav current={def} />
-      <Flex vertical gap={12} className="min-w-0 flex-1 xl:min-h-0">
+      <Flex vertical gap={12} className="min-w-0 flex-1 @6xl:min-h-0">
         {def.view === 'table' ? (
           <ModuleView key={def.id} def={def} recordId={params.recordId} />
         ) : (
@@ -178,7 +171,7 @@ function HrNav({ current }: { current: ModuleDef }) {
     <Card
       role="navigation"
       aria-label={HR_LABELS.title}
-      className={cn(CARD, 'hidden w-64 shrink-0 xl:flex xl:flex-col')}
+      className={cn(CARD, 'hidden w-64 shrink-0 @6xl:flex @6xl:flex-col')}
       classNames={{ body: 'flex min-h-0 flex-1 flex-col p-0' }}
     >
       <Scroll className="min-h-0 flex-1 gap-0.5 p-2">
@@ -263,7 +256,7 @@ function ModuleSwitcher({ current, className }: { current: ModuleDef; className?
           </Flex>
         ),
       }))}
-      className={cn('w-56 bg-surface xl:hidden', className)}
+      className={cn('w-56 bg-surface @6xl:hidden', className)}
     />
   )
 }
@@ -283,7 +276,7 @@ function Band({ def, count, children }: { def: ModuleDef; count: number; childre
           aria-hidden
           align="center"
           justify="center"
-          className="hidden size-11 shrink-0 rounded-xl bg-current/10 xl:flex"
+          className="hidden size-11 shrink-0 rounded-xl bg-current/10 @6xl:flex"
         >
           <Icon {...IC} size={22} />
         </Flex>
@@ -322,7 +315,8 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
   const set = (patch: Partial<ListState>) => setSt((s) => ({ ...s, ...patch }))
   const [deleting, setDeleting] = useState<HrRecord | null>(null)
   const onBand = useBand().on
-  const wide = useMediaQuery('(min-width: 1280px)')
+  // Düzenleme kartı yanda mı (bölme `@6xl`'den geniş: 72rem) yoksa altta
+  const wide = usePaneMin(72, useTabScroller())
   const slide = useTransition({ duration: 0.3, ease: [0.22, 1, 0.36, 1] })
   // Düzenleme kartı genişlerken / daralırken kırpılır; tam açıkken kırpılmaz (kontur ve gölge
   // kesilmesin). Kırpma genişlikten türer: animasyonun bitiş olayını beklemez
@@ -423,17 +417,6 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
       : []),
   ]
 
-  useFrame([
-    START_CRUMB,
-    { label: HR_LABELS.title, href: hrLink('kullanicilar'), icon: 'hr' },
-    ...(def.parent ? [{ label: PARENTS[def.parent].label, icon: `hr-parent:${def.parent}` }] : []),
-    { label: def.label, href: hrLink(def.id), icon: `hr:${def.id}` },
-    ...(recordId === 'yeni'
-      ? [{ label: HR_LABELS.new, icon: 'hr-record' }]
-      : editing
-        ? [{ label: def.titleOf(editing), icon: 'hr-record' }]
-        : []),
-  ])
 
   if (missingRecord) return <Navigate to={hrLink(def.id)} replace />
 
@@ -484,11 +467,11 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
         vertical
         align="start"
         gap={12}
-        className="xl:min-h-0 xl:flex-1 xl:flex-row xl:items-stretch"
+        className="@6xl:min-h-0 @6xl:flex-1 @6xl:flex-row @6xl:items-stretch"
       >
         <Card
-          className={cn(CARD, 'w-full min-w-0 flex-1 xl:flex xl:min-h-0 xl:flex-col')}
-          classNames={{ body: 'flex flex-col gap-3 p-4 xl:min-h-0 xl:flex-1' }}
+          className={cn(CARD, 'w-full min-w-0 flex-1 @6xl:flex @6xl:min-h-0 @6xl:flex-col')}
+          classNames={{ body: 'flex flex-col gap-3 p-4 @6xl:min-h-0 @6xl:flex-1' }}
         >
           {/* Solda durum süzgeci (bölümlü seçici, sayılarıyla), sağda tablo / kart seçici */}
           <Flex wrap align="center" gap={12} className="shrink-0">
@@ -527,7 +510,7 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
 
           {view === 'cards' ? (
             // Kart görünümü: ilk sütun başlık, durum rozet, kalan sütunlar alan; kendi içinde kayar
-            <CardList className="xl:min-h-0 xl:flex-1">
+            <CardList className="@6xl:min-h-0 @6xl:flex-1">
               {pageRows.length === 0 && <EmptyNote text={HR_LABELS.noData} />}
               {pageRows.length > 0 && (
                 <CardGroup listLabel={def.label}>
@@ -551,7 +534,7 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
             </CardList>
           ) : (
             // Tablo kendi içinde kayar; başlık satırı üstte kalır
-            <Flex vertical className="w-full overflow-auto xl:min-h-0 xl:flex-1">
+            <Flex vertical className="w-full overflow-auto @6xl:min-h-0 @6xl:flex-1">
               <Table<HrRecord>
                 aria-label={def.label}
                 size="middle"
@@ -615,10 +598,10 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
               animate={wide ? { width: INSPECTOR_W, opacity: 1 } : { opacity: 1, y: 0 }}
               exit={wide ? { width: 0, opacity: 0 } : { opacity: 0, y: 12 }}
               transition={slide}
-              className="w-full shrink-0 xl:h-full"
+              className="w-full shrink-0 @6xl:h-full"
             >
               {/* Genişlik `INSPECTOR_W` ile aynı */}
-              <Flex vertical className="w-full xl:h-full xl:w-[30rem]">
+              <Flex vertical className="w-full @6xl:h-full @6xl:w-[30rem]">
                 <HrInspector
                   key={recordId}
                   def={def}
@@ -655,12 +638,6 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
 /* --- Tablo dışı görünümler --------------------------------------------------------------------- */
 
 function SpecialView({ def }: { def: ModuleDef }) {
-  useFrame([
-    START_CRUMB,
-    { label: HR_LABELS.title, href: hrLink('kullanicilar'), icon: 'hr' },
-    ...(def.parent ? [{ label: PARENTS[def.parent].label, icon: `hr-parent:${def.parent}` }] : []),
-    { label: def.label, icon: `hr:${def.id}` },
-  ])
   const header = (controls: ReactNode, count: number) => (
     <Band def={def} count={count}>
       {controls}

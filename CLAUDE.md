@@ -62,20 +62,19 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
   (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
   on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
-  (root size + `--spacing` together), nav position, trail style (Yumuşak / Dolu,
-  `useLook().trail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
+  (root size + `--spacing` together), nav position (Solda / Sağda / Üstte / Altta, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation level /
   speed. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
-  Every tab strip (form tabs, workflow boxes, Başlangıç categories) is the shared `tabs/` module (see
+  Every tab strip (the workspace, workflow boxes, Başlangıç categories) is the shared `tabs/` module (see
   below); strips start container corner + tab radius in, so the selected sheet's flare lands on the
   container's straight edge. Only the variables of changed settings are written
-  inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position, trail and
-  motion reach pages through `LookContext` / `useLook()`. Page transition is a fixed fade; the side
-  info scroll fade is always on. No other runtime theming.
+  inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position and
+  motion reach pages through `LookContext` / `useLook()`. The side info scroll fade is always on. No
+  other runtime theming.
 - Radius comes from `--radius` through Tailwind's scale (`rounded-xl` tiles, `rounded-2xl` cards,
   `rounded-3xl` blocks, `rounded-full` pills). Fonts: default sans (Inter), `font-display` (Bricolage
   Grotesque, headings and big numbers). **No monospace font anywhere** (no `font-mono`, no JetBrains
@@ -94,41 +93,119 @@ lists, date-group rows).
 Exception, added on explicit request: Başlangıç is a **widget board** (`dashboard/`) with presets and
 extra widgets (clock, weather with sample data (no API request), a local keyword-based demo
 assistant — no AI backend —, calendar, controls, notes); don't extend it further without being asked.
+Exception, added on explicit request: **app-wide tabs** (the workspace, `Workspace.tsx`) replace the
+breadcrumb; the original opens panels side by side (`panelSize`), its "Yeni Sekmede" (101839) is only
+for external links. With them come a right-click open menu and Ctrl / Cmd / middle-click to open in a
+background tab (also on request; the only click modifiers in the app).
 
 ## Structure (`src/synergy/`)
 
-Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:appId`,
-`/is-akislari/:box[/:processId[/:requestId]]`, `/insan-kaynaklari/:module[/:recordId]`.
-`/uygulamalar/:appId` and the request detail render the same `DetailPage` under one page key
-(`'forms'` in `pageOf`), so moving between them keeps the open form groups.
+`src/router.tsx` has one route, the shell (`path: '*'`). Pages live in the workspace's screens:
+each screen renders the page routes with its own address (`screens.tsx`, `useRoutes(…, location)`):
+`/calisma-alani` (Başlangıç), `/is-akislari[/:box[/:processId[/:requestId]]]` (a request under a list
+opens over that list), `/talepler/:requestId` (a request in its own tab; child forms too),
+`/uygulamalar/:appId`, `/insan-kaynaklari/:module[/:recordId]`. The browser address is the selected
+tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
 
-- `index.tsx` › `AppShell`: chrome as separate floating panels on one side, set by tema paneli ›
-  Gezinme: "Solda" = left column with logo + back / forward, the dock (`StartDock` in
-  `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport high when the nav is on the left, 55 % of the
-  viewport wide (min 44rem) when it is on top; its İş Akış Yönetimi section is the Başlangıç İş
-  Akışları widget (`WorkBlock` from `StartPage.tsx`, in its own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana sayfaya dön" inside) and actions / profile; "Üstte" = three columns: corner
-  handle + back / forward + logo | centered dock | actions / profile (the handle — added on explicit
-  request, a trial — is `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the
-  "Tüm uygulamalar" panel floating 12px in from the edges, `AllAppsPanel floating`); the top bar is
-  compact — 44px with 36px dock circles and 28px path pills (`DOCK_SIZE.top`), smaller logo, compact
-  back / forward, 32px action buttons / avatar — and content starts at 68px; "İkisi de" = the left column without back /
-  forward plus a slim top bar (`CrumbBar`, a logo-high 34px box with the 28px pills centred in it,
-  page-colour strip behind) holding compact back / forward and the animated `Crumbs` (earlier levels
-  icon-only, current level named, `ChevronRight` separators; Başlangıç shows its home pill too); the dock
-  is then fixed (`DockPath still`: no path pills, every app stays a circle in place; only the accent fill
-  moves to the active app's circle, Başlangıç filled only on Başlangıç); content starts 14 spacing units down (56px at default density; `CHROME_SPACE.both`, `--chrome-top`
-  and the bar's page-colour strip use the same unit; the strip ends 1 unit above, as does the top
-  bar's (68px − 1 unit): the card contour (`ring`) and shadow are drawn outside the box, so a strip
-  ending exactly at the content would cover a card's top line). The breadcrumb lives in the dock as nested pills
-  growing out of the Başlangıç circle (`DockPath`: Başlangıç › active app › sub-levels, each pill tucked
-  under the previous one, the other apps after the path) and in full in the start menu ("Buradasınız"); the chrome height
-  reaches sticky page parts as `--chrome-top`; only the dock has a surface; below 640px a top bar +
-  `Drawer`.
+- `index.tsx` › `AppShell`: `Shell` (theme settings, providers) › `Frame` (inside `AntTheme`: holds
+  the workspace state, `useWorkspaceUrl`, chrome, main area, drawer, panels). Chrome as separate
+  floating panels on one side, set by tema paneli › Gezinme (`ChromePlace`; "Sağda" mirrors "Solda",
+  "Altta" mirrors "Üstte": tooltips, panels and the start menu open toward the content, from the
+  chrome's side; `CHROME_TIP`, `PANEL_PLACEMENT`, `PLACE`): "Solda" = left column with logo + back /
+  forward, the dock (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
+  high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its İş
+  Akış Yönetimi section is the Başlangıç İş Akışları widget (`WorkBlock` from `StartPage.tsx`, in its
+  own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana
+  sayfaya dön" inside) and actions / profile; "Üstte" = three columns: corner handle + back / forward
+  + logo | centered dock | actions / profile (the handle — added on explicit request, a trial — is
+  `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the "Tüm uygulamalar" panel
+  floating 12px in from the edges, `AllAppsPanel floating`); the top bar is compact — 44px with 36px
+  dock circles (`DOCK_SIZE.top`), smaller logo, compact back / forward, 32px action buttons / avatar —
+  and content starts at 68px ("Altta": ends 68px above the bottom; the workspace height subtracts
+  `--chrome-bottom` and notifications start above the bar) (the bar's page-colour strip ends 1 spacing unit above: the card contour
+  (`ring`) and shadow are drawn outside the box, so a strip ending exactly at the content would cover
+  a card's top line). The dock is fixed circles (`DockApps`): Başlangıç and the apps, the selected
+  tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
+  app's tab (its list under a form counts) or opens one; Başlangıç and the logo select Başlangıç.
+  Back / forward act on the selected tab's own history. Other shell links (start menu, Tüm
+  uygulamalar, search) navigate the browser; the workspace opens what they point at (switching to it
+  if open). The chrome height reaches sticky page parts as `--chrome-top`; only the dock has a
+  surface; below 640px a top bar + `Drawer`.
+- Workspace (`Workspace.tsx`; state `shared/workspace.ts`, address `shared/workspaceUrl.ts`; added on
+  explicit request): app-wide tabs. A tab is a screen (Başlangıç, İş Akış Yönetimi at a box / process,
+  a request, a menu app form, an İK module / record) with its own history, or two screens side by
+  side. Başlangıç is the pinned first tab (icon-only, can't close / move / split, its address never
+  changes, so everything opened from it opens in a new tab); the strip is always shown, Başlangıç
+  alone included, and every screen (Başlangıç too) scrolls in its own pane. Opening: here, new tab (after the source tab and earlier tabs it opened; from Başlangıç / the
+  shell at the end) or beside (split). The same thing never opens twice: requests and app forms
+  switch to their tab, lists only on an exact address match. A request opened from a list opens over
+  it in the same tab (the list stays mounted, hidden; Kapat / back return to it unchanged); its band
+  then has "Ayrı sekmeye taşı" (`popOut`: the same form screen moves to its own tab right after,
+  `/talepler/:id`, its children and auto group with it; the list comes back). Open actions inside a
+  screen (`ScreenEvents`, one capture handler per screen, portals included through the React tree):
+  targets are page links (`a[href]`, same origin) and elements with `data-open-path` (request rows
+  and cards: `/talepler/:id`; controls inside a row aren't targets, a card's own button
+  `data-open-click` is); right-click opens one shared menu at the pointer (`OpenMenu`: Aç = the
+  element's own click, Yeni sekmede aç, Yan yana aç on wide screens; not on Başlangıç, where the
+  browser's menu stays); Ctrl / Cmd / middle-click open in a background tab. Menu and modifier opens
+  allow a second tab of the same list; requests and app forms stay single. Request rows / cards also
+  show a "Yeni sekmede aç" icon on hover / focus / touch (`OpenTabButton` in `rows.tsx`). The dock's
+  right-click menu "Yeni sekmede aç" and Ctrl / Cmd / middle-click open a second tab of the app. Child forms
+  open from form buttons by the child process's `panelSize` (original `viewOptions.panelSize`):
+  1 / 2 split the opener's tab (child right ⅓ / ⅔; in a split the other screen moves to its own tab
+  and returns when the child closes), 3 opens a new tab right after the opener in the opener's group
+  (an automatic group is created if the opener has none); below 1024px (size 2: 1200px) everything
+  opens as 3. A form has one open child at a time; the parent–child link survives any move: closing
+  or navigating the parent closes its children. Automatic groups dissolve at one tab, aren't written
+  to the address and become the user's once renamed / recoloured / joined; user groups (name, colour
+  `--group-1…6`, collapse) are contiguous runs, max 6. Limit 12 screens besides Başlangıç (a list kept
+  under a form counts; `isBlocked`, warning). Address: the path is the selected screen (a child's
+  family root), `?sekmeler=` the other tabs in order with `*` for the selected one (`ia.` / `t.` /
+  `u.` / `ik.` tokens, `a~b@40` split, `(ad.renk[.k];…)` user group); child forms aren't stored.
+  In-tab navigation pushes a browser entry (Back steps back in the selected tab, closing a form over a
+  list); switching, opening, closing and layout replace it. Each screen renders the page routes with
+  its own `NavigationContext` navigator (pages' `Link` / `useNavigate` / `Navigate` stay in their
+  screen), `ScreenContext` (`close`, `open`), `OpenChildContext` and a `LayoutGroup`, all built once
+  per screen. Strip: `TabStrip` › one `TabGroup` per unit (Başlangıç, a group, or an ungrouped tab;
+  units drag as a whole from their first tab) › `Tab` with one `ScreenLabel` per screen (icon + name
+  from `screenMeta`, the tooltip gives the full path, which replaced the breadcrumb); context menu:
+  Yan yana aç, Ayrı sekmelere ayır, Sola / Sağa taşı (Grubu … for a group's first tab), Bağlantıyı
+  kopyala (the tab's own address), Kapat / Grubu kapat; a hover button pairs a single tab with the
+  selected one; swap / separate at the strip's end. Screens are elements built once per screen and
+  rebuilt only when that screen's state object changes, so a switch re-renders two tabs and two
+  panes, never a page. Panes never move in the DOM: each has a fixed absolute box (single = whole
+  container, split = left / right by its tab's ratio, inline `width`); hidden ones are
+  `content-visibility: hidden` (layout kept, scroll kept, not focusable / painted; toggling restyles
+  only the pane). Selecting, opening and closing are transitions (`startTransition`), so the click
+  task stays ~1–2 ms. Motion: panes `layout` + `layoutScroll` measured only through
+  `layoutDependency={moved}` (visible before and after), content `layout="position"`, px radius via
+  `style`. Tab switch: the new pane enters from the tab's direction (30px + fade; a form closing over
+  its list brings the list back from the left), the old one fades out in place underneath
+  (`data-entering` replays the header cue). A side pane opened in the same tab pushes in from the
+  container edge while the opener shrinks; closing pushes it out to its side while the other grows;
+  both start on Motion's frame loop (`frame.update`). A screen shown alone fades in place when closed;
+  swap / shift / ungroup / ratio are layout animations; the divider slides with a MotionValue (it is
+  not a layout node). Dragging the divider writes the two panes' widths and its own `left` directly
+  (no React render, no Motion; `data-resizing` on the container). The container clips with
+  `overflow-clip`. Clip only where needed: a clip box cuts the 1px card ring and the card shadow
+  of anything at its edge (e.g. the İK edit card's slide wrapper clips only while its width
+  animates, via a motion value). Every form screen that enters (request, child, app form) shows
+  `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay) while the form is
+  pre-rendered behind it in a hidden `<Activity>` (React renders it at idle priority, no effects);
+  at `LOAD_MS` it becomes visible and crossfades in once; other screens show at once. Pages fit the
+  pane's height (`useFillHeight` / the dashboard's room against `useTabScroller()`) and lay out by
+  the pane's width, not the viewport: container queries against the pane (`Pane` is `@container`)
+  — `@xl` (36rem) where a page used `sm`, `@4xl` (56rem) for `lg`, `@6xl` (72rem) for `xl`, about
+  the content width at those viewports — and width decisions in JS through `usePaneMin(rem, pane)`
+  with the same threshold (İK's edit card beside / below the table). Viewport breakpoints stay only
+  in the shell, dialogs / popovers (portals) and the phone checks (`max-width: 639px`: fixed bottom
+  action bars).
 - `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar, and the work block
   (5 category tabs — the shared `TabStrip`, `sizing="fill"`, sheet on the card surface with the card
   contour running down the flares into the card's top line (`SHEET_ON_SURFACE`); the work card is
   their `tabpanel` — + process groups ↔ "Süreç Talepleri"; `WorkBlock`, exported for the start
-  menu, so its DOM ids come from `useId`).
+  menu, so its DOM ids come from `useId`; it is its own `@container`: two columns from `@xl`,
+  category labels from `@3xl` of the block's width, in the dashboard and the start menu alike).
 - `dashboard/`: `model.ts` (widget kinds with supported sizes, presets, per-preset layout saved in the
   browser), `Dashboard.tsx` (react-grid-layout board with edit mode — drag, resize snapping to the
   nearest supported size, size menu, add / remove, reset — styled through Tailwind selectors on its
@@ -140,18 +217,19 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   Geçmiş (`AgendaTabs.tsx`: the shared `TabStrip` with links, `sizing="content"`, a "Geçmiş" group
   label; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
   (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete). Nothing is
-  selected automatically: `/is-akislari` (`WF_HOME`; breadcrumb, dock and app links) has no box
+  selected automatically: `/is-akislari` (`WF_HOME`; dock and app links) has no box
   selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
-  taleplerini görmek için bir proje/süreç seçin", 104054 / drafts 104146);
-  `DetailPage.tsx` + `DetailSide.tsx` + `DetailTiles.tsx` + `FormTabs.tsx` + `FormFields.tsx` (Flow
+  taleplerini görmek için bir proje/süreç seçin", 104054 / drafts 104146); a row opens the request
+  over the list in the same tab;
+  `DetailPage.tsx` (`RequestPage`, `AppPage`) + `DetailSide.tsx` + `DetailTiles.tsx` + `FormFields.tsx` (Flow
   Viewer, editable form fields (uncontrolled `defaultValue`, nothing is saved; never `readOnly` /
   `disabled`) — long ones size with CSS `field-sizing: content` (no antd
-  `autoSize`: its layout-effect measuring looped into "Maximum update depth"); the breadcrumb ends
-  with the form's name (`process.form`), not the code; the header band shows the process icon and
+  `autoSize`: its layout-effect measuring looped into "Maximum update depth"); the tab shows the
+  form's name (`process.form`), not the code; the header band shows the process icon and
   name only (no project name, no status tag); the floating strip after scrolling has the events
   at the far left and only the form's name at the far right (event rows never wrap: band, strip and
   the phone's bottom bar scroll sideways, `ACTIONS_SCROLL` / `ACTIONS_DOCK`); the form row reaches the bottom of
-  its container (`useFillHeight` against the page or the form tab's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
+  its container (`useFillHeight` against the page or the screen's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
   card, each half of the side column / sheet with its own scrolling (`FadeScroll`: edges fade
   through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
@@ -169,44 +247,15 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   original: one tick per request of the list it was opened from (the current request's page of 8)
   with its position below (e.g. 2 / 8);
   pressing it opens a popover with that list as the workflow DataGrid — same columns, date groups,
-  unread bold, current row selected, search and paging, row click opens the request); child forms open from form buttons into `FormTabs.tsx` by the child
-  process's `panelSize` (original `viewOptions.panelSize`, a 3-unit strip): 1 / 2 split the tab
-  (child right ⅓ / ⅔; in a split the opener stays beside the new child and the other form moves to
-  its own tab, returning when the child closes), 3 opens a new tab, so a split pair becomes one
-  grouped tab; a form has one open child at a time (opening another closes the previous one with
-  its children, as in the original); below 1024px (size 2: 1200px) everything opens as 3. The
-  rules live in `shared/formTabs.ts` (pure reducer); form groups (each request opened from the
-  Süreçler trail, and each menu app form, is its own group, max 6, colours `--group-1…6`, all groups' tabs shown, root tab
-  first and the group's drag handle) in `shared/formGroups.ts`. `FormTabs.tsx` composes the shared
-  `tabs/` module: `TabStrip` › `TabGroup` › `ViewTab` (a split tab shows both forms with a 1px
-  divider; the focused one gets the selected colour) and one `Pane` per open form. Forms are built
-  once per pane (`renderRoot` / `renderTab` stable, elements cached per key, `OpenChildContext`
-  stable per group), so a switch re-renders two tabs and two panes, never a form. Panes never move
-  in the DOM: each has a fixed absolute box (single = whole container, split = left / right by its
-  view's ratio, inline `width`); hidden ones are `content-visibility: hidden` (layout kept, scroll
-  kept, not focusable / painted; toggling restyles only the pane). Selecting, opening and closing
-  are transitions (`startTransition`), so the click task stays ~1–2 ms. Motion: panes `layout` +
-  `layoutScroll` measured only through `layoutDependency={moved}` (visible before and after), content
-  `layout="position"`, px radius via `style`. Tab switch: the new pane enters from the tab's
-  direction (30px + fade), the old one fades out in place underneath (`data-entering` replays the
-  header cue). A side pane opened in the same tab (1 / 2, "Yan yana aç") pushes in from the container
-  edge while the opener shrinks; closing pushes it out to its side while the other grows; both start
-  on Motion's frame loop (`frame.update`). A form shown alone fades in place when closed; swap /
-  shift / ungroup / ratio are layout animations; the divider slides with a MotionValue (it is not a
-  layout node). Dragging the divider writes the two panes' widths and its own `left` directly (no
-  React render, no Motion; `data-resizing` on the container). The container clips with
-  `overflow-clip` only in tabs mode and while the last child leaves; a lone form (page mode) is in
-  flow and not clipped. Clip only where needed: a clip box cuts the 1px card ring and the card
-  shadow of anything at its edge (e.g. the İK edit card's slide wrapper clips only while its width
-  animates, via a motion value). Every form that enters (root, child, Geri / İleri) shows
-  `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay) while the form is
-  pre-rendered behind it in a hidden `<Activity>` (React renders it at idle priority, no effects);
-  at `LOAD_MS` it becomes visible and crossfades in once;
+  unread bold, current row selected, search and paging, row click opens the request in a new
+  tab); Geri / İleri move the screen to the neighbouring request in place (replace; its children
+  close; the content slides in from that side, `ContentSwitch`); Kapat closes the screen (over a list:
+  back to the list; in its own tab: the tab); child forms open through the workspace (above);
   `flow.tsx` (decision dialogs, also used by Başlangıç and İK).
 - Menu app forms (dummy content, added on explicit request; replaced the "Yakında" page): every
-  menu app except İş Akış Yönetimi opens its form as a form group (root id `app:<appId>`,
-  `shared/appForms.ts`; `AppViewer` in `DetailPage.tsx`, body in `AppForm.tsx`). As in the
-  original, a menu item opens one panel, and opening it again switches to its group. Two kinds
+  menu app except İş Akış Yönetimi opens its form in its own tab (`/uygulamalar/:appId`, `AppPage` /
+  `AppViewer` in `DetailPage.tsx`, data in `shared/appForms.ts`, body in `AppForm.tsx`). As in the
+  original, a menu item opens one panel, and opening it again switches to its tab. Two kinds
   mirror the original menu actions:
   - StartAProcess (Satın Alma Talebi, Yıllık İzin Talebi, Masraf Bildirimi, Araç Tahsis Talebi,
     Toplantı Odası Rezervasyonu) is a start form with the buttons "Gönder", "Taslak Olarak
@@ -217,11 +266,11 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 
   Each form has the request viewer's band and sticky strip and a form card filling the container.
   There is no Geri / İleri, side info or history. Fields are editable and nothing is saved:
-  - "Gönder" shows "{caption} gönderildi." and closes the group.
+  - "Gönder" shows "{caption} gönderildi." and closes the tab.
   - "Taslak Olarak Kaydet" and "Kaydet" only notify.
-  - "İptal" and "Kapat" close the group; the last group returns to Başlangıç.
+  - "İptal" and "Kapat" close the tab.
 
-  The breadcrumb is Başlangıç › app. Dates are relative to today.
+  Dates are relative to today.
 - Form deck (modal / drawer forms; added on explicit request). The original menu item's "Şurada aç"
   (`openOnType`: panel / modal / drawer) is `MenuApp.openOn`, its panel size `MenuApp.panelSize`.
   Two dummy apps use it, "Sözleşme Talebi (Modal)" and "Ziyaretçi Kaydı (Drawer)", each with two
@@ -243,7 +292,7 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   - Hovering a behind card's visible edge lifts it (drawer: name in a tooltip), and clicking it
     raises the card.
   - Esc and a card's close button close the front card. Clicking outside parks the deck: it shrinks
-    to a faint 48px strip on the right edge, the mask, trap, Esc and scroll lock turn off, and the
+    to a faint 48px strip on the right edge (the left edge when the nav is on the right), the mask, trap, Esc and scroll lock turn off, and the
     page works. Hovering the strip peeks it out; clicking it brings the deck back.
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
   status filters, sortable paged table and a slide-in edit card, all driven by `hr/modules.ts`;
@@ -251,12 +300,13 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   store in `shared/hrData.ts`.
 - `AllApps.tsx` ("Tüm uygulamalar" panel: search, order ↔ alphabetic sort, collapsible app tree from
   `shared/menuTree.ts`; no menu editing), `AppForm.tsx` (menu app form body, `APP_EVENTS`,
-  `useAppEvent`), `FormDeck.tsx` (form deck), `paths.ts`, `theme.ts`, `motion.tsx`
-  (`MotionScope`, `useTransition`, `useLeaving`, `PageTransition`).
+  `useAppEvent`), `FormDeck.tsx` (form deck), `screens.tsx` (screen routes, `screenMeta`,
+  `isValidPath`), `paths.ts`, `theme.ts`, `motion.tsx` (`MotionScope`, `useTransition`,
+  `useLeaving`).
 - Brand (Bimser Synergy): `assets/brand/` — `icon.svg` / `icon-dark.svg` (four-colour mark; dark
   theme has a white centre) and `wordmark.svg` / `wordmark-light.svg` ("bimser synergy"), cut from
   the official logo SVGs; the shell logo is the mark (+ wordmark in the top nav and the phone bar),
-  `public/favicon.svg` is the mark. Page transition: fade.
+  `public/favicon.svg` is the mark.
 - `ant/`: shared antd pieces — `theme.tsx` (`AntTheme`), `modal.tsx` (`SoftModal`: every dialog;
   antd's zoom off, the panel springs in from 96 % via `modalRender` + Motion and fades out before
   antd closes it, also when a parent unmounts it inside `AnimatePresence` (`usePresence`; a closed
@@ -300,12 +350,12 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
     bands.
   - `Panes.tsx`: `Pane` (memo; box, visibility, enter / leave / push / exit motions, skeleton +
     hidden `<Activity>` pre-render) and `Divider`. `context.ts`: `OpenChildContext` / `useOpenChild`,
-    `PaneContext` / `useTabScroller` (value never changes on a switch).
+    `PaneContext` / `useTabScroller`, `ScreenContext` / `useScreen` (values never change on a switch).
   - `ContentSwitch.tsx`: the direction-aware content switch (workflow boxes, İK sections): new
     content enters 30px from the change's direction with a fade, the old one fades out in place
     (`popLayout`). `motion.ts`: the single timing table (`useTabMotion`: sheet spring
     `visualDuration` 0.3, content in 0.3s / out 0.16s, panes 0.42s, tab in 0.2s, shift 0.2s
-    ease-in-out, drop spring 0.25, strip 0.34 / 0.16, reveal 0.32; "Az" = fades only, "Kapalı" =
+    ease-in-out, drop spring 0.25, reveal 0.32; "Az" = fades only, "Kapalı" =
     instant, speed divides durations) and `useDirection`.
   - `widths.ts`: pure decisions with a self-check (`scripts/tabs/widths.test.mjs`): icon-only
     threshold, narrow-tab top radius, drag threshold, swap target, closing freeze reducer.
@@ -313,8 +363,9 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
   buckets, menu apps, formatting), `decisions.ts` (in-memory store: `decide`, `markRead`,
   `deleteDraft`, `togglePin`; read through `useBoxRequests` / `useBoxCounts` / `useRequest` /
   `useMenuApps`), `pipeline.ts` (decision pipeline logic: confirm → required documents → reason →
-  forward → `decide()`; `flow.tsx` draws the dialogs), `formTabs.ts` (form tab / split state),
-  `formGroups.ts` (form groups), `appForms.ts` (menu app forms), `formDeck.ts` (form deck), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
+  forward → `decide()`; `flow.tsx` draws the dialogs), `workspace.ts` (workspace state: screens,
+  tabs, groups, histories; pure reducer, self-check `scripts/tabs/workspace.test.mjs`),
+  `workspaceUrl.ts` (address ↔ state), `appForms.ts` (menu app forms), `formDeck.ts` (form deck), `transition.ts` (`scaleTransition`, `INSTANT`), `grid.ts`,
   `ThemePanel.tsx` /
   `themeSettings.ts`, labels (`startLabels.ts`, `flowLabels.ts`), `historyView.ts`, `range.ts`,
   `remembered.ts`, `hooks.ts`, `tokens.ts`.
@@ -324,11 +375,14 @@ Routes are in `src/router.tsx`: `/calisma-alani` (Başlangıç), `/uygulamalar/:
 - Measure on the production build: `npm run build && npx vite preview --port 4173 --strictPort`, then
   `node scripts/perf/tabs.mjs --out <file>.json` (scenario A–H, median of 3 rounds, 4× throttled
   A–D), `node scripts/perf/interactions.mjs` (interruptions, drag, keyboard, divider, closing freeze,
-  all animation levels), `node --test scripts/tabs/widths.test.mjs`, `node scripts/perf/shots.mjs`
-  (strip screenshots, both flare paths). Never report dev-server numbers.
+  all animation levels), `node --test scripts/tabs/widths.test.mjs scripts/tabs/workspace.test.mjs`,
+  `node scripts/perf/shots.mjs` (strip screenshots, both flare paths). Never report dev-server
+  numbers. The `scripts/perf/*.mjs` scenarios still drive the old form groups and are being
+  rewritten for the workspace.
 - A context value that changes on a tab switch re-renders every form: keep `LookContext`,
   `SettingsContext`, antd `ConfigProvider` props (memoized config, constant `wave` / `card`),
-  `PaneContext` and `OpenChildContext` stable; build pane elements once per key; pass stable
+  `PaneContext`, `OpenChildContext`, `ScreenContext` and each screen's `NavigationContext` stable;
+  build screen elements once per screen (rebuilt only when that screen's state changes); pass stable
   callbacks / elements (`placeholder`) to `memo` parts.
 - Every Motion `layout` / `layoutId` node needs a `layoutDependency` that changes only when its box
   can change (the dock too): a node without one snapshots on every render and forces a style /

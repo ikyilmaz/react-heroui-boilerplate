@@ -8,10 +8,10 @@ import { CURRENT_USER, findApp, type ChildLink, type LineItem } from '@/synergy/
  * "İptal", form araç çubuğunda "Taslak Olarak Kaydet") ya da bir form açar (FillAForm: eBA
  * uygulama formu, araç çubuğunda "Kaydet"). Formun başlığı menü öğesinin adı.
  *
- * Form grupları (`formGroups.ts`) bunları talepler gibi açar: kökün kimliği `app:<uygulama>`; aynı
- * öğe ikinci kez açılınca yeni form açılmaz, açık olanın grubuna geçilir (orijinalde de panel bir
- * kez açılır). Alanlar düzenlenebilir ama hiçbir şey kaydedilmez (`FormFields.tsx`); değerin
- * biçimi bileşeni seçer (para, sayı, tarih, uzun metin, metin).
+ * Çalışma alanı bunları kendi sekmesinde açar (`/uygulamalar/:id`); aynı öğe ikinci kez açılınca
+ * yeni form açılmaz, açık olanın sekmesine geçilir (orijinalde de panel bir kez açılır). Alanlar
+ * düzenlenebilir ama hiçbir şey kaydedilmez (`FormFields.tsx`); değerin biçimi bileşeni seçer
+ * (para, sayı, tarih, uzun metin, metin).
  * ------------------------------------------------------------------------------------------------- */
 
 /** Formun olayları: akış başlangıç formu ya da uygulama formu. */
@@ -59,23 +59,6 @@ export const APP_FORM_TEXT = {
   draftSaved: 'Form Taslak olarak kaydedildi.', // 102674
   saved: 'Kaydedildi.', // 103293
 } as const
-
-/* --- Kök kimliği ------------------------------------------------------------------------------- */
-
-const PREFIX = 'app:'
-
-/** Menü uygulamasının form kökü (form grubu kimliği). */
-export const appRoot = (appId: string) => `${PREFIX}${appId}`
-
-/** Kök bir menü uygulamasının formu mu; öyleyse uygulamanın kimliği. */
-export const appIdOf = (root: string) =>
-  root.startsWith(PREFIX) ? root.slice(PREFIX.length) : undefined
-
-/** Kökün menü uygulaması (talep köklerinde yok). */
-export const appOfRoot = (root: string) => {
-  const id = appIdOf(root)
-  return id === undefined ? undefined : findApp(id)
-}
 
 /* --- Maket formlar ----------------------------------------------------------------------------- */
 

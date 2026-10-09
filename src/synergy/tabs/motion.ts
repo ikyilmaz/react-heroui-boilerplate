@@ -37,9 +37,6 @@ const TABLE = {
   shift: { duration: 0.2, ease: EASE_IN_OUT },
   /** Sürüklenen sekme bırakılınca yuvasına oturur (hız sürekliliği: fiziksel yay). */
   drop: { type: 'spring', visualDuration: 0.25, bounce: 0.1 },
-  /** Şerit belirir (ilk child açılınca) ve kaybolur. */
-  stripIn: { duration: 0.34, ease: EASE_OUT },
-  stripOut: { duration: 0.16, ease: EASE_IN },
   /** İskeletten forma geçiş. */
   reveal: { duration: 0.32, ease: EASE_OUT },
 } satisfies Record<string, Transition>

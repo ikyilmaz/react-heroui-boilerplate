@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Flex } from 'antd'
 import { cn } from '@/synergy/ant/ui'
 import { useFillHeight } from '@/synergy/shared/hooks'
+import { useTabScroller } from '@/synergy/tabs/context'
 import { ContentSwitch } from '@/synergy/tabs/ContentSwitch'
 import { useDirection } from '@/synergy/tabs/motion'
 import { SHEET, TAB_BG } from '@/synergy/tabs/shape'
@@ -50,15 +51,17 @@ export function AgendaTabs({
   /** Kabın içeriği. */
   children: ReactNode
 }) {
-  const [setFill, fillStyle] = useFillHeight()
+  // Sekmeler açıkken bölmenin kalanını (bölmenin iç payı 0.75rem), değilse ekranın kalanını
+  const scroller = useTabScroller()
+  const [setFill, fillStyle] = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
   // Geçişin yönü: yeni sekme eskisinin sağındaysa içerik sağdan, solundaysa soldan gelir
   const dir = useDirection(tabs.findIndex((t) => t.id === active))
   return (
-    // Geniş ekranda ekranın kalanını doldurur (altta boşluk kalmaz); içerik kendi içinde kayar
+    // Geniş ekranda ekranın (bölmenin) kalanını doldurur (altta boşluk kalmaz); içerik kendi içinde kayar
     <Flex
       ref={setFill}
       style={fillStyle}
-      className={cn('flex flex-col lg:h-(--fill-h)', TAB_BG)}
+      className={cn('flex flex-col @4xl:h-(--fill-h)', TAB_BG)}
     >
       <TabStrip
         nav
@@ -87,11 +90,11 @@ export function AgendaTabs({
           </TabGroup>
         ))}
       </TabStrip>
-      <Flex className="relative flex min-w-0 flex-col rounded-3xl bg-(--tab-bg) p-3 lg:min-h-0 lg:flex-1">
+      <Flex className="relative flex min-w-0 flex-col rounded-3xl bg-(--tab-bg) p-3 @4xl:min-h-0 @4xl:flex-1">
         <ContentSwitch
           id={active ?? ''}
           dir={dir}
-          className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1"
+          className="flex min-w-0 flex-col @4xl:min-h-0 @4xl:flex-1"
         >
           {children}
         </ContentSwitch>

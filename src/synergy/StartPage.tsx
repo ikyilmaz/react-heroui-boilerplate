@@ -65,7 +65,7 @@ import {
   useBriefPending,
   type GroupSort,
 } from '@/synergy/shared/startLabels'
-import { START_CRUMB, boxLink, k, requestLink, useFrame } from '@/synergy/paths'
+import { boxLink, k, requestLink } from '@/synergy/paths'
 import { openDeck } from '@/synergy/shared/formDeck'
 import {
   useBand,
@@ -212,8 +212,6 @@ function Refresh({
 
 export function StartPage() {
   const [refreshing, refreshAll] = useBriefPending()
-  // Konum çubuğunda (İkisi de) Başlangıç'ta da ev ikonlu bölüm görünür
-  useFrame([START_CRUMB])
   return (
     <Dashboard
       render={(kind, size) => {
@@ -277,7 +275,8 @@ export function WorkBlock({ refreshing = false }: { refreshing?: boolean }) {
   }
 
   return (
-    <Flex vertical className="h-full min-h-0">
+    // Blok kendi genişliğine göre dizilir (`@container`): Başlangıç'ta widget, başlat kutusunda bölüm
+    <Flex vertical className="@container h-full min-h-0">
       <Categories selected={category} onSelect={choose} uid={uid} panelId={panelId} />
       {/* İş bloğu: seçili sekmenin devamı; hücrenin kalanını doldurur, sütunlar içeride kayar */}
       <Card
@@ -384,7 +383,7 @@ function Greeting({
           ellipsis
           className={cn(
             'm-0! min-w-0 flex-1 font-display font-bold text-current!',
-            small ? 'text-xl' : 'text-2xl sm:text-3xl',
+            small ? 'text-xl' : 'text-2xl @xl:text-3xl',
           )}
         >
           {text}, {CURRENT_USER.firstName}.
@@ -664,11 +663,11 @@ function Categories({
                 onClick={() => onSelect(b.id)}
                 className={cn(CATEGORY, isSel ? 'text-foreground' : 'text-foreground/70')}
               >
-                {/* 1280px altında etiket sığmıyor ("Bekle…"); orada ikon + sayı, ad aria-label'da */}
+                {/* Dar blokta (48rem altı) etiket sığmıyor ("Bekle…"); orada ikon + sayı, ad aria-label'da */}
                 <Text
                   ellipsis
                   className={cn(
-                    'hidden min-w-0 xl:block',
+                    'hidden min-w-0 @3xl:block',
                     isSel ? 'font-semibold text-current!' : 'font-medium text-foreground/70!',
                   )}
                 >
@@ -721,11 +720,11 @@ function WorkSplit({ left, right }: { left: ReactNode; right: ReactNode }) {
   return (
     <Flex
       // Hücrenin kalanını doldurur; iki sütun kendi içinde kayar (zemin kartın kendisi)
-      className="flex min-h-0 flex-1 flex-col text-foreground lg:flex-row"
+      className="flex min-h-0 flex-1 flex-col text-foreground @xl:flex-row"
       style={{ '--split': `${split}%` } as CSSProperties}
     >
       {/* Sol sütun iş bloğunun tüm yüksekliğini alır (süreç listesi en alta kadar uzar) */}
-      <Flex vertical className="min-h-0 overflow-y-auto p-5 lg:w-(--split) lg:shrink-0">
+      <Flex vertical className="min-h-0 overflow-y-auto p-5 @xl:w-(--split) @xl:shrink-0">
         {left}
       </Flex>
       <Flex
@@ -738,11 +737,11 @@ function WorkSplit({ left, right }: { left: ReactNode; right: ReactNode }) {
         tabIndex={0}
         onPointerDown={onPointerDown}
         onKeyDown={onKeyDown}
-        className="hidden w-3 cursor-col-resize justify-center py-5 outline-none focus-visible:bg-accent-soft lg:flex"
+        className="hidden w-3 cursor-col-resize justify-center py-5 outline-none focus-visible:bg-accent-soft @xl:flex"
       >
         <Divider orientation="vertical" className="m-0 h-full" />
       </Flex>
-      <Divider className="m-0 lg:hidden" />
+      <Divider className="m-0 @xl:hidden" />
       <Flex vertical className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5">
         {right}
       </Flex>
@@ -829,7 +828,7 @@ function GroupList({
         />
       ) : (
         // Liste kalan yüksekliği doldurur, sığmazsa kendi içinde kayar; yüksekliği bloğu uzatmaz
-        <Flex className="relative min-h-[26rem] flex-1 lg:min-h-48">
+        <Flex className="relative min-h-[26rem] flex-1 @xl:min-h-48">
           {/* Kap iki yana 4px taşar, öğeler onu doldurur (taşma öğede olsaydı kap keserdi) */}
           <Scroll className="absolute -inset-x-1 inset-y-0">
             <Flex vertical role="listbox" aria-label={label}>
@@ -1064,7 +1063,12 @@ function RequestsTile({
                 !isRead(r, readIds) ? 'font-semibold' : '[&>td]:text-foreground/70',
               ) ?? ''
             }
-            onRow={(r) => ({ onClick: () => open(r.id), onKeyDown: openOnEnter(r), tabIndex: 0 })}
+            onRow={(r) => ({
+              'data-open-path': requestLink(r),
+              onClick: () => open(r.id),
+              onKeyDown: openOnEnter(r),
+              tabIndex: 0,
+            })}
             onChange={(_, __, sorter, extra) => {
               if (extra.action !== 'sort') return
               const s = Array.isArray(sorter) ? sorter[0] : sorter

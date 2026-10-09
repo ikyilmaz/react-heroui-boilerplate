@@ -12,14 +12,13 @@ import {
   findProcess,
   historyBoxes,
   mainBoxes,
-  boxProcessCaption,
   processCaption,
   processGroups,
   type Box as WorkBox,
   type DateRange,
   type ProcessGroup,
 } from '@/synergy/shared/workflowData'
-import { START_CRUMB, WF_CRUMB, WF_HOME, boxLink, processLink, useFrame } from '@/synergy/paths'
+import { WF_HOME, boxLink, processLink } from '@/synergy/paths'
 import { START_LABELS } from '@/synergy/shared/startLabels'
 import { CARD, IC, Scroll, cn } from '@/synergy/ant/ui'
 import { EmptyNote, SearchField, RangeFields, SortMenu, type SortValue } from '@/synergy/ant/parts'
@@ -32,8 +31,9 @@ import { Count, Indicator } from '@/synergy/ant/motion'
  * "Geçmiş" başlığıyla şeridin sağında); seçili sekme içeriği saran kaba kaynaşır. Kabın içinde
  * ayrı bir başlık bandı yok (kutunun adı sekmede); solda süreç listesi (%20; üstünde arama,
  * sıralama, geçmişte tarih aralığı), sağda seçili sürecin talep ızgarası. Hiçbir şey kendiliğinden
- * seçilmez: `/is-akislari`'de kutu, kutuda süreç seçili değildir (boş durum; kırıntı ve uygulama
- * bağlantıları buraya gelir). Kutu değişince içerik seçilen sekmenin yönünden gelir.
+ * seçilmez: `/is-akislari`'de kutu, kutuda süreç seçili değildir (boş durum; raf ve uygulama
+ * bağlantıları buraya gelir). Kutu değişince içerik seçilen sekmenin yönünden gelir. Talebe basınca
+ * talep bu sekmede listenin üstünde açılır (liste altta kalır, "Kapat" ona döner).
  */
 
 /** Kutu seçili değilken (104028). */
@@ -70,10 +70,9 @@ export function WorkflowPage() {
 
 /** Boş durum: hiçbir kutu seçili değil. */
 function Idle() {
-  useFrame([START_CRUMB, WF_CRUMB])
   return (
     <Card
-      className={cn(CARD, 'lg:flex-1')}
+      className={cn(CARD, '@4xl:flex-1')}
       classNames={{ body: 'flex h-full items-center justify-center' }}
     >
       <EmptyNote icon={MousePointerClick} text={PICK_ITEM} className="py-16" />
@@ -100,27 +99,21 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
   // Süreç kendiliğinden seçilmez; adresteki süreç yoksa kutunun boş durumuna dönülür (aşağıda)
   const process = findProcess(processId)
 
-  useFrame([
-    START_CRUMB,
-    WF_CRUMB,
-    { label: box.title, href: boxLink(box.id), icon: `box:${box.id}` },
-    ...(process ? [{ label: boxProcessCaption(box, process), icon: `process:${process.id}` }] : []),
-  ])
 
   if (processId && !process) return <Navigate to={boxLink(box.id)} replace />
   return (
-    <Flex className="flex flex-col gap-3 lg:min-h-0 lg:flex-1">
+    <Flex className="flex flex-col gap-3 @4xl:min-h-0 @4xl:flex-1">
       {/* Kutunun adı sekmede yazıyor; sayfa başlığı yalnızca ekran okuyucu için */}
       <Typography.Title level={1} className="sr-only">
         {box.title}
       </Typography.Title>
       {groups.length === 0 && !process ? (
-        <Card className={cn(CARD, 'lg:flex-1')}>
+        <Card className={cn(CARD, '@4xl:flex-1')}>
           <EmptyNote text="Gösterilecek veri yok." />
         </Card>
       ) : (
         // Süreç kartı ızgarayla aynı boyda (aşağıya kadar uzanır)
-        <Flex className="flex flex-col gap-3 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch">
+        <Flex className="flex flex-col gap-3 @4xl:min-h-0 @4xl:flex-1 @4xl:flex-row @4xl:items-stretch">
           <ProcessList
             box={box}
             groups={groups}
@@ -128,7 +121,7 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
             settings={settings}
             onChange={setSettings}
           />
-          <Flex className="flex w-full min-w-0 flex-1 flex-col lg:min-h-0">
+          <Flex className="flex w-full min-w-0 flex-1 flex-col @4xl:min-h-0">
             {process ? (
               <RequestGrid
                 key={`${box.id}/${process.id}`}
@@ -139,7 +132,7 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
             ) : (
               // Boş durum: süreç seçilmedi (Başlangıç'taki iş bloğuyla aynı ileti)
               <Card
-                className={cn(CARD, 'lg:flex-1')}
+                className={cn(CARD, '@4xl:flex-1')}
                 classNames={{ body: 'flex h-full items-center justify-center' }}
               >
                 <EmptyNote
@@ -179,8 +172,8 @@ function ProcessList({
   const countLabel = isDraft ? 'Taslak Sayısı' : 'Talep Sayısı'
   return (
     <Card
-      className={cn(CARD, 'w-full shrink-0 lg:flex lg:min-h-0 lg:w-1/5 lg:min-w-56 lg:flex-col')}
-      classNames={{ body: 'flex flex-col gap-1 p-2 lg:min-h-0 lg:flex-1' }}
+      className={cn(CARD, 'w-full shrink-0 @4xl:flex @4xl:min-h-0 @4xl:w-1/5 @4xl:min-w-56 @4xl:flex-col')}
+      classNames={{ body: 'flex flex-col gap-1 p-2 @4xl:min-h-0 @4xl:flex-1' }}
     >
       {/* Üstte süzgeçler: arama ve sıralama (geçmiş kutularında tarih aralığı da) */}
       <Flex className="flex shrink-0 flex-col gap-2 p-1 pb-2">
@@ -212,7 +205,7 @@ function ProcessList({
         ))}
       </Flex>
       <Scroll
-        className="flex max-h-[60dvh] flex-col gap-0.5 lg:max-h-none lg:min-h-0 lg:flex-1"
+        className="flex max-h-[60dvh] flex-col gap-0.5 @4xl:max-h-none @4xl:min-h-0 @4xl:flex-1"
         role="navigation"
         aria-label={box.title}
       >
