@@ -155,10 +155,20 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   "Solda" = left column
   with the logo (centred on the tab row) and the dock in the middle (three-row grid), the dock
   (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
-  high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its İş
-  Akış Yönetimi section is the Başlangıç İş Akışları widget (`WorkBlock` from `StartPage.tsx`, in its
-  own `LayoutGroup`); its section column is icon-only (labels in tooltips); no user card or "Ana
-  sayfaya dön" inside); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
+  high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its content
+  (`StartPanel`, redesigned on explicit request after launcher research: search as the spine, pinned
+  tiles before the browse list, stable positions) is one scrolling column: search (autofocus; typing
+  turns everything into one flat result list — apps with their folder, workflow boxes with counts,
+  Görünüm actions — with a virtual ↑ ↓ highlight and Enter), then three bands filling the box (50 / 25 /
+  25 %, hairlines between): Tüm uygulamalar (a single-column tree: top-level leaves, then
+  folders as collapsible rows with a small icon square, count and rotating chevron, children indented
+  behind a guide line and rising in with a 30ms stagger; all open at first, collapsed ones remembered
+  for the session, `TreeFolder`; order ↔ A–Z, `SORT_KEY` shared with the Tüm uygulamalar panel; scrolls
+  inside its band), greeting + pending sentence over the five main boxes as count tiles (Bekleyen
+  Onaylar in the accent), Favoriler ↔ Son Kullanılan Uygulamalar as one row of 6rem icon tiles that
+  scrolls sideways (star toggles `togglePin`; only that changes positions); no footer (Duyurular /
+  Sohbet / Tema stay in the tab row's actions and are search hits); sections rise in with a 50ms stagger (`rise`
+  keyframes × `--motion-time`), results don't; no `WorkBlock` and no section rail inside anymore); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
   handle — added on explicit request, a trial — is
   `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the "Tüm uygulamalar" panel
   floating 12px in from the edges, `AllAppsPanel floating`); the top bar is compact — 44px with 36px

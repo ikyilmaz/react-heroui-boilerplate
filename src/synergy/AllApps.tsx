@@ -35,7 +35,8 @@ import { EmptyNote, SearchField } from '@/synergy/ant/parts'
  * uygulamaya basınca gidilir ve panel kapanır. Menü düzenleme (tasarımcı) yok.
  */
 
-const SORT_KEY = 'synergy-menu-sort'
+/** Sıralama tercihi (tarayıcıda; tüm uygulamalar paneli ve başlat kutusu ortak). */
+export const SORT_KEY = 'synergy-menu-sort'
 
 /** Arama metnini vurgular (orijinal highlightText). */
 function Highlight({ text, query }: { text: string; query: string }) {
