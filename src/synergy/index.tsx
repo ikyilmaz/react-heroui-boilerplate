@@ -4,6 +4,7 @@ import {
   startTransition,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useReducer,
@@ -12,6 +13,7 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { AnimatePresence } from 'framer-motion'
 import {
   AutoComplete,
   Avatar,
@@ -82,19 +84,23 @@ import { APP_THEME } from '@/synergy/theme'
 import { MotionScope } from '@/synergy/motion'
 import { AllAppsButton, AllAppsHandle, AllAppsPanel } from '@/synergy/AllApps'
 import {
+  CHROME_PANEL,
   CHROME_SPACE,
   CHROME_TIP,
+  CloseOnPlace,
+  DOCK_SPRING,
   StartDock,
   isColumn,
   type ChromePlace,
   type StartActions,
 } from '@/synergy/StartMenu'
+import { useTransition } from '@/synergy/motion'
 import { ShellRouter, Workspace, useWorkspaceUrl, type Act } from '@/synergy/Workspace'
 import { PlaceContext } from '@/synergy/tabs/context'
 import { isValidPath } from '@/synergy/screens'
 import { AntTheme } from '@/synergy/ant/theme'
 import { useNotify } from '@/synergy/ant/hr'
-import { CARD, IC, Tip, cn } from '@/synergy/ant/ui'
+import { CARD, IC, MotionFlex, Tip, cn } from '@/synergy/ant/ui'
 import { Indicator } from '@/synergy/ant/motion'
 import brandIcon from '@/synergy/assets/brand/icon.svg'
 import brandIconDark from '@/synergy/assets/brand/icon-dark.svg'
@@ -866,6 +872,99 @@ const ShellActions = memo(function ShellActions({
 })
 
 /**
+ * Rafın favori / son kullanılan listesi: hangisi gösteriliyor, değiştirme ve düzen imzası (raf boyu
+ * liste değişince değişir; Motion `layoutDependency`).
+ */
+function useDockLists() {
+  const lists = useMenuApps()
+  const [recent, setRecent] = useState(false)
+  const toggleRecent = useCallback(() => setRecent((r) => !r), [])
+  const apps = useMemo(
+    () => (recent ? lists.recent : lists.favorites).slice(0, DOCK_LIMIT),
+    [recent, lists],
+  )
+  return { apps, recent, toggleRecent, key: `${recent}:${apps.map((a) => a.id).join(',')}` }
+}
+
+/**
+ * Kompakt gezinmenin rafı: kabukta raf yok; ekranın sol kenarında, dikeyde ortada bir tutamaç
+ * (`AllAppsHandle`, Üstte'deki gibi) sütun rafını (sabit uygulamalar | favoriler) kenardan 12px
+ * içeride yüzen bir panel olarak soldan kaydırarak açar. Bir uygulamaya basınca (sekme değişir:
+ * `CloseOnPlace`), dışarı tıklayınca ve Esc ile kapanır; yıldız (favoriler ↔ son kullanılanlar)
+ * kapatmaz. Konumu deneme: henüz kararlaştırılmadı.
+ */
+const CompactDock = memo(function CompactDock({ onApp }: { onApp: DockOpen }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const { apps, recent, toggleRecent } = useDockLists()
+  const slide = useTransition(DOCK_SPRING)
+  // Esc her yerden kapatır (odak rafta olmasa da)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, close])
+  const openApp: DockOpen = useCallback(
+    (id, opts) => {
+      onApp(id, opts)
+      setOpen(false)
+    },
+    [onApp],
+  )
+  return (
+    <>
+      <AllAppsHandle
+        open={open}
+        onPress={() => setOpen((o) => !o)}
+        label="Uygulamalar"
+        className="fixed -start-px top-1/2 z-50 -translate-y-1/2"
+      />
+      <AnimatePresence>
+        {open && (
+          <Flex key="dock" className="contents">
+            <CloseOnPlace onChange={close} />
+            {/* Dışarı tıklayınca kapanır (zemin görünmez) */}
+            <MotionFlex
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onPointerDown={close}
+              // `block`: antd'de içi boş `Flex` gizlenir
+              className="fixed inset-0 z-40 block"
+            />
+            <MotionFlex
+              role="navigation"
+              aria-label="Uygulamalar"
+              initial={{ x: -24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -24, opacity: 0 }}
+              transition={slide}
+              // Favorilere basınca (sayfası `useOpenApp` ile açılır) raf kapanır; yıldız kapatmaz
+              onClickCapture={(e: React.MouseEvent<HTMLElement>) => {
+                const el = (e.target as HTMLElement).closest('a,button')
+                if (el && !el.hasAttribute('aria-pressed')) close()
+              }}
+              className={cn(
+                'fixed start-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-center gap-1 p-[6px]',
+                CHROME_PANEL,
+              )}
+            >
+              <DockApps place="left" onApp={openApp} />
+              <Divider orientation="horizontal" className="my-1 w-6 min-w-0" />
+              <DockMenuApps place="left" apps={apps} recent={recent} onToggle={toggleRecent} />
+            </MotionFlex>
+          </Flex>
+        )}
+      </AnimatePresence>
+    </>
+  )
+})
+
+/**
  * Kabuk (tema paneli › Gezinme): ayrı yüzen paneller. Geri / ileri ve eylemler her iki konumda
  * sekme şeridinin satırında (`HistoryButtons`, `ShellActions`; çalışma alanına verilir).
  * - Solda: sol kenarda üstte logo (sekme satırıyla aynı hizada), ortada raf (StartMenu: başlat ve
@@ -889,6 +988,7 @@ const Chrome = memo(function Chrome({
   onApps: () => void
 }) {
   const column = isColumn(place)
+  const { apps, recent, toggleRecent, key } = useDockLists()
 
   const logo = (
     <Link
@@ -909,19 +1009,8 @@ const Chrome = memo(function Chrome({
   // ölçülür, Motion `layoutDependency`)
   // Raf: sabit uygulamalar | favoriler (ya da son kullanılanlar); başlat düğmesi rafın önünde, kendi
   // kartında. Raf boyu liste değişince değişir: düzen imzası onunla
-  const lists = useMenuApps()
-  const [recent, setRecent] = useState(false)
-  const toggleRecent = useCallback(() => setRecent((r) => !r), [])
-  const apps = useMemo(
-    () => (recent ? lists.recent : lists.favorites).slice(0, DOCK_LIMIT),
-    [recent, lists],
-  )
   const dock = (
-    <StartDock
-      place={place}
-      actions={actions}
-      layoutKey={`${place}:${recent}:${apps.map((a) => a.id).join(',')}`}
-    >
+    <StartDock place={place} actions={actions} layoutKey={`${place}:${key}`}>
       <DockApps place={place} onApp={onApp} />
       <Divider
         orientation={column ? 'horizontal' : 'vertical'}
@@ -1163,7 +1252,9 @@ function Frame({
             vertical
             className="isolate min-h-screen bg-background text-foreground antialiased before:pointer-events-none before:fixed before:inset-0 before:-z-10 before:bg-(image:--background-texture) before:bg-size-(--background-texture-size) before:content-['']"
           >
-            {wide && place === 'compact' ? null : wide ? (
+            {wide && place === 'compact' ? (
+              <CompactDock onApp={openDock} />
+            ) : wide ? (
               <Chrome
                 place={place}
                 actions={startActions}

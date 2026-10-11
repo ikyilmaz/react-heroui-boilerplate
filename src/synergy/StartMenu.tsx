@@ -170,7 +170,7 @@ export const CHROME_SPACE: Record<ChromePlace, string> = {
  * Başka yere gidilince (seçili sekme ya da yeri değişince) başlat kutusunu kapatır. Yalnızca kutu
  * açıkken takılı: sekme geçişlerinde yalnızca bu küçük parça yeniden çizilir.
  */
-function CloseOnPlace({ onChange }: { onChange: () => void }) {
+export function CloseOnPlace({ onChange }: { onChange: () => void }) {
   const place = usePlace()
   const opened = useRef(place)
   useEffect(() => {

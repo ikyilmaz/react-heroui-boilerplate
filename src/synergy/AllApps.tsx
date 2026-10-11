@@ -352,22 +352,26 @@ export function AllAppsButton({ expanded, onPress }: { expanded: boolean; onPres
 /**
  * Gezinme › Üstte: ekranın sol üst köşesinde, sol kenara yapışık tutamaç (içinde noktalar); basınca
  * tüm uygulamalar paneli soldan yüzerek açılır. Sol çizgisi ekranın dışında kalır (kenardan çıkan
- * dil gibi); üzerine gelince biraz dışarı çekilir. Konumu kabuktan (`className`).
+ * dil gibi); üzerine gelince biraz dışarı çekilir. Konumu kabuktan (`className`). Kompakt gezinmede
+ * aynı tutamaç rafı açar (`label`).
  */
 export function AllAppsHandle({
   open,
   onPress,
   className,
+  label = MENU_LABELS.allApps,
 }: {
   open: boolean
   onPress: () => void
   className?: string
+  /** Açtığı şeyin adı (ipucu ve erişilebilir ad). */
+  label?: string
 }) {
   return (
-    <Tip label={MENU_LABELS.allApps} placement="right">
+    <Tip label={label} placement="right">
       <Button
         type="text"
-        aria-label={MENU_LABELS.allApps}
+        aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={onPress}

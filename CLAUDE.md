@@ -134,7 +134,11 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `ChromeNavContext`, the selected screen's path reaches the start menu (closes when it changes) and
   the app tree (current app) through `PlaceContext`, so a tab switch doesn't re-render the chrome,
   the phone drawer or the panels). Chrome as separate
-  floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte / Kompakt — Kompakt: no logo and no dock, only the start
+  floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte / Kompakt — Kompakt: no logo and no dock in the chrome; the tab row is 1.3× high (`Workspace` `tall`,
+  `--tab-h` 3.25rem) with a 40px start button and 40px actions; a handle like Üstte's (`AllAppsHandle`,
+  label "Uygulamalar") sits on the screen's left edge at mid-height (position is a trial) and opens
+  the column dock as a floating panel 12px in (`CompactDock`: closes on an app press, outside click,
+  Esc; the star toggle doesn't close it); only the start
   button at the head of the tab row (`Workspace` `lead`, before back / forward; the start menu morphs
   from that button, `StartDock place="compact"`, and opens top left, content runs to the screen's
   left edge (`CHROME_SPACE.compact`); Sağda / Altta
