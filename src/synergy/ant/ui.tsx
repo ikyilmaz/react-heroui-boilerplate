@@ -63,15 +63,27 @@ export function TintIcon({
   )
 }
 
-/** Talep durumu: bitenler dolu (onay yeşil, ret kırmızı), süren açık sarı. */
+/**
+ * Talep durumu: hepsi aynı biçimde yumuşak rozet (hap, önünde renk noktası); renk yalnızca durumu
+ * söyler (onay yeşil, ret kırmızı, sürenler sarı, taslak nötr).
+ */
+const STATUS: Record<RequestStatus, { color: 'success' | 'error' | 'warning' | 'default'; dot: string }> = {
+  Tamamlandı: { color: 'success', dot: 'bg-success' },
+  Reddedildi: { color: 'error', dot: 'bg-danger' },
+  'Onay bekliyor': { color: 'warning', dot: 'bg-warning' },
+  'Devam ediyor': { color: 'warning', dot: 'bg-warning' },
+  Taslak: { color: 'default', dot: 'bg-muted' },
+}
 export function StatusTag({ status }: { status: RequestStatus }) {
-  const done = status === 'Tamamlandı'
-  const final = done || status === 'Reddedildi'
+  const t = STATUS[status]
   return (
     <Tag
-      variant={final ? 'solid' : 'filled'}
-      color={final ? (done ? 'success' : 'error') : 'warning'}
-      className="me-0"
+      variant="filled"
+      color={t.color}
+      // `block`: antd'de içi boş `Flex` gizlenir
+      icon={<Flex aria-hidden className={cn('block size-1.5 shrink-0 rounded-full', t.dot)} />}
+      // Yazı nötr (antd'nin renkli yazısı açık zeminde soluk kalıyordu); rengi nokta ve zemin taşır
+      className="me-0 inline-flex items-center gap-1.5 rounded-full border-0 px-2.5 text-xs font-medium whitespace-nowrap text-foreground/85!"
     >
       {status}
     </Tag>

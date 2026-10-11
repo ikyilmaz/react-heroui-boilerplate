@@ -42,9 +42,11 @@ export const GRID_TABLE = cn(
   '[&_.ant-table-thead>tr>th]:sticky [&_.ant-table-thead>tr>th]:top-0 [&_.ant-table-thead>tr>th]:z-10',
   '[&_.ant-table-thead>tr>th]:h-10 [&_.ant-table-thead>tr>th]:rounded-none! [&_.ant-table-thead>tr>th]:border-b-0 [&_.ant-table-thead>tr>th]:bg-surface [&_.ant-table-thead>tr>th]:py-0',
   '[&_.ant-table-thead>tr>th]:text-[0.6875rem] [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:tracking-[0.06em] [&_.ant-table-thead>tr>th]:whitespace-nowrap [&_.ant-table-thead>tr>th]:text-muted [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-thead>tr>th]:shadow-[inset_0_-1px_0_var(--border)]',
-  // Satırlar: çizgisiz, aralarında 2px boşluk; üzerine gelince yuvarlak köşeli zemin
+  // Satırlar: çizgisiz, aralarında 2px boşluk; üzerine gelince yuvarlak köşeli zemin. Hücreler
+  // içeriği kadar (başlık satırı hücresi `GRID_LEAD` kalan genişliği alır: sayılar ve tarihler
+  // sayfaya yayılmaz)
   '[&_table]:border-separate [&_table]:[border-spacing:0_2px] [&_.ant-table]:bg-transparent',
-  '[&_.ant-table-tbody>tr>td]:border-b-0 [&_.ant-table-tbody>tr>td]:py-1.5 [&_.ant-table-tbody>tr>td]:h-12',
+  '[&_.ant-table-tbody>tr>td]:border-b-0 [&_.ant-table-tbody>tr>td]:py-1 [&_.ant-table-tbody>tr>td]:h-11 [&_.ant-table-tbody>tr>td]:text-[0.8125rem]',
   '[&_.ant-table-tbody>tr>td:first-child]:rounded-s-xl [&_.ant-table-tbody>tr>td:last-child]:rounded-e-xl',
 )
 
@@ -53,7 +55,7 @@ export const GRID_ROW = 'cursor-pointer'
 
 /** Tarih grubu satırı: satırların üstünde küçük başlık, üzerine gelince zemin yok. */
 export const GRID_GROUP_ROW =
-  'cursor-default [&>td]:h-9! [&>td]:bg-transparent! [&>td]:pt-3! [&>td]:pb-1!'
+  'cursor-default [&>td]:h-9! [&>td]:bg-transparent! [&>td]:pt-3.5! [&>td]:pb-1! [&:first-child>td]:pt-1.5!'
 
 /** Seçili satır (`rowClassName`; ör. düzenleme kartında açık kayıt): birincil rengin yumuşak tonu. */
 export const GRID_ROW_SELECTED = '[&>td]:bg-accent-soft! [&:hover>td]:bg-accent-soft!'
@@ -61,9 +63,12 @@ export const GRID_ROW_SELECTED = '[&>td]:bg-accent-soft! [&:hover>td]:bg-accent-
 /** Etkileşimsiz satır (ör. aç / kapa anahtarı olan listeler): üzerine gelince daha açık zemin. */
 export const GRID_ROW_STATIC = 'cursor-default [&:hover>td]:bg-surface-secondary/60!'
 
-/** Satır başlığı hücresi (konu, ad) ve diğer hücreler. */
-export const GRID_LEAD = 'min-w-48 font-medium text-foreground'
-export const GRID_CELL = 'whitespace-nowrap text-foreground/70'
+/**
+ * Satır başlığı hücresi (konu, ad): kalan genişliği alır (`w-full`; öbür sütunlar içerikleri
+ * kadar), ve diğer hücreler: tek satır, sayılar hizalı.
+ */
+export const GRID_LEAD = 'w-full min-w-48 font-medium text-foreground'
+export const GRID_CELL = 'whitespace-nowrap text-foreground/80 tabular-nums'
 
 /* --- Görünüm seçimi ---------------------------------------------------------------------------- */
 
@@ -261,6 +266,7 @@ export function GridFooter({
   sizes,
   onPage,
   onPageSize,
+  className,
 }: {
   page: number
   pageCount?: number
@@ -273,9 +279,10 @@ export function GridFooter({
   sizes: readonly number[]
   onPage: (page: number) => void
   onPageSize: (size: number) => void
+  className?: string
 }) {
   return (
-    <Flex wrap align="center" justify="space-between" gap={12} className="shrink-0">
+    <Flex wrap align="center" justify="space-between" gap={12} className={cn('shrink-0', className)}>
       <Flex align="center" gap={12}>
         <Select
           aria-label="Sayfa boyutu"

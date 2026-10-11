@@ -189,7 +189,7 @@ function DayPicker({
 }) {
   const id = useId()
   return (
-    <Form.Item label={label} htmlFor={id} className={fill ? 'w-full' : 'w-44'}>
+    <Form.Item label={label} htmlFor={id} className={fill ? 'mb-0 w-full min-w-0' : 'w-44'}>
       <DatePicker
         id={id}
         value={value && dayjs(value)}
@@ -204,7 +204,7 @@ function DayPicker({
   )
 }
 
-/** Başlangıç Tarihi / Bitiş Tarihi, yan yana (dar kartta alt alta); gün bazında. */
+/** Başlangıç Tarihi / Bitiş Tarihi, yan yana (dar kartta iki eşit sütun); gün bazında. */
 export function RangeFields({
   value,
   onChange,
@@ -212,12 +212,17 @@ export function RangeFields({
 }: {
   value: DateRange
   onChange: (next: DateRange) => void
-  /** Dar kartta: alanlar alt alta, tam genişlik. */
+  /** Dar kartta (süreç listesi): iki eşit sütun, tam genişlik. */
   stacked?: boolean
 }) {
   return (
     <Form layout="vertical" component={false}>
-      <Flex vertical={stacked} wrap={!stacked} align={stacked ? undefined : 'end'} gap={8}>
+      <Flex
+        wrap={!stacked}
+        align={stacked ? undefined : 'end'}
+        gap={8}
+        className={stacked ? 'grid grid-cols-2' : undefined}
+      >
         <DayPicker
           label={RANGE_LABELS.start}
           value={value.start}
