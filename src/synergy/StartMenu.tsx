@@ -163,7 +163,8 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
 export const CHROME_SPACE: Record<ChromePlace, string> = {
   left: 'sm:ps-[76px] sm:pt-3',
   top: 'sm:ps-3 sm:pt-[68px]',
-  compact: 'sm:ps-3 sm:pt-3',
+  // Kompakt: üstte yarısı (6px); alt pay da aynı (`Workspace` `tall`, kabuğun `pb`)
+  compact: 'sm:ps-3 sm:pt-1.5',
 }
 
 /**

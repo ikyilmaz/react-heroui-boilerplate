@@ -345,7 +345,7 @@ export function Workspace({
   lead?: ReactNode
   start?: ReactNode
   end?: ReactNode
-  /** Şerit satırı 1.3 kat yüksek (kompakt gezinme: kabuğun tek satırı; deneme). */
+  /** Şerit satırı 1.3 kat yüksek, alt pay üst payla aynı (kompakt gezinme: kabuğun tek satırı; deneme). */
   tall?: boolean
 }) {
   const tab = activeTab(st)
@@ -536,7 +536,14 @@ export function Workspace({
     const measure = () => setTop((outer.current?.getBoundingClientRect().top ?? 0) + window.scrollY)
     measure()
     window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+    // Kabın üst payı sonradan değişince (tema yoğunluğu `--spacing`'i ölçekler, gezinme konumu) yeniden:
+    // payın değişmesi ana alanın içerik kutusunu değiştirir
+    const ro = new ResizeObserver(measure)
+    if (outer.current?.parentElement) ro.observe(outer.current.parentElement)
+    return () => {
+      window.removeEventListener('resize', measure)
+      ro.disconnect()
+    }
   }, [])
 
   // Düzen değişimi çizimde yakalanır (görünen ekranlar, pay). Hem önce hem şimdi görünen bölme bu
@@ -615,8 +622,10 @@ export function Workspace({
     // Yapı sabit: sekmeler gelip gidince Başlangıç yeniden takılmaz
     <Flex
       ref={outer}
-      // Ekranın kalanı: alt pay (1.5rem)
-      style={{ height: `calc(100dvh - ${top}px - 1.5rem)` }}
+      // Ekranın kalanı: alt pay (1.5rem; kompaktta üst payla aynı, 1.5 boşluk birimi)
+      style={{
+        height: `calc(100dvh - ${top}px - ${tall ? 'var(--spacing) * 1.5' : '1.5rem'})`,
+      }}
       className={cn('relative flex flex-col', TAB_BG)}
     >
       {/* Şerit: hep görünür (yalnız Başlangıç açıkken de) */}

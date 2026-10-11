@@ -1270,7 +1270,8 @@ function Frame({
               role="main"
               className={cn(
                 // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride)
-                'min-w-0 flex-1 gap-3 px-4 pb-6 sm:pe-3',
+                'min-w-0 flex-1 gap-3 px-4 sm:pe-3',
+                wide && place === 'compact' ? 'pb-1.5' : 'pb-6',
                 // Kabuk içeriğin üstünde yüzer; yanına düşen alan kadar boşluk
                 wide && CHROME_SPACE[place],
                 // Yapışkan öğeler (ör. talep şeridi) kabuğun altına yapışsın
