@@ -801,34 +801,42 @@ const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; 
 })
 
 /**
- * Sekme şeridinin sağındaki eylemler ve kullanıcı (her iki gezinme konumunda): sohbet / duyurular,
- * tema ayarları, açık / koyu, kullanıcı. Kompakt (32px); ipuçları ve paneller aşağı açılır.
+ * Sekme şeridinin sağındaki eylemler ve kullanıcı (her gezinme konumunda): sohbet / duyurular,
+ * tema ayarları, açık / koyu, kullanıcı. 32px; kompakt gezinmede (`large`, satır 1.3 kat yüksek)
+ * 40px. İpuçları ve paneller aşağı açılır.
  */
 const ShellActions = memo(function ShellActions({
   panel,
   onPanel,
   onTheme,
+  large = false,
 }: {
   panel: 'news' | 'chat' | null
   onPanel: (p: 'news' | 'chat' | null) => void
   onTheme: () => void
+  /** Kompakt gezinme: 40px düğmeler. */
+  large?: boolean
 }) {
   const dark = useIsDark()
   const themeLabel = dark ? 'Açık tema' : 'Koyu tema'
-  const button = 'size-[32px] min-w-[32px] text-muted hover:text-foreground'
+  const icon = large ? 20 : 18
+  const button = cn(
+    'text-muted hover:text-foreground',
+    large ? 'size-10' : 'size-[32px] min-w-[32px]',
+  )
   return (
     <Flex align="center" className="shrink-0 gap-0.5 ps-2 pe-1">
       <PanelButton
         label="Sohbet"
         icon={MessageCircle}
-        compact
+        compact={!large}
         isOpen={panel === 'chat'}
         onOpenChange={(o) => onPanel(o ? 'chat' : null)}
       />
       <PanelButton
         label="Duyurular"
         icon={Megaphone}
-        compact
+        compact={!large}
         isOpen={panel === 'news'}
         onOpenChange={(o) => onPanel(o ? 'news' : null)}
       />
@@ -837,7 +845,7 @@ const ShellActions = memo(function ShellActions({
           type="text"
           aria-label="Tema ayarları"
           onClick={onTheme}
-          icon={<Palette {...IC} size={18} />}
+          icon={<Palette {...IC} size={icon} />}
           className={button}
         />
       </Tip>
@@ -846,12 +854,12 @@ const ShellActions = memo(function ShellActions({
           type="text"
           aria-label={themeLabel}
           onClick={() => setColorMode(dark ? 'light' : 'dark')}
-          icon={dark ? <Sun {...IC} size={18} /> : <Moon {...IC} size={18} />}
+          icon={dark ? <Sun {...IC} size={icon} /> : <Moon {...IC} size={icon} />}
           className={button}
         />
       </Tip>
       <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement="bottom">
-        <UserAvatar size={32} className="ms-1 text-[0.8125rem]" />
+        <UserAvatar size={large ? 40 : 32} className={cn('ms-1', large ? 'text-sm' : 'text-[0.8125rem]')} />
       </Tip>
     </Flex>
   )
@@ -1132,8 +1140,15 @@ function Frame({
     [place, startActions],
   )
   const stripEnd = useMemo(
-    () => <ShellActions panel={panel} onPanel={setPanel} onTheme={openTheme} />,
-    [panel, openTheme],
+    () => (
+      <ShellActions
+        panel={panel}
+        onPanel={setPanel}
+        onTheme={openTheme}
+        large={place === 'compact'}
+      />
+    ),
+    [panel, openTheme, place],
   )
 
   return (
@@ -1177,6 +1192,8 @@ function Frame({
                 lead={wide ? stripLead : undefined}
                 start={wide ? stripStart : undefined}
                 end={wide ? stripEnd : undefined}
+                // Kompakt: kabuğun tek satırı 1.3 kat yüksek (deneme)
+                tall={wide && place === 'compact'}
               />
             </Flex>
 

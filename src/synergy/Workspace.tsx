@@ -322,6 +322,12 @@ const ScreenView = memo(function ScreenView({ screen }: { screen: Screen }) {
 })
 
 /**
+ * Şerit satırının boyu (`--tab-h`; satır, geri / ileri ve şerit aynı değeri yazar: `STRIP_VARS`
+ * 2.5rem yazar, `tall` onu ezer). `tall`: 1.3 kat (3.25rem; kompakt gezinme).
+ */
+const ROW_H = { base: '[--tab-h:2.5rem]', tall: '[--tab-h:3.25rem]' } as const
+
+/**
  * Şeridin solunda geri / ileri, sağında kabuğun eylemleri (`start` / `end`; kabuk verir, sabit
  * öğeler). Varken şerit soldan yalnızca köşeye yetecek kadar içeri girer.
  */
@@ -331,6 +337,7 @@ export function Workspace({
   lead,
   start,
   end,
+  tall = false,
 }: {
   state: WorkspaceState
   act: Act
@@ -338,6 +345,8 @@ export function Workspace({
   lead?: ReactNode
   start?: ReactNode
   end?: ReactNode
+  /** Şerit satırı 1.3 kat yüksek (kompakt gezinme: kabuğun tek satırı; deneme). */
+  tall?: boolean
 }) {
   const tab = activeTab(st)
   // Yan yana yalnızca geniş ekranda; daralınca bölünmüş sekmenin odaktaki ekranı tek başına kalır
@@ -611,7 +620,7 @@ export function Workspace({
       className={cn('relative flex flex-col', TAB_BG)}
     >
       {/* Şerit: hep görünür (yalnız Başlangıç açıkken de) */}
-      <Flex ref={strip} className="flex shrink-0 items-end">
+      <Flex ref={strip} className={cn('flex shrink-0 items-end', ROW_H[tall ? 'tall' : 'base'])}>
         {/*
          * Eylemler sekmenin ortasından 4px yukarıda (`pb-2`). Geri / ileri üzerine gelince çıkan
          * hap gibi: kabın çizgisinden ve Başlangıç sekmesinden `--tab-gap` uzakta, üstü seçili
@@ -619,14 +628,15 @@ export function Workspace({
          * aradaki kanal her yerde eşit. Şeridin kavis payının üstüne biner (eksi kenar boşluğu;
          * kabın köşesine yetmezse o kadar ileride), üstte (`z-10`), tıklamayı şerit almaz
          */}
-        {lead && <Flex className="h-[2.5rem] shrink-0 items-center pe-2 pb-1">{lead}</Flex>}
+        {lead && <Flex className="h-(--tab-h) shrink-0 items-center pe-2 pb-1">{lead}</Flex>}
         {start && (
           <Flex
             className={cn(
               'relative z-10 h-(--tab-h) shrink-0 items-end pb-(--tab-gap)',
-              '[--hb:calc(var(--tab-h)-var(--tab-gap)-4px)] [--hw:calc(var(--hb)*2+4px)]',
+              '[--hb:min(33px,calc(var(--tab-h)-var(--tab-gap)-4px))] [--hw:calc(var(--hb)*2+4px)]',
               'me-[max(calc(var(--tab-gap)-var(--tab-f)),calc(var(--radius)*3-var(--hw)))]',
               ROUND_STRIP_VARS,
+              tall && ROW_H.tall,
             )}
           >
             {start}
@@ -646,7 +656,7 @@ export function Workspace({
           onDelete={actions.remove}
           // Squircle temada da yuvarlak köşeler (geri / ileri de: `ROUND_STRIP_VARS`)
           round
-          className="flex-1"
+          className={cn('flex-1', tall && ROW_H.tall)}
         >
           {units.map((u, i) => (
             <UnitView
@@ -665,7 +675,7 @@ export function Workspace({
             />
           ))}
         </TabStrip>
-        {end && <Flex className="h-[2.5rem] shrink-0 items-center pb-2">{end}</Flex>}
+        {end && <Flex className="h-(--tab-h) shrink-0 items-center pb-2">{end}</Flex>}
       </Flex>
 
       {/*

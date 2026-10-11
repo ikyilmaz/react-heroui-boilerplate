@@ -113,9 +113,9 @@ export const MINIMAL_MOTION = {
   counting: 'off',
 } as const satisfies Partial<ThemeSettings>
 
-/** "Açık" düzeyi: az düzeyinin yönettiği hareketler açık. */
+/** "Açık" düzeyi: az düzeyinin yönettiği hareketler açık (sekme içeriği varsayılan olarak solar). */
 export const FULL_MOTION = {
-  tabContent: 'full',
+  tabContent: 'fade',
   movement: 'on',
   stripMotion: 'on',
   counting: 'on',
@@ -561,7 +561,7 @@ const NOTHING = {
   nav: '',
   motion: 'full',
   motionSpeed: 1,
-  tabContent: 'full',
+  tabContent: 'fade',
   loading: 'spinner',
   movement: 'on',
   stripMotion: 'on',
@@ -686,7 +686,7 @@ export const LookContext = createContext<Look>({
   speed: 1,
   anim: {
     off: false,
-    content: 'full',
+    content: 'fade',
     loading: 'spinner',
     movement: true,
     strip: true,

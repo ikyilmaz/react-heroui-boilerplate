@@ -147,11 +147,11 @@ const BAR_PANEL =
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
   left: { ...COLUMN, panel: cn('start-3', SIDE_PANEL) },
   top: { ...BAR, panel: cn('top-3', BAR_PANEL) },
-  // Kompakt: sekme satırındaki 32px düğmeden sol üstte açılan kutu
+  // Kompakt: sekme satırındaki 40px düğmeden (satır 1.3 kat yüksek) sol üstte açılan kutu
   compact: {
     shell: '',
-    start: 'size-[32px] min-w-[32px]',
-    icon: 18,
+    start: 'size-[40px] min-w-[40px]',
+    icon: 20,
     panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
   },
 }
@@ -278,7 +278,7 @@ export function StartDock({
             layoutId="start-menu"
             layoutDependency={layoutKey}
             transition={morph}
-            style={{ borderRadius: 16 }}
+            style={{ borderRadius: 20 }}
             className="flex shrink-0"
           >
             {start}
