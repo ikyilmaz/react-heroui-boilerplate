@@ -52,7 +52,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`;
   with no stored choice the mode is light, not the system's).
   The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
-  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok), Gezinme Solda — the theme file's
+  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok), Gezinme Kompakt — the theme file's
   `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
   positions and four presets in `theme.ts`): presets (Atölye, Kuzey Işığı, Şafak, Lacivert; each sets
   the look keys only (texture included), never nav / corner shape / motion; cards with a live preview drawn by writing
@@ -136,7 +136,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   the phone drawer or the panels). Chrome as separate
   floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte / Kompakt — Kompakt: no logo and no dock, only the start
   button at the head of the tab row (`Workspace` `lead`, before back / forward; the start menu morphs
-  from that button, `StartDock place="compact"`, and opens top left), content runs to the screen's
+  from that button, `StartDock place="compact"`, and opens top left, content runs to the screen's
   left edge (`CHROME_SPACE.compact`); Sağda / Altta
   were removed, stored values move to Solda / Üstte; tooltips and the start menu open toward the
   content; `CHROME_TIP`, `PLACE`). In both positions back / forward (`HistoryButtons`, two 32px buttons, 68px) sit in

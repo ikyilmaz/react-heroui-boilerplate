@@ -17,7 +17,7 @@ export const APP_THEME: ThemeKit = {
     cardStyle: 'filled',
     shadow: 'none',
     border: 1,
-    nav: 'default',
+    nav: 'compact',
     motion: 'full',
     motionSpeed: 1,
     tabContent: 'full',

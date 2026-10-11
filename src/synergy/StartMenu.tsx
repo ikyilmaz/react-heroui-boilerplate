@@ -151,7 +151,7 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
   compact: {
     shell: '',
     start: 'size-[32px] min-w-[32px]',
-    icon: 16,
+    icon: 18,
     panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
   },
 }
