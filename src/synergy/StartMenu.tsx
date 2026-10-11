@@ -7,16 +7,18 @@ import {
   ChevronRight,
   FolderOpen,
   LayoutDashboard,
+  LayoutGrid,
   ListOrdered,
   Moon,
   Palette,
   Search,
   Star,
   Sun,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react'
-import { Button, Flex, Typography } from 'antd'
-import { togglePin, useBoxCounts, useMenuApps } from '@/synergy/shared/decisions'
+import { Button, Card, Flex, Typography } from 'antd'
+import { togglePin, useBoxCounts, useBoxRequests, useMenuApps } from '@/synergy/shared/decisions'
 import {
   MENU_LABELS,
   MENU_TREE,
@@ -33,20 +35,26 @@ import {
   CURRENT_USER,
   HISTORY_GROUP_LABEL,
   findApp,
+  findBox,
   greetingOf,
   historyBoxes,
   initials,
   mainBoxes,
-  pendingSentence,
+  processCaption,
+  processGroups,
+  type BoxId,
   type MenuApp,
 } from '@/synergy/shared/workflowData'
 import { Highlight, SORT_KEY } from '@/synergy/AllApps'
 import { useTransition } from '@/synergy/motion'
-import { Count } from '@/synergy/ant/motion'
-import { EmptyNote, SearchField } from '@/synergy/ant/parts'
-import { CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { EmptyNote, SearchField, useBand } from '@/synergy/ant/parts'
+import { CARD, CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
-import { boxLink, k, useOpenApp } from '@/synergy/paths'
+import { boxLink, k, processLink, useOpenApp } from '@/synergy/paths'
+import { SHEET } from '@/synergy/tabs/shape'
+import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
+import { Count } from '@/synergy/ant/motion'
+import { START_LABELS as START_PAGE, defaultSortOf } from '@/synergy/shared/startLabels'
 
 /*
  * Yüzen raf ve başlat kutusu (solda, dikeyde ortada; ya da üstte).
@@ -143,14 +151,25 @@ const BAR = {
   start: 'size-[36px] min-w-[36px]',
   icon: 16,
 }
-/** Yandaki kutu: dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile), ekranın %85'i boyunda. */
-const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]'
 /**
- * Çubuktan açılan kutu: ortadan (`mx-auto`), ekranın %55'i genişliğinde (İş Akış Yönetimi bölümündeki
- * widget'a yer; en az 44rem).
+ * Yandaki kutu: dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
+ * ekranın %85'i boyunda. Genişlik stilde (`PANEL_WIDTH`, bölüme göre animasyonla değişir); tavan
+ * ekran.
  */
+const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] max-w-[calc(100vw-1.5rem)]'
+/** Çubuktan açılan kutu: ortadan (`mx-auto`), genişlik ekrana oranla (en az 44rem). */
 const BAR_PANEL =
-  'inset-x-0 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]'
+  'inset-x-0 mx-auto h-[clamp(30rem,70dvh,42rem)] min-w-[44rem] max-w-[calc(100vw-1.5rem)]'
+
+/**
+ * Kutunun genişliği: dar (varsayılan) ve geniş (İş Akış Yönetimi bölümü: beş kutu karosu yan yana).
+ * Aynı birimde ki Motion aralarında kaydırsın.
+ */
+const PANEL_WIDTH: Record<ChromePlace, { narrow: string; wide: string }> = {
+  left: { narrow: '44rem', wide: '58rem' },
+  compact: { narrow: '44rem', wide: '58rem' },
+  top: { narrow: '55vw', wide: '72vw' },
+}
 
 /** Rafın içi, başlat düğmesi ve açılan kutunun konumu (kutu rafın olduğu kenardan açılır). */
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
@@ -161,7 +180,7 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
     shell: '',
     start: 'size-[40px] min-w-[40px]',
     icon: 20,
-    panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
+    panel: 'start-3 top-3 h-[85dvh] max-w-[calc(100vw-1.5rem)]',
   },
 }
 
@@ -213,6 +232,8 @@ export function StartDock({
 }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
+  // Kutu İş Akış Yönetimi bölümündeyken genişler (`PANEL_WIDTH`; içerik bildirir)
+  const [wide, setWide] = useState(false)
   // Her açılış / kapanışta içerik yeniden kurulur: hızlı aç-kapa'da framer henüz çıkmamış rafı / kutuyu
   // geri getirir, içerik de gizli (şeffaf) hâlde kalıp kabuk boş görünüyordu
   const cycle = useRef(0)
@@ -337,6 +358,8 @@ export function StartDock({
             <MotionFlex
               layoutId="start-menu"
               transition={morph}
+              // Genişlik bölüme göre kayar (aynı yayla); ilk çizimde animasyonsuz (`initial` yok)
+              animate={{ width: wide ? PANEL_WIDTH[place].wide : PANEL_WIDTH[place].narrow }}
               style={radius}
               role="dialog"
               aria-label={START_LABELS.start}
@@ -367,7 +390,7 @@ export function StartDock({
                 {...content}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <StartPanel actions={actions} onClose={() => setOpen(false)} />
+                <StartPanel actions={actions} onClose={() => setOpen(false)} onWide={setWide} />
               </MotionFlex>
             </MotionFlex>
           </Flex>
@@ -390,9 +413,11 @@ export function StartDock({
 /* --- Başlat kutusu ----------------------------------------------------------------------------- */
 
 /*
- * Kutunun içeriği (uygulamanın kökü). Tek kayan sütun, üstten alta "içgörüden eyleme":
+ * Kutunun içeriği (uygulamanın kökü). Üstte arama; altında solda uygulamanın ortak sekme şeridi
+ * dikey (`TabStrip orientation="vertical"`, yaprak sağdaki bölmeye kavislerle kaynaşır), sağda
+ * seçili bölüm. Bölümler:
  *   1. Arama (odakta; yazınca her şey tek bir sonuç listesine döner; ↑ ↓ ile sanal vurgu, Enter açar)
- *   2. Tüm uygulamalar: tek sütun ağaç (klasörler açılır / kapanır, kılavuz çizgisi); sıra
+ *   2. Uygulamalar: sade tek sütun ağaç (klasörler açılır / kapanır, kılavuz çizgisi); sıra
  *      numarası ↔ alfabetik (tercih tarayıcıda, tüm uygulamalar paneliyle ortak); kutunun yarısı,
  *      kendi içinde kayar; altında çizgi
  *   3. Selamlama ve bekleyen onay cümlesi; altında iş akışı kategorileri sayılarıyla (Başlangıç'taki
@@ -405,39 +430,43 @@ export function StartDock({
  * beklemez. Tek renk: ikon kareleri yumuşak birincil ton, üzerine gelince / seçiliyken dolu.
  */
 
+/** Kutunun bölümleri: soldaki dikey şeridin sekmeleri. */
+type Section = 'apps' | 'work' | 'shelf'
+const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
+  { id: 'apps', label: MENU_LABELS.apps, icon: LayoutGrid },
+  { id: 'work', label: 'İş Akış Yönetimi', icon: Workflow },
+  { id: 'shelf', label: APPS_LABELS.favorites, icon: Star },
+]
+
+/**
+ * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: birincil rengin yüzeye karışmış açık tonu,
+ * çalışma alanının kabından biraz daha açık (`--tab-bg`; `SHEET` bunu okur).
+ */
+const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_7%,var(--surface))]'
+
 const START_UI = {
-  allApps: MENU_LABELS.allApps,
+  allApps: MENU_LABELS.apps, // "Uygulamalar" (101882): sekme ve bölüm başlığı
   pin: APPS_LABELS.pin,
   unpin: APPS_LABELS.unpin,
   results: 'Arama sonuçları',
 } as const
 
-/** Bölüm: 13px orta kalın başlık, sağda isteğe bağlı ek; açılışta sırayla belirir. */
+/** Bölüm: 13px orta kalın başlık, sağda isteğe bağlı ek. */
 function Section({
   title,
   extra,
-  index = 0,
   children,
   className,
 }: {
   title: ReactNode
   extra?: ReactNode
-  /** Belirme sırası (gecikme = sıra × 50ms). */
-  index?: number
   children: ReactNode
   className?: string
 }) {
   return (
-    <Flex
-      role="group"
-      style={{ animationDelay: `calc(${index * 50}ms * var(--motion-time, 1))` }}
-      className={cn(
-        'flex flex-col gap-2.5 animate-[rise_calc(0.32s*var(--motion-time,1))_ease-out_both]',
-        className,
-      )}
-    >
+    <Flex role="group" className={cn('flex flex-col gap-2.5', className)}>
       <Flex align="center" justify="space-between" gap={8} className="min-h-7 px-1">
-        <Text className="text-[0.8125rem] font-medium text-muted">{title}</Text>
+        <Text className="text-sm font-medium text-muted">{title}</Text>
         {extra}
       </Flex>
       {children}
@@ -464,15 +493,15 @@ function IconBox({
       aria-hidden
       className={cn(
         'grid shrink-0 place-items-center rounded-xl transition-colors',
-        size === 'md' ? 'size-12' : 'size-8 rounded-lg',
+        size === 'md' ? 'size-14' : 'size-9 rounded-lg',
         on ? 'bg-accent text-accent-foreground' : 'bg-accent-soft text-accent-soft-foreground',
         className,
       )}
     >
       {Icon ? (
-        <Icon {...IC} size={size === 'md' ? 22 : 16} />
+        <Icon {...IC} size={size === 'md' ? 26 : 18} />
       ) : (
-        <Text className={cn('font-semibold text-current', size === 'md' ? 'text-sm' : 'text-[0.6875rem]')}>
+        <Text className={cn('font-semibold text-current', size === 'md' ? 'text-base' : 'text-xs')}>
           {initials(label)}
         </Text>
       )}
@@ -484,15 +513,7 @@ function IconBox({
  * Uygulama karosu: ikon karesi, altında iki satıra kadar ad. Üzerine gelince kare dolar. Sağ üstte
  * yıldız (favorilere ekle / kaldır; düğme karonun kardeşi, iç içe düğme olmaz).
  */
-function AppTile({
-  app,
-  active,
-  onPress,
-}: {
-  app: MenuApp
-  active: boolean
-  onPress: () => void
-}) {
+function AppTile({ app, active, onPress }: { app: MenuApp; active: boolean; onPress: () => void }) {
   const pinLabel = app.pinned ? START_UI.unpin : START_UI.pin
   return (
     <Flex className="group/tile relative flex">
@@ -509,7 +530,7 @@ function AppTile({
           on={active}
           className="group-hover/tile:bg-accent group-hover/tile:text-accent-foreground"
         />
-        <Text className="line-clamp-2 w-full text-center text-xs leading-4 text-current">
+        <Text className="line-clamp-2 w-full text-center text-sm leading-[1.3] text-current">
           {app.caption}
         </Text>
       </Button>
@@ -520,13 +541,7 @@ function AppTile({
           aria-label={`${pinLabel}: ${app.caption}`}
           aria-pressed={app.pinned}
           onClick={() => togglePin(app.id)}
-          icon={
-            <Star
-              {...IC}
-              size={13}
-              className={cn(app.pinned && 'fill-current')}
-            />
-          }
+          icon={<Star {...IC} size={15} className={cn(app.pinned && 'fill-current')} />}
           className={cn(
             'absolute top-1 end-1 size-6 min-w-6 rounded-full p-0 transition-opacity',
             app.pinned
@@ -549,6 +564,7 @@ function AppRow({
   highlighted = false,
   onPress,
   rowRef,
+  plain = false,
 }: {
   icon?: LucideIcon
   label: string
@@ -559,7 +575,10 @@ function AppRow({
   highlighted?: boolean
   onPress: () => void
   rowRef?: (el: HTMLElement | null) => void
+  /** Sade: ikon karesiz (ağaç). */
+  plain?: boolean
 }) {
+  const Icon = icon
   return (
     <Button
       ref={rowRef}
@@ -568,18 +587,43 @@ function AppRow({
       aria-current={active ? 'page' : undefined}
       data-highlighted={highlighted || undefined}
       className={cn(
-        'group/row h-11 w-full justify-start gap-3 rounded-xl! px-2 text-start font-normal text-foreground hover:bg-surface-secondary!',
+        'group/row w-full justify-start gap-3 rounded-xl! px-2 text-start font-normal text-foreground hover:bg-surface-secondary!',
+        plain ? 'h-10' : 'h-12',
         highlighted && 'bg-surface-secondary!',
       )}
     >
-      <IconBox
-        icon={icon}
-        label={label}
-        size="sm"
-        on={active}
-        className="group-hover/row:bg-accent group-hover/row:text-accent-foreground"
-      />
-      <Text className="min-w-0 flex-1 text-sm text-current truncate">
+      {plain ? (
+        Icon ? (
+          <Icon
+            {...IC}
+            size={18}
+            className={cn('shrink-0', active ? 'text-accent' : 'text-muted')}
+          />
+        ) : (
+          <Text
+            className={cn(
+              'w-[18px] shrink-0 text-center text-[0.625rem] font-semibold',
+              active ? 'text-accent' : 'text-muted',
+            )}
+          >
+            {initials(label)}
+          </Text>
+        )
+      ) : (
+        <IconBox
+          icon={icon}
+          label={label}
+          size="sm"
+          on={active}
+          className="group-hover/row:bg-accent group-hover/row:text-accent-foreground"
+        />
+      )}
+      <Text
+        className={cn(
+          'min-w-0 flex-1 text-base truncate',
+          plain && active ? 'text-accent' : 'text-current',
+        )}
+      >
         <Highlight text={label} query={query} />
       </Text>
       {hint}
@@ -593,7 +637,7 @@ function CountBadge({ value, on = false }: { value: number | undefined; on?: boo
   return (
     <Text
       className={cn(
-        'h-5 min-w-5 rounded-full px-1.5 text-center text-[0.6875rem] leading-5 font-semibold tabular-nums',
+        'h-6 min-w-6 rounded-full px-2 text-center text-xs leading-6 font-semibold tabular-nums',
         on ? 'bg-accent-foreground text-accent' : 'bg-surface-secondary text-foreground',
       )}
     >
@@ -615,9 +659,7 @@ interface Hit {
 
 /** Ağacın yaprakları (klasör adıyla); klasörün kendisi eşleşirse bütün içeriği. */
 function leavesOf(nodes: MenuNode[], folder?: string): { n: MenuNode; folder?: string }[] {
-  return nodes.flatMap((n) =>
-    n.children ? leavesOf(n.children, n.caption) : [{ n, folder }],
-  )
+  return nodes.flatMap((n) => (n.children ? leavesOf(n.children, n.caption) : [{ n, folder }]))
 }
 
 /** Adres yaprağın altında mı (seçili uygulama). */
@@ -650,17 +692,16 @@ function TreeFolder({
       <Button
         type="text"
         onClick={onToggle}
-        className="group/folder h-11 w-full justify-start gap-3 rounded-xl! px-2 text-start font-normal text-foreground hover:bg-surface-secondary!"
+        className="group/folder h-10 w-full justify-start gap-3 rounded-xl! px-2 text-start font-normal text-foreground hover:bg-surface-secondary!"
       >
-        <IconBox
-          icon={FolderIcon}
-          label={node.caption}
-          size="sm"
-          on={holds}
-          className={cn(!holds && 'bg-surface-secondary text-muted', 'group-hover/folder:bg-accent group-hover/folder:text-accent-foreground')}
+        <FolderIcon
+          {...IC}
+          size={18}
+          className={cn('shrink-0', holds ? 'text-accent' : 'text-muted')}
         />
-        <Text className="min-w-0 flex-1 text-sm font-medium text-current truncate">{node.caption}</Text>
-        <Text className="text-xs text-muted tabular-nums">{kids.length}</Text>
+        <Text className="min-w-0 flex-1 text-base font-medium text-current truncate">
+          {node.caption}
+        </Text>
         <ChevronRight
           {...IC}
           size={16}
@@ -672,17 +713,26 @@ function TreeFolder({
         />
       </Button>
       {open && (
-        // Kılavuz çizgisi klasör ikonunun ortasından iner; satırlar sırayla belirir
-        <Flex role="group" aria-label={node.caption} className="ms-[23px] flex flex-col gap-0.5 border-s border-border ps-2">
-          {kids.map((n, i) => (
+        // Kılavuz çizgisi klasör ikonunun ortasından iner (ikon 18px, satır payı 8px)
+        <Flex
+          role="group"
+          aria-label={node.caption}
+          className="ms-[17px] flex flex-col gap-0.5 border-s border-border ps-[11px]"
+        >
+          {kids.map((n) => (
             <Flex
               key={n.id}
               role="treeitem"
               aria-selected={under(place, n.href) || undefined}
-              style={{ animationDelay: `calc(${i * 30}ms * var(--motion-time, 1))` }}
-              className="flex animate-[rise_calc(0.24s*var(--motion-time,1))_ease-out_both]"
+              className="flex"
             >
-              <AppRow icon={n.icon} label={n.caption} active={under(place, n.href)} onPress={() => onPick(n)} />
+              <AppRow
+                plain
+                icon={n.icon}
+                label={n.caption}
+                active={under(place, n.href)}
+                onPress={() => onPick(n)}
+              />
             </Flex>
           ))}
         </Flex>
@@ -691,7 +741,119 @@ function TreeFolder({
   )
 }
 
-function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () => void }) {
+/** Başlat kutusunun İş Akış Yönetimi bölümü (yukarıda). `onGo`: adrese gider ve kutuyu kapatır. */
+function WorkPane({ onGo }: { onGo: (href: string) => void }) {
+  const counts = useBoxCounts()
+  const [boxId, setBoxId] = useState<BoxId>('bekleyen')
+  const box = findBox(boxId)!
+  const requests = useBoxRequests(boxId)
+  const groups = useMemo(
+    () => processGroups(box, requests, { sort: defaultSortOf(boxId) }),
+    [box, requests, boxId],
+  )
+  const isDraft = boxId === 'taslaklar'
+  const countLabel = isDraft ? START_PAGE.draftCount : START_PAGE.requestCount
+  return (
+    <Flex className="flex h-full min-h-0 flex-col gap-4">
+      {/* Kutular: sayı karoları; seçili olan dolu birincil renk */}
+      <Flex
+        role="tablist"
+        aria-label={SECTIONS[1]!.label}
+        className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-2"
+      >
+        {mainBoxes.map((b) => {
+          const Icon = b.icon
+          const n = counts.get(b.id) ?? 0
+          const on = b.id === boxId
+          return (
+            <Button
+              key={b.id}
+              type="text"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setBoxId(b.id)}
+              aria-label={`${b.label}, ${n}`}
+              className={cn(
+                'h-auto flex-col items-start gap-2.5 rounded-2xl! p-3 text-start font-normal whitespace-normal',
+                on
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90! hover:text-accent-foreground!'
+                  : 'bg-surface-secondary/70 text-foreground hover:bg-surface-secondary!',
+              )}
+            >
+              <Flex align="center" justify="space-between" className="w-full">
+                <Icon {...IC} size={20} className={cn(!on && 'text-muted')} />
+                <Text className="font-display text-2xl font-bold text-current tabular-nums">
+                  <Count value={n} />
+                </Text>
+              </Flex>
+              <Text className="line-clamp-2 w-full text-sm leading-[1.3] text-current">
+                {b.label}
+              </Text>
+            </Button>
+          )
+        })}
+      </Flex>
+
+      {/* Seçili kutunun süreçleri: başlık satırı (ad, Tümünü Göster, sayı sütunu), kayan liste */}
+      <Flex role="tabpanel" aria-label={box.label} className="flex min-h-0 flex-1 flex-col gap-1">
+        <Flex align="center" gap={8} className="shrink-0 px-2">
+          <Text className="text-sm font-medium text-muted">{START_PAGE.flow}</Text>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => onGo(boxLink(boxId))}
+            className="ms-auto h-7 px-1 text-sm"
+          >
+            {START_PAGE.showAll}
+          </Button>
+          <Text className="w-14 text-end text-sm text-muted">{countLabel.split(' ')[0]}</Text>
+        </Flex>
+        <Scroll className="-mx-1 min-h-0 flex-1 gap-0.5 px-1" role="list" aria-label={box.label}>
+          {groups.length === 0 && (
+            <Text className="px-2 py-6 text-center text-base text-muted">{START_PAGE.noData}</Text>
+          )}
+          {groups.map(({ process: p, count }) => (
+            <Flex key={p.id} role="listitem" className="flex">
+              <Button
+                type="text"
+                onClick={() => onGo(processLink(boxId, p.id))}
+                aria-label={`${processCaption(p)}, ${countLabel} ${count}`}
+                className="group/row h-14 w-full justify-start gap-3 rounded-xl! px-2 text-start font-normal text-foreground hover:bg-surface-secondary!"
+              >
+                <IconBox
+                  icon={p.icon}
+                  label={p.name}
+                  size="sm"
+                  className="group-hover/row:bg-accent group-hover/row:text-accent-foreground"
+                />
+                <Flex vertical className="min-w-0 flex-1">
+                  <Text className="block text-xs leading-tight text-muted truncate">
+                    {p.project}
+                  </Text>
+                  <Text className="block text-base leading-snug text-current truncate">
+                    {isDraft ? p.form : p.name}
+                  </Text>
+                </Flex>
+                <CountBadge value={count} />
+              </Button>
+            </Flex>
+          ))}
+        </Scroll>
+      </Flex>
+    </Flex>
+  )
+}
+
+function StartPanel({
+  actions,
+  onClose,
+  onWide,
+}: {
+  actions: StartActions
+  onClose: () => void
+  /** Kutu genişlesin mi (İş Akış Yönetimi bölümü, aramasız). */
+  onWide: (wide: boolean) => void
+}) {
   const navigate = useNavigate()
   const openApp = useOpenApp()
   const place = usePlace()
@@ -701,6 +863,8 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<MenuSort>(() => readJson<MenuSort>(SORT_KEY, 'order'))
   const [shelf, setShelf] = useState<'favorites' | 'recent'>('favorites')
+  // Seçili bölüm (sekme); kutu hep Tüm uygulamalar'la açılır
+  const [section, setSection] = useState<Section>('apps')
   // Ağaçta kapatılan klasörler (hepsi açık başlar; tercih oturum boyunca)
   const [closed, setClosed] = useRemembered<string[]>('karo:start:closed', () => [])
   // Aramanın sanal vurgusu: liste değişince başa döner
@@ -736,8 +900,9 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
 
   const now = new Date()
   const { text: hello, daytime } = greetingOf(now)
+  // Selamlama kartı Başlangıç'taki karşılama bandıyla aynı yüzeyde (dolu birincil renk)
+  const band = useBand()
   const pending = counts.get('bekleyen') ?? 0
-  const [before, after = ''] = pendingSentence(pending).split(String(pending))
 
   const tree = useMemo(() => sortTree(MENU_TREE, sort), [sort])
   // Favorilerdeki güncel sabitleme durumu son kullanılanlarda da geçerli (`useMenuApps`)
@@ -766,7 +931,7 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
         group: START_LABELS.apps,
         icon: n.icon,
         label: n.caption,
-        hint: folder ? <Text className="text-xs text-muted">{folder}</Text> : undefined,
+        hint: folder ? <Text className="text-sm text-muted">{folder}</Text> : undefined,
         active: under(place, n.href),
         run: () => {
           if (app) goApp(app)
@@ -784,7 +949,9 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
           label: b.label,
           hint: (
             <>
-              {b.group === 'gecmis' && <Text className="text-xs text-muted">{HISTORY_GROUP_LABEL}</Text>}
+              {b.group === 'gecmis' && (
+                <Text className="text-sm text-muted">{HISTORY_GROUP_LABEL}</Text>
+              )}
               <CountBadge value={counts.get(b.id)} />
             </>
           ),
@@ -792,12 +959,19 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
         })
     for (const v of viewActions)
       if (fold(v.label).includes(q))
-        out.push({ key: `view:${v.id}`, group: START_LABELS.view, icon: v.icon, label: v.label, run: () => run(v.fn) })
+        out.push({
+          key: `view:${v.id}`,
+          group: START_LABELS.view,
+          icon: v.icon,
+          label: v.label,
+          run: () => run(v.fn),
+        })
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, tree, counts, place, dark])
 
   useEffect(() => setHi(0), [q])
+  useEffect(() => onWide(!searching && section === 'work'), [onWide, searching, section])
   useEffect(() => {
     hiRef.current?.scrollIntoView({ block: 'nearest' })
   }, [hi, q])
@@ -810,9 +984,17 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setHi((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Home' && e.target instanceof HTMLInputElement && e.target.selectionStart === 0) {
+    } else if (
+      e.key === 'Home' &&
+      e.target instanceof HTMLInputElement &&
+      e.target.selectionStart === 0
+    ) {
       setHi(0)
-    } else if (e.key === 'End' && e.target instanceof HTMLInputElement && e.target.selectionEnd === e.target.value.length) {
+    } else if (
+      e.key === 'End' &&
+      e.target instanceof HTMLInputElement &&
+      e.target.selectionEnd === e.target.value.length
+    ) {
       setHi(hits.length - 1)
     } else if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
       e.preventDefault()
@@ -851,192 +1033,235 @@ function StartPanel({ actions, onClose }: { actions: StartActions; onClose: () =
 
   /* Varsayılan görünüm ---------------------------------------------------------------------------- */
 
-  const home = (
-    // Üç bant: Tüm uygulamalar %50 (kendi içinde kayar) | çizgi | bekleyenler %25 | çizgi | raf %25
-    <Flex className="grid h-full min-h-0 grid-rows-[minmax(0,2fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] gap-3">
-      {/* Tüm uygulamalar: klasörler bölüm bölüm, iki sütun; başlık sabit, liste kayar */}
-      <Section
-        index={0}
-        className="min-h-0"
-        title={START_UI.allApps}
-        extra={
-          <Tip label={sort === 'order' ? MENU_LABELS.sortAlphabetic : MENU_LABELS.sortOrder} placement="left">
-            <Button
-              type="text"
-              size="small"
-              aria-label={sort === 'order' ? MENU_LABELS.sortAlphabetic : MENU_LABELS.sortOrder}
-              onClick={changeSort}
-              icon={sort === 'order' ? <ArrowDownAZ {...IC} size={16} /> : <ListOrdered {...IC} size={16} />}
-              className="size-7 min-w-7 rounded-full text-muted hover:text-foreground!"
-            />
-          </Tip>
-        }
-      >
-        <Scroll className="-mx-1 min-h-0 flex-1 gap-4 px-1 pb-1">
-          {/* Tek sütun ağaç: üstte yapraklar (Başlangıç, İş Akış Yönetimi), altında klasörler */}
-          <Flex role="tree" aria-label={START_UI.allApps} className="flex flex-col gap-0.5">
-            {tree.map((n) =>
-              n.children?.length ? (
-                <TreeFolder
-                  key={n.id}
-                  node={n}
-                  open={!closed.includes(n.id)}
-                  onToggle={() =>
-                    setClosed((c) => (c.includes(n.id) ? c.filter((x) => x !== n.id) : [...c, n.id]))
-                  }
-                  place={place}
-                  onPick={pick}
-                />
+  /* Bölmeler: her sekmenin içeriği (kabı doldurur, kendi içinde kayar) ------------------------- */
+
+  const appsPane = (
+    <Section
+      className="h-full min-h-0"
+      title={START_UI.allApps}
+      extra={
+        <Tip
+          label={sort === 'order' ? MENU_LABELS.sortAlphabetic : MENU_LABELS.sortOrder}
+          placement="left"
+        >
+          <Button
+            type="text"
+            size="small"
+            aria-label={sort === 'order' ? MENU_LABELS.sortAlphabetic : MENU_LABELS.sortOrder}
+            onClick={changeSort}
+            icon={
+              sort === 'order' ? (
+                <ArrowDownAZ {...IC} size={18} />
               ) : (
-                <Flex key={n.id} role="treeitem" aria-selected={under(place, n.href) || undefined} className="flex">
-                  <AppRow
-                    icon={n.icon}
-                    label={n.caption}
-                    active={under(place, n.href)}
-                    hint={<CountBadge value={n.id === 'is-akis-yonetimi' ? pending : 0} />}
-                    onPress={() => pick(n)}
-                  />
-                </Flex>
-              ),
-            )}
-          </Flex>
-        </Scroll>
-      </Section>
-      {/* Çizgi: uygulamalar üstte, bekleyenler altta */}
-      <Flex aria-hidden className="block h-px bg-border" />
-      {/* Selamlama ve bekleyenler: kategoriler sayılarıyla (Bekleyen Onaylar birincil tonda) */}
-      <Section
-        index={1}
-        className="min-h-0 justify-center"
-        title={
-          <Flex align="center" gap={8} className="text-foreground">
-            {daytime ? <Sun {...IC} size={16} className="text-muted" /> : <Moon {...IC} size={16} className="text-muted" />}
-            <Text className="font-display text-base font-semibold text-foreground">
-              {hello}, {CURRENT_USER.firstName}.
-            </Text>
-          </Flex>
-        }
-        extra={
-          <Text className="text-xs text-muted">
-            {before}
-            <Text className="font-semibold text-foreground tabular-nums">{pending}</Text>
-            {after}
-          </Text>
-        }
-      >
-        <Flex className="grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-2">
-          {mainBoxes.map((b) => {
-            const Icon = b.icon
-            const n = counts.get(b.id) ?? 0
-            const lead = b.id === 'bekleyen'
+                <ListOrdered {...IC} size={18} />
+              )
+            }
+            className="size-7 min-w-7 rounded-full text-muted hover:text-foreground!"
+          />
+        </Tip>
+      }
+    >
+      <Scroll className="-mx-1 min-h-0 flex-1 gap-4 px-1 pb-1">
+        {/* Tek sütun ağaç: üstte yapraklar (Başlangıç, İş Akış Yönetimi), altında klasörler */}
+        <Flex role="tree" aria-label={START_UI.allApps} className="flex flex-col gap-0.5">
+          {tree.map((n) =>
+            n.children?.length ? (
+              <TreeFolder
+                key={n.id}
+                node={n}
+                open={!closed.includes(n.id)}
+                onToggle={() =>
+                  setClosed((c) => (c.includes(n.id) ? c.filter((x) => x !== n.id) : [...c, n.id]))
+                }
+                place={place}
+                onPick={pick}
+              />
+            ) : (
+              <Flex
+                key={n.id}
+                role="treeitem"
+                aria-selected={under(place, n.href) || undefined}
+                className="flex"
+              >
+                <AppRow
+                  plain
+                  icon={n.icon}
+                  label={n.caption}
+                  active={under(place, n.href)}
+                  hint={<CountBadge value={n.id === 'is-akis-yonetimi' ? pending : 0} />}
+                  onPress={() => pick(n)}
+                />
+              </Flex>
+            ),
+          )}
+        </Flex>
+      </Scroll>
+    </Section>
+  )
+
+  // İş Akış Yönetimi'nin kompakt hâli (başlat kutusu bir yer: bir iki tıkla gidilir): üstte kutular
+  // sayı karoları (seçili olan birincil renkte; basınca o kutunun süreçleri gelir), altında seçili
+  // kutunun süreç listesi (proje, süreç, sayı); satır o süreç listesini çalışma alanında açar,
+  // "Tümünü Göster" kutunun kendisini. Talep ızgarası burada yok (Başlangıç'ta ve sayfada)
+  const workPane = <WorkPane onGo={go} />
+
+  // Favoriler ↔ Son kullanılanlar: karo ızgarası
+  const shelfPane = (
+    <Section
+      className="min-h-0"
+      title={
+        <Flex role="group" aria-label={START_LABELS.apps} className="-ms-1 flex gap-0.5">
+          {(
+            [
+              { id: 'favorites', label: START_LABELS.favorites },
+              { id: 'recent', label: START_LABELS.recent },
+            ] as const
+          ).map((t) => {
+            const on = shelf === t.id
             return (
               <Button
-                key={b.id}
+                key={t.id}
                 type="text"
-                onClick={() => go(boxLink(b.id))}
-                aria-label={`${b.label}, ${n}`}
+                size="small"
+                aria-pressed={on}
+                onClick={() => setShelf(t.id)}
                 className={cn(
-                  'h-auto flex-col items-start gap-3 rounded-2xl! p-3 text-start font-normal whitespace-normal',
-                  lead
-                    ? 'bg-accent text-accent-foreground hover:bg-accent/90! hover:text-accent-foreground!'
-                    : 'bg-surface-secondary/70 text-foreground hover:bg-surface-secondary!',
+                  'h-8 rounded-full px-3 text-sm font-medium',
+                  on
+                    ? 'bg-surface-secondary text-foreground hover:bg-surface-secondary!'
+                    : 'text-muted hover:text-foreground!',
                 )}
               >
-                <Flex align="center" justify="space-between" className="w-full">
-                  <Icon {...IC} size={18} className={cn(!lead && 'text-muted')} />
-                  <Text className={cn('font-display text-xl font-bold text-current tabular-nums')}>
-                    <Count value={n} />
-                  </Text>
-                </Flex>
-                <Text className="line-clamp-1 w-full text-xs text-current">{b.label}</Text>
+                {t.label}
               </Button>
             )
           })}
         </Flex>
-      </Section>
-
-      {/* Çizgi: bekleyenler üstte, raf altta */}
-      <Flex aria-hidden className="block h-px bg-border" />
-      {/* Favoriler ↔ Son kullanılanlar: tek sıra karo */}
-      <Section
-        index={2}
-        className="min-h-0 justify-center"
-        title={
-          <Flex role="group" aria-label={START_LABELS.apps} className="-ms-1 flex gap-0.5">
-            {(
-              [
-                { id: 'favorites', label: START_LABELS.favorites },
-                { id: 'recent', label: START_LABELS.recent },
-              ] as const
-            ).map((t) => {
-              const on = shelf === t.id
-              return (
-                <Button
-                  key={t.id}
-                  type="text"
-                  size="small"
-                  aria-pressed={on}
-                  onClick={() => setShelf(t.id)}
-                  className={cn(
-                    'h-7 rounded-full px-2.5 text-[0.8125rem] font-medium',
-                    on
-                      ? 'bg-surface-secondary text-foreground hover:bg-surface-secondary!'
-                      : 'text-muted hover:text-foreground!',
-                  )}
-                >
-                  {t.label}
-                </Button>
-              )
-            })}
-          </Flex>
-        }
-      >
-        {shelfApps.length ? (
-          <Flex
-            role="list"
-            aria-label={shelf === 'favorites' ? START_LABELS.favorites : START_LABELS.recent}
-            // Tek sıra: sığmayınca yana kayar (çubuk yok)
-            className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]"
-          >
-            {shelfApps.map((a) => (
-              <Flex key={a.id} role="listitem" className="flex w-24 shrink-0">
-                <AppTile app={a} active={under(place, a.href)} onPress={() => goApp(a)} />
-              </Flex>
-            ))}
-          </Flex>
-        ) : (
-          <Text className="px-1 text-sm text-muted">{START_LABELS.noFavorites}</Text>
-        )}
-      </Section>
-
-    </Flex>
+      }
+    >
+      {shelfApps.length ? (
+        <Flex
+          role="list"
+          aria-label={shelf === 'favorites' ? START_LABELS.favorites : START_LABELS.recent}
+          className="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-1"
+        >
+          {shelfApps.map((a) => (
+            <Flex key={a.id} role="listitem" className="flex">
+              <AppTile app={a} active={under(place, a.href)} onPress={() => goApp(a)} />
+            </Flex>
+          ))}
+        </Flex>
+      ) : (
+        <Text className="px-1 text-base text-muted">{START_LABELS.noFavorites}</Text>
+      )}
+    </Section>
   )
+  const panes: Record<Section, ReactNode> = { apps: appsPane, work: workPane, shelf: shelfPane }
 
   return (
     <>
       {/* Üst: arama (kutunun omurgası) */}
-      <Flex onKeyDown={onKey} className="flex shrink-0 px-5 pt-5 pb-2">
+      {/* Altındakilerle aynı hizada (0.75rem kenar payı), altında kartın bölmeye uzaklığı kadar boşluk */}
+      <Flex onKeyDown={onKey} className="flex shrink-0 px-3 pt-3 pb-3">
         <SearchField
           autoFocus
           value={query}
           onChange={setQuery}
           label={MENU_LABELS.searchAll}
-          className="h-11 min-w-0 flex-1 rounded-full px-4"
+          className="h-12 min-w-0 flex-1 rounded-full px-4 text-base"
         />
       </Flex>
 
-      {/* Orta: varsayılan görünüm kutuyu doldurur (bantlar kendi içinde kayar); arama sonuçları
-          tek kayan liste; kutu `@container` */}
-      {searching ? (
-        <Scroll className="@container min-h-0 flex-1 px-4 py-3" role="region" aria-label={START_LABELS.start}>
-          {results}
-        </Scroll>
-      ) : (
-        <Flex className="@container block min-h-0 flex-1 px-4 py-3" role="region" aria-label={START_LABELS.start}>
-          {home}
+      {/*
+       * Orta: solda dikey sekme şeridi (uygulamadaki ortak şerit, `orientation="vertical"`): üç
+       * bölüm, seçili yaprak sağdaki bölmeye kavislerle kaynaşır (şerit kabın rengiyle, `TAB_BG`);
+       * sağda seçili bölümün içeriği (ya da arama sonuçları). Şerit kabın köşesi + kavis kadar
+       * yukarıdan başlar (yaprağın kavsi bölmenin düz kenarına otursun).
+       */}
+      <Flex className={cn('flex min-h-0 flex-1 px-3 pb-3', START_PANE_BG)}>
+        <Flex vertical className="w-[calc(11rem+4px)] shrink-0">
+          {/* Selamlama kartı: Başlangıç'taki karşılama bandı (dolu birincil renk), yalnızca selamlama;
+              şeridin üstündeki boşlukta, bölmenin köşesinden aşağıda bitecek kadar yüksek */}
+          <Card
+            // Soldan şeridin 4px payı kadar içeride (sekmelerle aynı hizada); sağdan ve alttan aramanın
+            // altındaki boşluk kadar (0.75rem)
+            className={cn(CARD, 'ms-[4px] me-3 shrink-0', band.band)}
+            classNames={{ body: 'flex min-h-[4.5rem] flex-col justify-center px-3.5 py-3' }}
+          >
+            <Flex align="start" gap={8} className="min-w-0">
+              {daytime ? (
+                <Sun {...IC} size={20} className="mt-0.5 shrink-0" />
+              ) : (
+                <Moon {...IC} size={20} className="mt-0.5 shrink-0" />
+              )}
+              {/* Dar sütun: ad gerekirse ikinci satıra iner (kesilmez) */}
+              <Typography.Title
+                level={2}
+                className="m-0! min-w-0 flex-1 font-display text-lg leading-tight font-bold text-current! line-clamp-2"
+              >
+                {hello}, {CURRENT_USER.firstName}.
+              </Typography.Title>
+            </Flex>
+          </Card>
+          <TabStrip
+            label={START_LABELS.start}
+            orientation="vertical"
+            side="start"
+            sizing="content"
+            sheet={SHEET}
+            selected={searching ? undefined : section}
+            // Squircle temada da yuvarlak (çalışma alanının şeridi gibi); sekme boyu kavislere yeter
+            round
+            // Kartla ilk sekme arası = kartın bölmeye ve aramanın içeriğe uzaklığı (0.75rem; kart
+            // bölmenin köşesinden aşağıda biter, ilk yaprağın kavsi düz kenara oturur)
+            inset="pt-3 pb-2"
+            // Dar sütun: adlar iki satıra sarar, ikonlar büyük (şerit = sekme eni + satırın 4px payı)
+            className="min-h-0 flex-1 [--tab-h:11rem] [--tab-l:4.25rem]"
+          >
+            <TabGroup id="start">
+              {SECTIONS.map((sct) => {
+                const on = !searching && sct.id === section
+                return (
+                  <Tab key={sct.id} id={sct.id} selected={on}>
+                    <TabButton
+                      label={sct.label}
+                      icon={sct.icon}
+                      iconSize={26}
+                      lines={2}
+                      current={on}
+                      aria-selected={on}
+                      role="tab"
+                      tabIndex={on || (searching && sct.id === section) ? 0 : -1}
+                      onClick={() => {
+                        setQuery('')
+                        setSection(sct.id)
+                      }}
+                      className="w-full flex-1 gap-3 ps-4"
+                    />
+                  </Tab>
+                )
+              })}
+            </TabGroup>
+          </TabStrip>
         </Flex>
-      )}
-
+        <Flex
+          role="tabpanel"
+          aria-label={searching ? START_UI.results : SECTIONS.find((x) => x.id === section)?.label}
+          className="@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-5"
+        >
+          {/* İçerik doğrudan bölmenin zemininde (kart yok) */}
+          {searching ? (
+            <Scroll className="-m-1 min-h-0 flex-1 p-1">{results}</Scroll>
+          ) : (
+            <Flex
+              key={section}
+              className="flex min-h-0 flex-1 flex-col animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
+            >
+              {panes[section]}
+            </Flex>
+          )}
+        </Flex>
+      </Flex>
     </>
   )
 }

@@ -32,7 +32,9 @@ export const STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2),calc(16px*var(--co
  * yuvarlak temadaki yarıçap (squircle'ın `--corner-scale` büyütmesi geri alınır); kavisler `scoop`.
  */
 export const ROUND_TAB_RADIUS = 'min(calc(var(--radius) * 2 / var(--corner-scale, 1)), 16px)'
-export const ROUND_STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] [--corner-shape:round] [--corner-concave:scoop] ${GAP_VARS}`
+/** Yuvarlak şeridin ölçüleri, köşe biçimi olmadan (şeridin yanındaki öğeler `--tab-f` okusun diye). */
+export const ROUND_TAB_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] ${GAP_VARS}`
+export const ROUND_STRIP_VARS = `${ROUND_TAB_VARS} [--corner-shape:round] [--corner-concave:scoop]`
 
 /** Kabın (ve seçili yaprağın) rengi: birincil rengin zemine karışmış çok açık tonu. */
 export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
@@ -84,6 +86,15 @@ export const SHEET_MIDDLE =
  */
 export const PILL =
   'pointer-events-none absolute inset-x-(--tab-gap) top-0 bottom-(--tab-gap) z-0 block rounded-(--tab-nr) bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] group-hover/tab:opacity-100 group-has-[:focus-visible]/tab:opacity-100 group-data-[selected]/tab:hidden'
+/**
+ * Dikey şeritte hap: boşluk üstte / altta ve kaba bakan kenarda (soldaki şeritte sağ, sağdakinde
+ * sol); kabın karşısındaki kenarı seçili yaprakla aynı hizada.
+ */
+export const PILL_V = {
+  start:
+    'pointer-events-none absolute inset-y-(--tab-gap) start-0 end-(--tab-gap) z-0 block rounded-(--tab-nr) bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] group-hover/tab:opacity-100 group-has-[:focus-visible]/tab:opacity-100 group-data-[selected]/tab:hidden',
+  end: 'pointer-events-none absolute inset-y-(--tab-gap) start-(--tab-gap) end-0 z-0 block rounded-(--tab-nr) bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] opacity-0 transition-opacity duration-[calc(150ms*var(--motion-time,1))] group-hover/tab:opacity-100 group-has-[:focus-visible]/tab:opacity-100 group-data-[selected]/tab:hidden',
+} as const
 /** Renkli grupta hap grubun renginde. */
 export const PILL_TONED = 'bg-[color-mix(in_oklab,var(--g)_14%,transparent)]'
 
@@ -93,6 +104,29 @@ export const PILL_TONED = 'bg-[color-mix(in_oklab,var(--g)_14%,transparent)]'
  */
 export const SEPARATOR =
   "after:pointer-events-none after:absolute after:end-0 after:top-[calc(50%-var(--tab-gap)/2)] after:z-0 after:block after:h-4 after:w-px after:translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-[color-mix(in_oklab,var(--foreground)_20%,transparent)] after:content-[''] after:transition-opacity after:duration-[calc(150ms*var(--motion-time,1))] last:after:opacity-0 data-[selected]:after:opacity-0 hover:after:opacity-0 has-[:focus-visible]:after:opacity-0 has-[+[data-tab][data-selected]]:after:opacity-0 has-[+[data-tab]:hover]:after:opacity-0 has-[+[data-tab]_:focus-visible]:after:opacity-0"
+
+/** Dikey şeritte ayırıcı: sekmenin altında 16×1px, hapın ortasında (boşluk kadar kaydırılmış). */
+const SEPARATOR_V_RULES =
+  "after:pointer-events-none after:absolute after:bottom-0 after:z-0 after:block after:h-px after:w-4 after:-translate-x-1/2 after:translate-y-1/2 after:rounded-full after:bg-[color-mix(in_oklab,var(--foreground)_20%,transparent)] after:content-[''] after:transition-opacity after:duration-[calc(150ms*var(--motion-time,1))] last:after:opacity-0 data-[selected]:after:opacity-0 hover:after:opacity-0 has-[:focus-visible]:after:opacity-0 has-[+[data-tab][data-selected]]:after:opacity-0 has-[+[data-tab]:hover]:after:opacity-0 has-[+[data-tab]_:focus-visible]:after:opacity-0"
+export const SEPARATOR_V = {
+  start: `${SEPARATOR_V_RULES} after:start-[calc(50%-var(--tab-gap)/2)]`,
+  end: `${SEPARATOR_V_RULES} after:start-[calc(50%+var(--tab-gap)/2)]`,
+} as const
+
+/**
+ * Dikey şeritte yaprak katmanı: yatay yaprağın geometrisi eksen değiştirerek (devrik matris) kaba
+ * bakan kenara çevrilir; parçalar ve kavisler değişmeden içinde döner. Soldaki şerit: `(x,y)→(y,x)`,
+ * birleşen kenar sağda; sağdaki şerit: 90° dönüş, birleşen kenar solda. Kutu yerel ölçülerde
+ * (`h-(--tab-h) w-0`), şeridin kaba bakan köşesinde.
+ */
+export const SHEET_LAYER_V = {
+  // Satırın kaba bakmayan kenarındaki 4px payın (yatayda `pt-1`) içinden başlar: birleşen kenar
+  // sekmelerin kenarıyla aynı yerde (şeridin genişliği `--tab-h` + 4px). Pay piksel: boşluk
+  // ölçeğiyle kesirli olsaydı birleşen kenar yarım piksele düşer, kabın kenarında ince bir çizgi
+  // kalırdı
+  start: 'top-0 start-[4px] origin-top-left [transform:matrix(0,1,1,0,0,0)]',
+  end: 'top-0 end-[4px] origin-top-left [transform:matrix(0,1,-1,0,0,0)]',
+} as const
 
 /** Grubun rengi `--g` (tema dosyası `--group-1` … `--group-6`). */
 export const GROUP_TONE = [

@@ -38,7 +38,10 @@ import {
   GROUP_LINE,
   PILL,
   PILL_TONED,
+  PILL_V,
   SEPARATOR,
+  SEPARATOR_V,
+  SHEET_LAYER_V,
   SHEET_MIDDLE,
   STRIP_VARS,
   ROUND_STRIP_VARS,
@@ -84,6 +87,8 @@ import {
  * ------------------------------------------------------------------------------------------------- */
 
 export type StripSizing = 'chrome' | 'content' | 'fill'
+/** Dikey şeritte sekmelerin kaba göre yeri: solunda (`start`) ya da sağında (`end`). */
+export type StripSide = 'start' | 'end'
 
 /** Kapatma düğmesinin payı (rem): ikon kipinde gizli, açılınca sekmenin doğal genişliğine eklenir. */
 const CLOSE_REM = 1.75
@@ -125,6 +130,9 @@ interface DragSession extends DragSource {
 interface StripApi {
   sizing: StripSizing
   motion: TabMotion
+  /** Dikey şerit (sekmeler alt alta, yaprak yandaki kaba kaynaşır). */
+  vertical: boolean
+  side: StripSide
   /**
    * Öğe bağlandı (`el`) ya da ayrıldı (`el` yok, `prev` ayrılan). Aynı anahtar bir an iki öğede
    * olabilir (sekme gruptan çıkınca ya da gruba girince yeni grubunda yeniden kurulur, eskisi çıkan
@@ -156,20 +164,36 @@ function useStrip() {
  * basamakta yuvarlar). Motion'ın sürmekte olan kaydırması (sürükleme, düzen animasyonu) çıkarılır:
  * öğenin düzendeki yeri. `px`: üst öğesine göre (çıkarken mutlak konum için).
  */
-function slotOf(el: HTMLElement, root: HTMLElement, rootLeft: number): Slot {
+function slotOf(el: HTMLElement, root: HTMLElement, rootRect: DOMRect, vertical: boolean): Slot {
   const rect = el.getBoundingClientRect()
-  let x = rect.left - rootLeft
+  // Bir üst öğe ölçeklenmişken (başlat kutusu düğmeden büyürken: Motion paylaşılan düzen) ekrandaki
+  // ölçüler küçülür; satırın düzen boyuna oranıyla düzen ölçüsüne çevrilir
+  const scale = vertical
+    ? rootRect.height / (root.offsetHeight || 1)
+    : rootRect.width / (root.offsetWidth || 1)
+  const k = scale > 0 ? 1 / scale : 1
+  // Dikeyde eksen boyunca yer üstten (`x` = üst, `w` = boy)
+  let x = ((vertical ? rect.top : rect.left) - (vertical ? rootRect.top : rootRect.left)) * k
   for (let n: HTMLElement | null = el; n && n !== root; n = n.parentElement)
-    if (n.style.transform && n.style.transform !== 'none')
-      x -= new DOMMatrixReadOnly(getComputedStyle(n).transform).e
-  return { x, w: rect.width, px: el.offsetLeft }
+    if (n.style.transform && n.style.transform !== 'none') {
+      const m = new DOMMatrixReadOnly(getComputedStyle(n).transform)
+      x -= vertical ? m.f : m.e
+    }
+  return vertical
+    ? { x, w: rect.height * k, px: el.offsetTop }
+    : { x, w: rect.width * k, px: el.offsetLeft }
 }
 
-/** Satırın genişlik davranışı. */
+/** Satırın genişlik davranışı (dikeyde boy). */
 const ROW = {
   chrome: 'w-full',
   content: 'w-max',
   fill: 'w-full',
+} as const
+const ROW_V = {
+  chrome: 'h-full',
+  content: 'h-max',
+  fill: 'h-full',
 } as const
 
 export function TabStrip({
@@ -183,11 +207,21 @@ export function TabStrip({
   onDelete,
   end,
   round = false,
+  orientation = 'horizontal',
+  side = 'start',
   className,
   children,
 }: {
   /** Şeridin adı (`aria-label`). */
   label: string
+  /**
+   * Dikey: sekmeler alt alta, yaprak yandaki kaba kaynaşır (sekmenin eni `--tab-h`, boyu
+   * `--tab-l`; şeridin genişliği `--tab-h` + 4px: kaba bakmayan kenarda satırın payı);
+   * `chrome` genişlik dağıtımı, sürükleme ve kapatma donması yok.
+   */
+  orientation?: 'horizontal' | 'vertical'
+  /** Dikey şeritte sekmeler kabın solunda (`start`) ya da sağında (`end`). */
+  side?: StripSide
   /** Bağlantı sekmeleri (gezinme): `role="navigation"`, ok tuşları yok. */
   nav?: boolean
   /** Seçili sekmenin anahtarı (yaprak onda); yoksa yaprak yok. */
@@ -211,6 +245,7 @@ export function TabStrip({
   children: ReactNode
 }) {
   const motion = useTabMotion()
+  const vertical = orientation === 'vertical'
   const radius = useRadiusPx(round ? ROUND_TAB_RADIUS : TAB_RADIUS)
   const R = radius === undefined ? undefined : Math.round(radius)
   const scroller = useRef<HTMLElement | null>(null)
@@ -223,9 +258,9 @@ export function TabStrip({
   // Sekmelerin ve grupların `x` değerleri (sürükleme ve kayma)
   const [values] = useState(() => new Map<string, MotionValue<number>>())
   // Olay işleyicileri ve gözlemci son değerleri okur
-  const latest = useRef({ selected, sizing, motion, R, tight: false })
+  const latest = useRef({ selected, sizing, motion, R, vertical, side, tight: false })
   useLayoutEffect(() => {
-    latest.current = { ...latest.current, selected, sizing, motion, R }
+    latest.current = { ...latest.current, selected, sizing, motion, R, vertical, side }
   })
 
   /* --- Yaprak: üç parça, yalnızca dönüşüm (MotionValue) ---------------------------------------- */
@@ -263,9 +298,10 @@ export function TabStrip({
     const r = row.current
     if (!r) return
     // Satırın kendi kaydırması yok (şerit kabı kayar, satır onun içinde)
-    const left = r.getBoundingClientRect().left
-    for (const [key, el] of tabs) slots.set(key, slotOf(el, r, left))
-    for (const [key, el] of groups) slots.set(key, slotOf(el, r, left))
+    const v = latest.current.vertical
+    const rect = r.getBoundingClientRect()
+    for (const [key, el] of tabs) slots.set(key, slotOf(el, r, rect, v))
+    for (const [key, el] of groups) slots.set(key, slotOf(el, r, rect, v))
   }, [tabs, groups, slots])
 
   /** Yaprağı sekmenin yerine götürür: kayarak (`slide` geçiş, `shift` yapı) ya da anında. */
@@ -312,9 +348,10 @@ export function TabStrip({
       if (!sc || !s || !v.overflow) return
       const pad = (latest.current.R ?? 16) + 8
       const behavior = latest.current.motion.strip ? 'smooth' : 'auto'
-      if (s.x - pad < v.scroll) sc.scrollTo({ left: s.x - pad, behavior })
+      const axis = latest.current.vertical ? 'top' : 'left'
+      if (s.x - pad < v.scroll) sc.scrollTo({ [axis]: s.x - pad, behavior })
       else if (s.x + s.w + pad > v.scroll + v.width)
-        sc.scrollTo({ left: s.x + s.w + pad - v.width, behavior })
+        sc.scrollTo({ [axis]: s.x + s.w + pad - v.width, behavior })
     },
     [slots],
   )
@@ -340,19 +377,58 @@ export function TabStrip({
   const dep = `${layoutKey}|${lock ?? ''}`
 
   /* --- Gözlemci: sekmelerin yeri, doğal genişliği, ikon kipi ------------------------------------ */
+  /** Bir üst öğe ölçeklenirken (kutu düğmeden büyürken) kaç kare daha ölçüleceği. */
+  const settling = useRef(0)
+  const resizeRef = useRef<() => void>(() => {})
+  /** Sonraki karenin okuma adımında yeniden ölçer (gözlemcinin güncel geri çağrısıyla). */
+  const settle = useCallback(() => resizeRef.current(), [])
+  /** Dikeyde yaprak katmanının çapraz eksende piksele oturtma kaydırması (px). */
+  const shift = useRef(0)
   const onResize = useCallback(() => {
     const r = row.current
     if (!r) return
     readSlots()
+    const v = latest.current.vertical
+    // Üst öğe ölçekliyken (Motion paylaşılan düzen geçişi) ekrandaki yer geçici: ölçek bitene kadar
+    // her karede yeniden (en çok ~2 s); gözlemci boy değişmeyince bir daha çağırmazdı
+    const rect = r.getBoundingClientRect()
+    const scaled = Math.abs(rect.width / (r.offsetWidth || 1) - 1) > 0.001
+    if (scaled) settling.current = 120
+    if (settling.current > 0) {
+      settling.current -= 1
+      frame.read(settle, false)
+    }
     const sc = scroller.current
     if (sc)
-      view.current = {
-        scroll: sc.scrollLeft,
-        width: sc.clientWidth,
-        overflow: sc.scrollWidth > sc.clientWidth + 1,
+      view.current = v
+        ? {
+            scroll: sc.scrollTop,
+            width: sc.clientHeight,
+            overflow: sc.scrollHeight > sc.clientHeight + 1,
+          }
+        : {
+            scroll: sc.scrollLeft,
+            width: sc.clientWidth,
+            overflow: sc.scrollWidth > sc.clientWidth + 1,
+          }
+    if (sheetEl.current) {
+      const b = sheetEl.current.getBoundingClientRect()
+      origin.current = v ? b.top : b.left
+      // Dikeyde çapraz eksen de piksele oturur: kutu kesirli bir x'te durabilir (boşluk ölçeği);
+      // birleşen kenar yarım pikselde kalınca kabın kenarında açık bir çizgi kalıyordu. Kenar kaba
+      // doğru yuvarlanır (kabın kesirli kenar pikselini yaprak tamamen örter). `translate`
+      // dönüşümden önce, sayfa ekseninde uygulanır; ham kenar = ölçülen − önceki kaydırma
+      if (v) {
+        const dpr = window.devicePixelRatio || 1
+        const toEnd = latest.current.side === 'start'
+        const raw = (toEnd ? b.right : b.left) - shift.current
+        const edge = toEnd ? Math.ceil(raw * dpr) / dpr : Math.floor(raw * dpr) / dpr
+        shift.current = edge - raw
+        sheetEl.current.style.translate = shift.current ? `${shift.current}px 0` : ''
       }
-    if (sheetEl.current) origin.current = sheetEl.current.getBoundingClientRect().left
-    if (latest.current.sizing === 'chrome') {
+    }
+    // Dikey şeritte Chrome genişlik dağıtımı yok (sekmeler içerik ya da eşit boy)
+    if (latest.current.sizing === 'chrome' && !v) {
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
       // Daralmış: satırda boş yer kalmamış (sekmeler eşit paydan büyür; doğal genişliğinin altında
       // kalan sekme varken boş yeri o alır). Ad tavanından (22 / 15rem) kesilen sekme daralmış sayılmaz
@@ -403,8 +479,7 @@ export function TabStrip({
     const n = s && snap(s)
     if (s && n && placed.current === key && (!t || t.x !== n.x || t.w !== n.w))
       moveSheet(s, sx.isAnimating() ? 'shift' : 'jump')
-  }, [readSlots, moveSheet, snap, tabs, groups, slots, sx])
-  const resizeRef = useRef(onResize)
+  }, [readSlots, moveSheet, snap, tabs, groups, slots, sx, settle])
   useLayoutEffect(() => {
     resizeRef.current = onResize
   }, [onResize])
@@ -428,7 +503,7 @@ export function TabStrip({
     if (!sc) return
     const settle = () => resizeRef.current()
     const track = () => {
-      view.current.scroll = sc.scrollLeft
+      view.current.scroll = latest.current.vertical ? sc.scrollTop : sc.scrollLeft
     }
     sc.addEventListener('scrollend', settle)
     sc.addEventListener('scroll', track, { passive: true })
@@ -607,6 +682,8 @@ export function TabStrip({
     () => ({
       sizing,
       motion,
+      vertical,
+      side,
       register: (key, el, prev, x) => {
         const map = key.startsWith('group:') ? groups : tabs
         const cur = map.get(key)
@@ -629,7 +706,8 @@ export function TabStrip({
         const r = row.current
         const sc = scroller.current
         const tab = el.closest<HTMLElement>('[data-tab]')
-        if (latest.current.sizing !== 'chrome' || !r || !sc || !tab) return
+        if (latest.current.sizing !== 'chrome' || latest.current.vertical || !r || !sc || !tab)
+          return
         // Kalkan genişlik: sekme, ya da grubun bloğu ve gruplar arasındaki boşluk
         const block = removes === 'group' ? tab.closest<HTMLElement>('[data-group]') : null
         const gap = block ? parseFloat(getComputedStyle(r).columnGap) || 0 : 0
@@ -667,7 +745,9 @@ export function TabStrip({
       dragStart: (e, source) => {
         const sc = scroller.current
         const r = row.current
-        if (e.button !== 0 || e.pointerType === 'touch' || !sc || !r || drag.current) return
+        // Dikey şeritte sürükleme yok
+        if (e.button !== 0 || e.pointerType === 'touch' || !sc || !r || drag.current || vertical)
+          return
         readSlots()
         const s = slots.get(source.key)
         drag.current = {
@@ -685,7 +765,7 @@ export function TabStrip({
         listeners.attach()
       },
     }),
-    [sizing, motion, tabs, groups, slots, values, readSlots, listeners],
+    [sizing, motion, vertical, side, tabs, groups, slots, values, readSlots, listeners],
   )
 
   // Klavye (WAI-ARIA sekmeleri): oklar / Home / End sekmeler arasında gezer, Delete kapatır
@@ -698,8 +778,10 @@ export function TabStrip({
       e.preventDefault()
       list[(n + list.length) % list.length]?.focus()
     }
-    if (e.key === 'ArrowRight') go(i + 1)
-    else if (e.key === 'ArrowLeft') go(i - 1)
+    const next = vertical ? 'ArrowDown' : 'ArrowRight'
+    const prev = vertical ? 'ArrowUp' : 'ArrowLeft'
+    if (e.key === next) go(i + 1)
+    else if (e.key === prev) go(i - 1)
     else if (e.key === 'Home') go(0)
     else if (e.key === 'End') go(list.length - 1)
     else if (e.key === 'Delete' && onDelete) {
@@ -711,17 +793,26 @@ export function TabStrip({
     }
   }
 
+  // Dikey: sekmeler kaba bakan kenara yaslı (solda şerit → sağa, sağda şerit → sola)
+  const toEnd = side === 'start'
   return (
     <Flex
       className={cn(
-        'relative flex min-w-0 items-end',
+        vertical
+          ? cn('relative flex min-h-0 flex-col', toEnd ? 'items-end' : 'items-start')
+          : 'relative flex min-w-0 items-end',
         round ? ROUND_STRIP_VARS : STRIP_VARS,
         className,
       )}
     >
       <Flex
         ref={scroller}
-        className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
+        className={cn(
+          vertical
+            ? 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto'
+            : 'min-w-0 flex-1 overflow-x-auto overflow-y-hidden',
+          '[scrollbar-width:none]',
+        )}
       >
         <Flex
           ref={row}
@@ -730,8 +821,10 @@ export function TabStrip({
           onKeyDown={onKeyDown}
           style={lock === null ? undefined : { width: lock, flex: 'none' }}
           className={cn(
-            'group/row relative isolate flex items-end pt-1 select-none',
-            ROW[sizing],
+            'group/row relative isolate flex select-none',
+            vertical
+              ? cn('flex-col', toEnd ? 'items-end ps-[4px]' : 'items-start pe-[4px]', ROW_V[sizing])
+              : cn('items-end pt-1', ROW[sizing]),
             inset,
           )}
         >
@@ -741,9 +834,11 @@ export function TabStrip({
               aria-hidden
               style={{ opacity: shown, '--tab-r': `${R}px` } as MotionStyle}
               // Kendi katmanında (`will-change-transform`): yaprak kayarken her karede yalnızca
-              // kendisi boyanır, sayfanın tamamı değil
+              // kendisi boyanır, sayfanın tamamı değil. Dikeyde katman eksen değiştirir
+              // (`SHEET_LAYER_V`): parçalar yatay geometrileriyle içinde döner
               className={cn(
-                'pointer-events-none absolute bottom-0 start-0 z-1 block h-(--tab-h) w-0 will-change-transform',
+                'pointer-events-none absolute z-1 block h-(--tab-h) w-0 will-change-transform',
+                vertical ? SHEET_LAYER_V[side] : 'bottom-0 start-0',
                 sheet,
               )}
             >
@@ -783,6 +878,8 @@ const GROUP_SIZING = {
   content: 'flex-none',
   fill: 'flex-1',
 } as const
+/** Dikey şeritte grup: `chrome` içerik gibi. */
+const GROUP_SIZING_V = { chrome: 'flex-none', content: 'flex-none', fill: 'flex-1' } as const
 
 /**
  * Sekme grubu: başında grubun adı (ajandada "Geçmiş") ya da renkli noktası, altında renkli çizgisi.
@@ -863,13 +960,21 @@ export const TabGroup = memo(function TabGroup({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: api.motion.tabOut }}
       style={{
-        x: mv,
-        ...(api.sizing === 'chrome' && { flex: `${Math.max(1, count)} 1 0px` }),
-        ...(out && { position: 'absolute', left: out.px, width: out.w, bottom: 0 }),
+        ...(api.vertical ? { y: mv } : { x: mv }),
+        ...(api.sizing === 'chrome' && !api.vertical && { flex: `${Math.max(1, count)} 1 0px` }),
+        ...(out &&
+          (api.vertical
+            ? { position: 'absolute', top: out.px, height: out.w, insetInlineEnd: 0 }
+            : { position: 'absolute', left: out.px, width: out.w, bottom: 0 })),
       }}
       className={cn(
-        'relative flex h-(--tab-h) min-w-min items-stretch data-[dragging]:z-3',
-        GROUP_SIZING[api.sizing],
+        api.vertical
+          ? cn(
+              'relative flex w-(--tab-h) min-h-min flex-col items-stretch',
+              GROUP_SIZING_V[api.sizing],
+            )
+          : cn('relative flex h-(--tab-h) min-w-min items-stretch', GROUP_SIZING[api.sizing]),
+        'data-[dragging]:z-3',
         tone,
         !present && 'pointer-events-none',
       )}
@@ -884,7 +989,12 @@ export const TabGroup = memo(function TabGroup({
       )}
       {/* Grubun noktası: seçili sekme çizgiyi örtse de grup belli olur */}
       {toned && <Flex aria-hidden className={cn(GROUP_DOT, 'ms-3 me-2')} />}
-      <Flex className="relative flex min-w-0 flex-1 items-stretch">
+      <Flex
+        className={cn(
+          'relative flex flex-1 items-stretch',
+          api.vertical ? 'min-h-0 flex-col' : 'min-w-0',
+        )}
+      >
         {toned && <Flex aria-hidden className={GROUP_LINE} />}
         <GroupContext value={group}>
           <AnimatePresence initial={false} presenceAffectsLayout={false}>
@@ -907,6 +1017,12 @@ const TAB_SIZING = {
     'flex-[1_1_0px] max-w-max min-w-[2.75rem] group-data-[squeezed]/row:data-[compact]:max-w-none',
   content: 'flex-none',
   fill: 'flex-[1_1_0px] min-w-0',
+} as const
+/** Dikey şeritte sekme: boyu `--tab-l` (yoksa 2.75rem); `fill` eşit pay. `chrome` içerik gibi. */
+const TAB_SIZING_V = {
+  chrome: 'flex-none h-(--tab-l,2.75rem)',
+  content: 'flex-none h-(--tab-l,2.75rem)',
+  fill: 'flex-[1_1_0px] min-h-0',
 } as const
 
 /**
@@ -983,25 +1099,37 @@ export const Tab = memo(function Tab({
       data-tab={id}
       data-selected={selected || undefined}
       role="presentation"
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={api.vertical ? { opacity: 0, y: -12 } : { opacity: 0, x: -16 }}
+      animate={api.vertical ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
       exit={{ opacity: 0, transition: t.tabOut }}
-      transition={{ x: t.tabIn, opacity: t.tabIn }}
+      transition={{ x: t.tabIn, y: t.tabIn, opacity: t.tabIn }}
       style={{
-        x: mv,
-        ...(out && { position: 'absolute', left: out.px, width: out.w, top: 0 }),
+        ...(api.vertical ? { y: mv } : { x: mv }),
+        ...(out &&
+          (api.vertical
+            ? { position: 'absolute', top: out.px, height: out.w, insetInlineStart: 0 }
+            : { position: 'absolute', left: out.px, width: out.w, top: 0 })),
       }}
       onPointerDown={onPointerDown}
-      // İçerik hapın kutusunda ortalı (hap alttan `--tab-gap` kısa: alt pay kadar yukarıda)
+      // İçerik hapın kutusunda ortalı (hap kaba bakan kenardan `--tab-gap` kısa: o kadar içeride)
       className={cn(
-        'group/tab relative flex h-(--tab-h) items-stretch pb-(--tab-gap) data-[dragging]:z-3',
-        TAB_SIZING[api.sizing],
-        SEPARATOR,
+        'group/tab relative flex items-stretch data-[dragging]:z-3',
+        api.vertical
+          ? cn(
+              'w-(--tab-h)',
+              api.side === 'start' ? 'pe-(--tab-gap)' : 'ps-(--tab-gap)',
+              TAB_SIZING_V[api.sizing],
+              SEPARATOR_V[api.side],
+            )
+          : cn('h-(--tab-h) pb-(--tab-gap)', TAB_SIZING[api.sizing], SEPARATOR),
         !present && 'pointer-events-none',
         className,
       )}
     >
-      <Flex aria-hidden className={cn(PILL, group?.toned && PILL_TONED)} />
+      <Flex
+        aria-hidden
+        className={cn(api.vertical ? PILL_V[api.side] : PILL, group?.toned && PILL_TONED)}
+      />
       {children}
     </MotionFlex>
   )
@@ -1042,6 +1170,8 @@ export function TabButton({
   toned = false,
   href,
   extra,
+  iconSize,
+  lines = 1,
   labelClassName,
   iconClassName,
   className,
@@ -1049,6 +1179,10 @@ export function TabButton({
 }: {
   label: string
   icon?: LucideIcon
+  /** İkonun boyu (px; yoksa `IC`). */
+  iconSize?: number
+  /** Adın satır sayısı: tek satır kesilir, iki satır sarar (dikey şeritte, büyük ikonla). */
+  lines?: 1 | 2
   /** Odaktaki sekme (yan yana sekmede odaktaki form). */
   current: boolean
   /** Renkli grup: seçili yazı nötr. */
@@ -1069,6 +1203,7 @@ export function TabButton({
   const icon = Icon && (
     <Icon
       {...IC}
+      {...(iconSize && { size: iconSize })}
       className={cn(
         'shrink-0 transition-colors duration-[calc(150ms*var(--motion-time,1))]',
         current && !toned ? 'text-accent-soft-foreground' : 'text-muted',
@@ -1090,7 +1225,13 @@ export function TabButton({
     >
       <Typography.Text
         data-label
-        className="truncate font-medium text-current transition-colors duration-[calc(150ms*var(--motion-time,1))]"
+        className={cn(
+          'font-medium text-current transition-colors duration-[calc(150ms*var(--motion-time,1))]',
+          // Satır boyu yazıya göre (boşluk ölçeğine göre değil: sıkı yoğunlukta altlar kesilirdi)
+          lines === 2
+            ? 'line-clamp-2 text-start text-base leading-[1.25] whitespace-normal'
+            : 'truncate',
+        )}
       >
         {label}
       </Typography.Text>

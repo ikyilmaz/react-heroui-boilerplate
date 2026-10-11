@@ -157,18 +157,29 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
   high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its content
   (`StartPanel`, redesigned on explicit request after launcher research: search as the spine, pinned
-  tiles before the browse list, stable positions) is one scrolling column: search (autofocus; typing
-  turns everything into one flat result list — apps with their folder, workflow boxes with counts,
-  Görünüm actions — with a virtual ↑ ↓ highlight and Enter), then three bands filling the box (50 / 25 /
-  25 %, hairlines between): Tüm uygulamalar (a single-column tree: top-level leaves, then
-  folders as collapsible rows with a small icon square, count and rotating chevron, children indented
-  behind a guide line and rising in with a 30ms stagger; all open at first, collapsed ones remembered
+  tiles before the browse list, stable positions): search on top (autofocus; typing turns
+  everything into one flat result list — apps with their folder, workflow boxes with counts, Görünüm
+  actions — with a virtual ↑ ↓ highlight and Enter), below it a left column with the greeting card
+  (the dashboard's accent band, `useBand()`: greeting only; inset 4px from the left like the
+  tabs, 0.75rem from the pane and the first tab — the same gap as under the search field) over the shared tab strip
+  **vertical** (`TabStrip orientation="vertical" side="start"`, `round`, `sizing="content"`, strip width
+  = `--tab-h` 11rem + the row's 4px pad, tab height `--tab-l` 4.25rem, 26px icons and two-line
+  labels (`TabButton` `iconSize` / `lines`); the box is 44rem wide (top nav: 55vw) and grows to
+  58rem (72vw) with the dock spring while the İş Akış Yönetimi tab is shown so the five count tiles
+  sit in one row (`PANEL_WIDTH`, `StartPanel` `onWide` → `animate={{ width }}` on the dialog), `TAB_BG` + `SHEET`: the selected sheet merges
+  with its concave flares into the pane on the right (`START_PANE_BG`: accent 7 % over the
+  surface, written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, content straight on it, `p-5`;
+  no card) with three tabs for the three sections, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
+  folders as collapsible rows with a muted icon and rotating chevron, children indented behind a
+  guide line; `AppRow plain`; all open at first, collapsed ones remembered
   for the session, `TreeFolder`; order ↔ A–Z, `SORT_KEY` shared with the Tüm uygulamalar panel; scrolls
-  inside its band), greeting + pending sentence over the five main boxes as count tiles (Bekleyen
-  Onaylar in the accent), Favoriler ↔ Son Kullanılan Uygulamalar as one row of 6rem icon tiles that
-  scrolls sideways (star toggles `togglePin`; only that changes positions); no footer (Duyurular /
+  inside its band), İş Akış Yönetimi = a launcher-grade summary (`WorkPane`; the full widget was
+  tried and dropped: two nested strips and three scroll contexts in a popup): the five boxes as
+  count tiles (selected one in the accent, press = select), under them the selected box's process
+  list (project, process, count; a row opens that process list in the workspace, "Tümünü Göster"
+  the box; no request grid), Favoriler ↔ Son Kullanılan Uygulamalar as a grid of 6rem icon tiles (star toggles `togglePin`; only that changes positions); no footer (Duyurular /
   Sohbet / Tema stay in the tab row's actions and are search hits); sections rise in with a 50ms stagger (`rise`
-  keyframes × `--motion-time`), results don't; no `WorkBlock` and no section rail inside anymore); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
+  keyframes × `--motion-time`), results don't; no section rail inside anymore); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
   handle — added on explicit request, a trial — is
   `AllAppsHandle`, a dotted tab stuck to the screen's left edge; it opens the "Tüm uygulamalar" panel
   floating 12px in from the edges, `AllAppsPanel floating`); the top bar is compact — 44px with 36px
@@ -387,12 +398,22 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`).
 - `tabs/`: the one tab system (every strip and content switch in the app):
   - `TabStrip.tsx`: `TabStrip` (scrolling row, WAI-ARIA tablist keyboard — arrows / Home / End move
-    focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag),
+    focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag;
+    `orientation="vertical"` + `side` (`start` = tabs left of the pane, `end` = right; the start
+    menu): tabs stack in a column of width `--tab-h` and height `--tab-l` (`fill` = equal shares),
+    the sheet layer keeps the horizontal geometry and is transposed / rotated onto the pane-facing
+    edge (`SHEET_LAYER_V`, so caps, middle and flares are reused untouched), slots measure
+    `top` / `height` (normalised by the row's rect ÷ layout size, so measuring inside a Motion
+    layout morph still yields layout px; while an ancestor is scaled the strip re-measures every
+    frame until it settles), the sheet layer's cross axis is snapped to device pixels toward the
+    pane (`translate`, so a box at a fractional x leaves no seam), pill / separator variants (`PILL_V`, `SEPARATOR_V`),
+    ↑ ↓ keys; no `chrome` width distribution, drag or closing freeze in vertical),
     `TabGroup` (label or coloured dot + 2px underline, drags as a unit from its `handle` tab),
     `Tab` (slot: hover pill, separator, context menu — items may be a function, built when it opens —,
     drag), `TabButton` (role=tab button or `Link`; the label is medium weight and never bold:
     selecting changes colour only, never a tab's width; it sits in a grid so a truncated label
-    doesn't count toward the tab's minimum width), `TabClose` (visible on the selected tab, on hover /
+    doesn't count toward the tab's minimum width; `iconSize`, `lines={2}` wraps the label on two
+    lines (vertical strips)), `TabClose` (visible on the selected tab, on hover /
     focus otherwise — opacity, its room stays; hidden in inactive icon-only tabs). Chrome model: flat
     inactive tabs, 1×16px separators hidden next to the selected / hovered / focused tab, hover pill
     (group tint in coloured strips), one selected sheet that merges into the container with concave
