@@ -1,23 +1,43 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useNavigate } from 'react-router'
 import { usePlace } from '@/synergy/tabs/context'
-import { AnimatePresence, type Transition } from 'framer-motion'
 import {
+  AnimatePresence,
+  animate,
+  useMotionValue,
+  usePresence,
+  useTransform,
+  type Transition,
+} from 'framer-motion'
+import {
+  Activity,
   ArrowDownAZ,
   ChevronRight,
+  FolderArchive,
   FolderOpen,
   LayoutDashboard,
   LayoutGrid,
   ListOrdered,
+  Megaphone,
   Moon,
   Palette,
   Search,
   Star,
   Sun,
+  UserCheck,
   Workflow,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { Button, Card, Flex, Typography } from 'antd'
+import { Avatar, Button, Card, Flex, Typography } from 'antd'
 import { togglePin, useBoxCounts, useBoxRequests, useMenuApps } from '@/synergy/shared/decisions'
 import {
   MENU_LABELS,
@@ -31,9 +51,9 @@ import { readJson, writeJson } from '@/synergy/shared/grid'
 import { useRemembered } from '@/synergy/shared/remembered'
 import { setColorMode, useIsDark } from '@/synergy/shared/themeSettings'
 import {
-  APPS_LABELS,
   CURRENT_USER,
   HISTORY_GROUP_LABEL,
+  APPS_LABELS,
   findApp,
   findBox,
   greetingOf,
@@ -42,6 +62,7 @@ import {
   mainBoxes,
   processCaption,
   processGroups,
+  relative,
   type BoxId,
   type MenuApp,
 } from '@/synergy/shared/workflowData'
@@ -55,6 +76,23 @@ import { SHEET } from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { Count } from '@/synergy/ant/motion'
 import { START_LABELS as START_PAGE, defaultSortOf } from '@/synergy/shared/startLabels'
+import {
+  DOC_LABELS,
+  favoriteDocuments,
+  recentDocuments,
+  recentRepositories,
+} from '@/synergy/shared/documents'
+import {
+  START_MOCK_LABELS,
+  activities,
+  adminTools,
+  announcements,
+  delegationState,
+  formatDay,
+  givenDelegations,
+  receivedDelegations,
+  type Delegation,
+} from '@/synergy/shared/startMock'
 
 /*
  * Yüzen raf ve başlat kutusu (solda, dikeyde ortada; ya da üstte).
@@ -127,6 +165,8 @@ export const CHROME_TIP = { left: 'right', top: 'bottom', compact: 'bottom' } as
  * binip sıçramasın).
  */
 export const DOCK_SPRING: Transition = { type: 'spring', stiffness: 380, damping: 36, mass: 0.9 }
+/** Kapanışta başlat düğmesinin belirmesi: kutu yerine oturmaya yakın. */
+const DOCK_BACK: Transition = { delay: 0.22, duration: 0.12 }
 
 /**
  * Kabuk panellerinin ortak yüzeyi (raf, başlat kutusu). Köşe kartlarınki (`CARD_RADIUS`; tema
@@ -138,6 +178,15 @@ export const CHROME_PANEL = cn(
   'pointer-events-auto rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))]',
   SHELL,
 )
+/**
+ * Raf ve başlat kutusunun yüzeyi, kontursuz: kontur ve gölge ayrı bir halkada (`PANEL_RING`), içerik
+ * gibi dönüşümün sonuna doğru belirir. Kutu düğmeden büyürken (Motion paylaşılan düzen: ölçek)
+ * 1px kenarlık ve gölge halkası da ölçeklenip bitişte tam kalınlığa zıplıyordu.
+ */
+const CHROME_SURFACE =
+  'pointer-events-auto rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] bg-surface'
+const PANEL_RING =
+  'pointer-events-none absolute inset-0 block rounded-[inherit] border border-border shadow-(--overlay-shadow)'
 
 /** Sütun ve çubuk rafı: iç pay, başlat düğmesi (piksel: temanın boşluk ölçeği rafın oranını bozmasın). */
 const COLUMN = {
@@ -156,19 +205,31 @@ const BAR = {
  * ekranın %85'i boyunda. Genişlik stilde (`PANEL_WIDTH`, bölüme göre animasyonla değişir); tavan
  * ekran.
  */
-const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] max-w-[calc(100vw-1.5rem)]'
+const SIDE_PANEL = 'inset-y-0 my-auto h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]'
 /** Çubuktan açılan kutu: ortadan (`mx-auto`), genişlik ekrana oranla (en az 44rem). */
 const BAR_PANEL =
-  'inset-x-0 mx-auto h-[clamp(30rem,70dvh,42rem)] min-w-[44rem] max-w-[calc(100vw-1.5rem)]'
+  'inset-x-0 mx-auto h-[clamp(30rem,70dvh,42rem)] w-[min(max(44rem,55vw),calc(100vw-1.5rem))]'
 
 /**
- * Kutunun genişliği: dar (varsayılan) ve geniş (İş Akış Yönetimi bölümü: beş kutu karosu yan yana).
- * Aynı birimde ki Motion aralarında kaydırsın.
+ * Kutunun genişliği: dar (varsayılan; üstte gezinmede ekranın %55'i, en az 44rem) ve geniş
+ * (İş Akış Yönetimi / Doküman Yönetimi: beş karo ya da üç sütun yan yana; 58rem, üstte %72).
  */
-const PANEL_WIDTH: Record<ChromePlace, { narrow: string; wide: string }> = {
-  left: { narrow: '44rem', wide: '58rem' },
-  compact: { narrow: '44rem', wide: '58rem' },
-  top: { narrow: '55vw', wide: '72vw' },
+/** Kutunun hedef genişliği px (kutu genişliğini kendi animasyonlar; tavan ekran − 1.5rem). */
+function panelWidthPx(place: ChromePlace, wide: boolean) {
+  const fs = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  const cap = window.innerWidth - 1.5 * fs
+  if (place === 'top')
+    return Math.min(Math.max(44 * fs, (wide ? 0.72 : 0.55) * window.innerWidth), cap)
+  return Math.min((wide ? 58 : 44) * fs, cap)
+}
+
+/** Bir öğenin kutusu (px) ve köşesi: dönüşümün başladığı / bittiği yer. */
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+  r: number
 }
 
 /** Rafın içi, başlat düğmesi ve açılan kutunun konumu (kutu rafın olduğu kenardan açılır). */
@@ -180,7 +241,7 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
     shell: '',
     start: 'size-[40px] min-w-[40px]',
     icon: 20,
-    panel: 'start-3 top-3 h-[85dvh] max-w-[calc(100vw-1.5rem)]',
+    panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
   },
 }
 
@@ -209,10 +270,172 @@ export function CloseOnPlace({ onChange }: { onChange: () => void }) {
 }
 
 /**
+ * Başlat kutusunun dönüşümü, elle: kutu takılınca kendi son yerini ölçer, başlat düğmesinin
+ * kutusundan konum (`x` / `y`), genişlik, yükseklik, köşe yarıçapı ve zemin rengiyle (birincil →
+ * yüzey) oraya gelir; kapanırken aynı yolu düğmeye doğru geri alır ve ancak sonra kalkar
+ * (`usePresence`). Raf dönüşmez, yerinde kalır; düğme kutu açıkken gizli.
+ * Motion'ın paylaşılan düzen geçişi (`layoutId`) yerine: o, ölçekle büyütüp çapraz solduruyordu —
+ * 1px kenarlık ve gölge halkası ölçeklenip bitişte zıplıyor, köşeler yüzdeye çevriliyor, kapanırken
+ * büyütülen raf sekme satırının katmanında kalıp geri / ileri düğmelerinin arkasından geçiyordu.
+ * Genişlik ve yükseklik her karede yerleşim ister; içerik o sırada saydam, kutu kendi katmanında.
+ * Bölüme göre genişleme (`wide`) de aynı genişlik değerinde, aynı yayla.
+ */
+function StartBox({
+  place,
+  from,
+  anchor,
+  wide,
+  radiusPx,
+  morph,
+  iconSize,
+  className,
+  children,
+  ...rest
+}: {
+  place: ChromePlace
+  /** Açılışta başlanan kutu (başlat düğmesi ya da raf). */
+  from: Box | null
+  /** Başladığı ve kapanışta döneceği öğe: başlat düğmesi (hep takılı). */
+  anchor: React.RefObject<HTMLElement | null>
+  wide: boolean
+  radiusPx: number | undefined
+  morph: Transition
+  /** Düğmenin ikon boyu: kutu düğmeye dönerken ortasında beliren ikon. */
+  iconSize: number
+  className?: string
+  children: ReactNode
+} & Pick<React.HTMLAttributes<HTMLElement>, 'onKeyDown' | 'onBlur' | 'role' | 'aria-label'>) {
+  const [present, safeToRemove] = usePresence()
+  const ref = useRef<HTMLElement>(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const w = useMotionValue<number | string>('')
+  const h = useMotionValue<number | string>('')
+  const r = useMotionValue<number | string>(radiusPx ?? '')
+  // Zemin: düğmenin birincil renginden kutunun yüzeyine (0 = yüzey, 1 = birincil); CSS karıştırır
+  const mix = useMotionValue(0)
+  const background = useTransform(
+    mix,
+    (v) => `color-mix(in oklab, var(--accent) ${Math.round(v * 100)}%, var(--surface))`,
+  )
+  const latest = useRef({ wide, radiusPx, morph, from })
+  latest.current = { wide, radiusPx, morph, from }
+  const mounted = useRef(false)
+  /** Takılıştaki (dar) genişlik: üstte gezinmede genişlerken ortada kalmak için `x` bundan hesaplanır. */
+  const narrowW = useRef(0)
+
+  // Açılış: son yer ölçülür (dönüşüm yokken), başlangıç kutusundan oraya
+  useLayoutEffect(() => {
+    const el = ref.current
+    const f = latest.current.from
+    if (!el || !f) return
+    const to = el.getBoundingClientRect()
+    narrowW.current = to.width
+    // Kutu CSS'te ortalı (üstte `mx-auto`, solda `my-auto`): genişlik / yükseklik her karede
+    // değişirken kenar da kayardı (kapanış düğmeyi ıskalıyordu). Takılıştaki yerine sabitlenir;
+    // genişlerken ortalama `x` ile
+    el.style.left = `${to.x}px`
+    el.style.top = `${to.y}px`
+    el.style.right = 'auto'
+    el.style.bottom = 'auto'
+    el.style.margin = '0'
+    const t = latest.current.morph
+    x.jump(f.x - to.x)
+    y.jump(f.y - to.y)
+    w.jump(f.w)
+    h.jump(f.h)
+    r.jump(f.r)
+    mix.jump(1)
+    void animate(mix, 0, t)
+    void animate(x, 0, t)
+    void animate(y, 0, t)
+    // Genişlik ve yükseklik sonra yine CSS'e (44rem / 85dvh…): pencere boyu değişince kutu uysun
+    void animate(w, to.width, t).then(() => {
+      if (present && !latest.current.wide) w.set('')
+    })
+    void animate(h, to.height, t).then(() => {
+      if (present) h.set('')
+    })
+    void animate(r, latest.current.radiusPx ?? to.height, t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Bölüme göre genişlik (ilk takılışta açılış animasyonu zaten hedefe gider)
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    if (!present) return
+    const el = ref.current
+    if (!el) return
+    const target = panelWidthPx(place, wide)
+    // CSS genişliğinden (sayı değil) başlıyorsa önce ölçülen değere oturtulur
+    if (typeof w.get() !== 'number') w.jump(el.getBoundingClientRect().width)
+    void animate(w, target, latest.current.morph).then(() => {
+      // Dar hâle dönünce yine CSS'e
+      if (!latest.current.wide && w.get() === target) w.set('')
+    })
+    // Üstte: sol kenar sabit, kutu genişlerken ortada kalsın
+    if (place === 'top') void animate(x, (narrowW.current - target) / 2, latest.current.morph)
+  }, [wide, place, present, w, x])
+  // Kapanış: rafın kutusuna geri, sonra kaldır
+  useEffect(() => {
+    if (present) return
+    const el = ref.current
+    const to = anchor.current?.getBoundingClientRect()
+    if (!el || !to) {
+      safeToRemove()
+      return
+    }
+    const t = latest.current.morph
+    const cur = el.getBoundingClientRect()
+    const baseX = cur.x - x.get()
+    const baseY = cur.y - y.get()
+    h.set(cur.height)
+    if (typeof w.get() !== 'number') w.set(cur.width)
+    // Düğme daire: köşe boyun yarısı
+    void Promise.all([
+      animate(x, to.x - baseX, t),
+      animate(y, to.y - baseY, t),
+      animate(w, to.width, t),
+      animate(h, to.height, t),
+      animate(r, to.height / 2, t),
+      animate(mix, 1, t),
+    ]).then(() => safeToRemove())
+  }, [present, safeToRemove, anchor, x, y, w, h, r, mix])
+
+  return (
+    <MotionFlex
+      ref={ref}
+      {...rest}
+      style={{ x, y, width: w, height: h, borderRadius: r, backgroundColor: background }}
+      className={cn(
+        // Dönüşürken kendi katmanında (her karede yalnızca kutu boyanır)
+        'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden will-change-transform',
+        PLACE[place].panel,
+        CHROME_SURFACE,
+        className,
+      )}
+    >
+      {children}
+      {/* Düğmenin ikonu: kutu maviye döndükçe (kapanış) belirir, açılışta solar; kutu kalkınca
+          altındaki düğmeyle aynı görünür, ikon birden çıkmaz */}
+      <MotionFlex
+        aria-hidden
+        style={{ opacity: mix }}
+        className="pointer-events-none absolute inset-0 flex items-center justify-center text-accent-foreground"
+      >
+        <LayoutDashboard {...IC} size={iconSize} />
+      </MotionFlex>
+    </MotionFlex>
+  )
+}
+
+/**
  * Raf (StartMenu): kendi başına bir panel; içeriği kabuk verir (`children(start)`: `start` başlat
- * düğmesi). Başlat düğmesine basınca raf paylaşılan yerleşimle (`layoutId`) başlat kutusuna
- * dönüşür, kapanınca yine rafa küçülür. Raf açıkken yerini aynı boyda boş bir tutucu korur (yanındaki
- * paneller kıpırdamaz).
+ * düğmesi). Başlat düğmesine basınca kutu rafın (kompaktta düğmenin) yerinden büyüyerek açılır
+ * (`StartBox`), kapanınca yine oraya küçülür. Raf açıkken yerini aynı boyda boş bir tutucu korur
+ * (yanındaki paneller kıpırdamaz).
  */
 export function StartDock({
   place,
@@ -250,7 +473,7 @@ export function StartDock({
   const compact = place === 'compact'
   const trigger = useRef<HTMLButtonElement>(null)
   const dockRef = useRef<HTMLElement>(null)
-  const [holder, setHolder] = useState<{ w: number; h: number } | null>(null)
+  const [from, setFrom] = useState<Box | null>(null)
   const wasOpen = useRef(false)
   const p = PLACE[place]
 
@@ -260,9 +483,10 @@ export function StartDock({
     wasOpen.current = open
   }, [open])
 
+  // Kutu her düzende başlat düğmesinden açılır (raf dönüşmez, yerinde kalır)
   const openStart = () => {
-    const r = dockRef.current?.getBoundingClientRect()
-    setHolder(r ? { w: r.width, h: r.height } : null)
+    const r = trigger.current?.getBoundingClientRect()
+    setFrom(r ? { x: r.x, y: r.y, w: r.width, h: r.height, r: r.height / 2 } : null)
     setOpen(true)
   }
   // İçerik dönüşüm sırasında gizli, bitmeye yakın belirir (ölçeklenirken ezik görünmesin)
@@ -272,76 +496,55 @@ export function StartDock({
     exit: { opacity: 0, transition: { duration: 0.08 } },
   }
   const start = (
-    <Tip label={START_LABELS.start} placement={CHROME_TIP[place]}>
-      <Button
-        ref={trigger}
-        type="primary"
-        shape="circle"
-        aria-label={START_LABELS.start}
-        aria-expanded={false}
-        onClick={openStart}
-        icon={<LayoutDashboard {...IC} size={p.icon} />}
-        className={cn(
-          'shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90',
-          p.start,
-        )}
-      />
-    </Tip>
+    // Kutu açılırken düğme anında gizlenir (kutu onun yerinden büyür), kapanınca kutu yerine
+    // oturmaya yakın belirir
+    <MotionFlex
+      animate={{ opacity: open ? 0 : 1 }}
+      transition={open ? { duration: 0 } : DOCK_BACK}
+      className="flex shrink-0"
+    >
+      <Tip label={START_LABELS.start} placement={CHROME_TIP[place]}>
+        <Button
+          ref={trigger}
+          type="primary"
+          shape="circle"
+          aria-label={START_LABELS.start}
+          aria-expanded={open}
+          onClick={openStart}
+          icon={<LayoutDashboard {...IC} size={p.icon} />}
+          className={cn(
+            'shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90',
+            p.start,
+          )}
+        />
+      </Tip>
+    </MotionFlex>
   )
   const body = (
     <>
-      {/* Raf açıkken yerini koruyan boş tutucu */}
-      {open && holder && (
-        // `block`: antd'de içi boş `Flex` gizlenir
+      {/* Raf (solda / üstte) hep yerinde; kutu düğmeden açılır */}
+      {!compact && (
         <Flex
-          aria-hidden
-          className="block shrink-0"
-          style={{ width: holder.w, height: holder.h }}
-        />
+          ref={dockRef}
+          style={radius}
+          role="navigation"
+          aria-label="Ana menü"
+          className={cn('relative flex shrink-0', p.shell, CHROME_SURFACE)}
+        >
+          <Flex aria-hidden className={PANEL_RING} />
+          <MotionFlex
+            // Raf boyu değişince (alt seviyeler eklenince) içerik ezilmesin; raf ile aynı yay
+            layout
+            layoutDependency={layoutKey}
+            transition={morph}
+            className={cn('relative flex gap-1', column ? 'flex-col items-center' : 'items-center')}
+          >
+            {children}
+          </MotionFlex>
+        </Flex>
       )}
-      {/* `popLayout`: çıkan raf / kutu solarken akıştan çıkar (yerini tutucu korur, sütun kaymaz) */}
-      <AnimatePresence initial={false} mode="popLayout">
-        {!open && compact ? (
-          // Kompakt: dönüşen öğe başlat düğmesinin kendisi
-          <MotionFlex
-            key="dock"
-            ref={dockRef}
-            layoutId="start-menu"
-            layoutDependency={layoutKey}
-            transition={morph}
-            style={{ borderRadius: 20 }}
-            className="flex shrink-0"
-          >
-            {start}
-          </MotionFlex>
-        ) : !open ? (
-          <MotionFlex
-            key="dock"
-            ref={dockRef}
-            layoutId="start-menu"
-            layoutDependency={layoutKey}
-            transition={morph}
-            style={radius}
-            role="navigation"
-            aria-label="Ana menü"
-            className={cn('flex shrink-0', p.shell, CHROME_PANEL)}
-          >
-            <MotionFlex
-              key={`dock-${cycle.current}`}
-              {...content}
-              // Raf boyu değişince (alt seviyeler eklenince) içerik ezilmesin; raf ile aynı yay
-              layout
-              layoutDependency={layoutKey}
-              transition={morph}
-              className={cn(
-                'relative flex gap-1',
-                isColumn(place) ? 'flex-col items-center' : 'items-center',
-              )}
-            >
-              {children}
-            </MotionFlex>
-          </MotionFlex>
-        ) : (
+      <AnimatePresence initial={false}>
+        {open && (
           // `contents`: kap yerleşimde yer tutmaz (yoksa kapanırken raf bir an yukarı kayıp inerdi)
           <Flex key="start" className="contents">
             <CloseOnPlace onChange={close} />
@@ -355,12 +558,14 @@ export function StartDock({
               // `block`: antd'de içi boş `Flex` gizlenir
               className="pointer-events-auto block fixed inset-0 z-40 bg-foreground/10"
             />
-            <MotionFlex
-              layoutId="start-menu"
-              transition={morph}
-              // Genişlik bölüme göre kayar (aynı yayla); ilk çizimde animasyonsuz (`initial` yok)
-              animate={{ width: wide ? PANEL_WIDTH[place].wide : PANEL_WIDTH[place].narrow }}
-              style={radius}
+            <StartBox
+              place={place}
+              from={from}
+              anchor={trigger}
+              iconSize={p.icon}
+              wide={wide}
+              radiusPx={radiusPx}
+              morph={morph}
               role="dialog"
               aria-label={START_LABELS.start}
               onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
@@ -378,13 +583,14 @@ export function StartDock({
                 )
                   setOpen(false)
               }}
-              className={cn(
-                // Sabit boy (`PLACE`): bölüm değişince kutu zıplamaz
-                'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden',
-                p.panel,
-                CHROME_PANEL,
-              )}
             >
+              {/* Kontur ve gölge: içerikle birlikte, dönüşümün sonuna doğru belirir */}
+              <MotionFlex
+                key={`ring-${cycle.current}`}
+                aria-hidden
+                {...content}
+                className={PANEL_RING}
+              />
               <MotionFlex
                 key={`panel-${cycle.current}`}
                 {...content}
@@ -392,13 +598,19 @@ export function StartDock({
               >
                 <StartPanel actions={actions} onClose={() => setOpen(false)} onWide={setWide} />
               </MotionFlex>
-            </MotionFlex>
+            </StartBox>
           </Flex>
         )}
       </AnimatePresence>
     </>
   )
-  if (compact) return body
+  if (compact)
+    return (
+      <>
+        {start}
+        {body}
+      </>
+    )
   // Başlat düğmesi kendi beyaz kartında yüzer (rafın önünde: solda üstünde, üstte solunda)
   return (
     <Flex className={cn('flex shrink-0 items-center gap-2', column && 'flex-col')}>
@@ -422,19 +634,25 @@ export function StartDock({
  *      kendi içinde kayar; altında çizgi
  *   3. Selamlama ve bekleyen onay cümlesi; altında iş akışı kategorileri sayılarıyla (Başlangıç'taki
  *      kategori bloklarının sayıları)
- *   4. Favoriler ↔ Son Kullanılan Uygulamalar: tek sıra ikon karosu, sığmayınca yana kayar (yıldızla
- *      sabitle / kaldır; yalnızca bu seçim karoların yerini değiştirir); 3 ve 4 çeyrek boyda, arada
- *      çizgi
+ *   4. Doküman Yönetimi (maket): son kullanılan dokümanlar, depolar ve favoriler yan yana; kutu genişler
+ *   5. Duyurular, Aktiviteler, Vekaletler, Yönetim Araçları (orijinalin üst çubuğu ve kullanıcı
+ *      menüsünden; maketler, `shared/startMock.ts`)
+ *   6. Favoriler ↔ Son Kullanılan Uygulamalar: ikon karoları (yıldızla sabitle / kaldır)
  * Alt şerit yok (duyurular, sohbet ve tema sekme satırının sağındaki eylemlerde; aramada da
  * bulunurlar). Bölümler açılışta kısa aralıklarla belirir (`--motion-time` ile ölçekli); arama sonuçları
  * beklemez. Tek renk: ikon kareleri yumuşak birincil ton, üzerine gelince / seçiliyken dolu.
  */
 
 /** Kutunun bölümleri: soldaki dikey şeridin sekmeleri. */
-type Section = 'apps' | 'work' | 'shelf'
+type Section = 'apps' | 'work' | 'docs' | 'news' | 'activity' | 'delegations' | 'admin' | 'shelf'
 const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'apps', label: MENU_LABELS.apps, icon: LayoutGrid },
   { id: 'work', label: 'İş Akış Yönetimi', icon: Workflow },
+  { id: 'docs', label: DOC_LABELS.title, icon: FolderArchive },
+  { id: 'news', label: START_MOCK_LABELS.announcements, icon: Megaphone },
+  { id: 'activity', label: START_MOCK_LABELS.activities, icon: Activity },
+  { id: 'delegations', label: START_MOCK_LABELS.delegations, icon: UserCheck },
+  { id: 'admin', label: START_MOCK_LABELS.adminTools, icon: Wrench },
   { id: 'shelf', label: APPS_LABELS.favorites, icon: Star },
 ]
 
@@ -442,12 +660,12 @@ const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
  * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: birincil rengin yüzeye karışmış açık tonu,
  * çalışma alanının kabından biraz daha açık (`--tab-bg`; `SHEET` bunu okur).
  */
-const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_7%,var(--surface))]'
+const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_10%,var(--surface))]'
 
 const START_UI = {
-  allApps: MENU_LABELS.apps, // "Uygulamalar" (101882): sekme ve bölüm başlığı
   pin: APPS_LABELS.pin,
   unpin: APPS_LABELS.unpin,
+  allApps: MENU_LABELS.apps, // "Uygulamalar" (101882): sekme ve bölüm başlığı
   results: 'Arama sonuçları',
 } as const
 
@@ -844,6 +1062,231 @@ function WorkPane({ onGo }: { onGo: (href: string) => void }) {
   )
 }
 
+/**
+ * Doküman Yönetimi bölümü (maket; sayfası yok): solda son kullanılan dokümanlar (ad, depo, ne zaman
+ * açıldığı), sağda son kullanılan depolar (ad, öğe sayısı); iki eşit sütun, her biri kendi içinde
+ * kayar. Satırlar bilgi amaçlı (bağlantı yok).
+ */
+/** Bilgi satırı (bağlantısız): küçük ikon karesi ya da avatar, ad, altında not; sağda ek. */
+function InfoRow({
+  lead,
+  icon,
+  label,
+  note,
+  extra,
+  unread = false,
+}: {
+  lead?: ReactNode
+  icon?: LucideIcon
+  label: string
+  note: ReactNode
+  extra?: ReactNode
+  /** Okunmamış: adın önünde birincil renkte nokta. */
+  unread?: boolean
+}) {
+  return (
+    <Flex
+      role="listitem"
+      align="center"
+      gap={12}
+      className="min-h-14 shrink-0 rounded-xl px-2 py-1.5 hover:bg-surface-secondary"
+    >
+      {lead ?? <IconBox icon={icon} label={label} size="sm" />}
+      <Flex vertical className="min-w-0 flex-1">
+        <Flex align="center" gap={6} className="min-w-0">
+          {unread && (
+            <Flex aria-hidden className="block size-1.5 shrink-0 rounded-full bg-accent" />
+          )}
+          <Text
+            className={cn(
+              'block min-w-0 text-base leading-snug text-foreground truncate',
+              unread && 'font-medium',
+            )}
+          >
+            {label}
+          </Text>
+        </Flex>
+        <Text className="block text-xs leading-tight text-muted truncate">{note}</Text>
+      </Flex>
+      {extra}
+    </Flex>
+  )
+}
+
+/** Bölmenin içinde kayan liste sütunu (başlık + satırlar). */
+function ListColumn({
+  title,
+  extra,
+  children,
+}: {
+  title: string
+  extra?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <Section className="min-h-0 min-w-0" title={title} extra={extra}>
+      <Scroll className="-mx-1 min-h-0 flex-1 gap-0.5 px-1" role="list" aria-label={title}>
+        {children}
+      </Scroll>
+    </Section>
+  )
+}
+
+/**
+ * Doküman Yönetimi bölümü (maket; sayfası yok): son kullanılan dokümanlar, son kullanılan depolar ve
+ * favori dokümanlar (orijinal DM panosunun üç alanı) yan yana; her biri kendi içinde kayar.
+ */
+function DocsPane() {
+  const doc = (d: (typeof recentDocuments)[number]) => (
+    <InfoRow key={d.id} icon={d.icon} label={d.name} note={`${d.repo} · ${relative(d.openedAt)}`} />
+  )
+  return (
+    <Flex className="grid h-full min-h-0 grid-cols-3 gap-6">
+      <ListColumn title={DOC_LABELS.recentDocs}>{recentDocuments.map(doc)}</ListColumn>
+      <ListColumn title={DOC_LABELS.recentRepos}>
+        {recentRepositories.map((r) => (
+          <InfoRow
+            key={r.id}
+            icon={r.icon}
+            label={r.name}
+            note={`${DOC_LABELS.items(r.count)} · ${relative(r.openedAt)}`}
+          />
+        ))}
+      </ListColumn>
+      <ListColumn title={DOC_LABELS.favorites}>{favoriteDocuments.map(doc)}</ListColumn>
+    </Flex>
+  )
+}
+
+/** Duyurular (101048): son duyurular, okunmamışlar işaretli; "Tümü" kabuğun Duyurular panelini açar. */
+function AnnouncementsPane({ onAll }: { onAll: () => void }) {
+  return (
+    <ListColumn
+      title={START_MOCK_LABELS.announcements}
+      extra={
+        <Button type="link" size="small" onClick={onAll} className="h-7 px-1 text-sm">
+          {START_MOCK_LABELS.all}
+        </Button>
+      }
+    >
+      {announcements.map((a) => (
+        <InfoRow
+          key={a.id}
+          icon={Megaphone}
+          label={a.title}
+          unread={a.unread}
+          note={`${relative(a.date)} · ${a.summary}`}
+        />
+      ))}
+    </ListColumn>
+  )
+}
+
+/** Aktiviteler (102820): yorumlar, etiketlemeler, ekler; kim, nerede, ne zaman. */
+function ActivitiesPane() {
+  return (
+    <ListColumn title={START_MOCK_LABELS.activities}>
+      {activities.map((c) => (
+        <InfoRow
+          key={c.id}
+          lead={
+            <Avatar
+              size={36}
+              aria-hidden
+              className="inline-flex! shrink-0 items-center justify-center bg-accent-soft text-sm font-semibold text-accent-soft-foreground"
+            >
+              {initials(c.who.name)}
+            </Avatar>
+          }
+          label={`${c.who.name} ${c.action}`}
+          unread={c.unread}
+          note={
+            <>
+              {c.target} · {relative(c.date)}
+              {c.text && ` · "${c.text}"`}
+            </>
+          }
+        />
+      ))}
+    </ListColumn>
+  )
+}
+
+/** Vekaletler (100043): verdiklerim ve aldıklarım; kişi, kapsam, tarih aralığı, durum. */
+function DelegationsPane() {
+  const state = (d: Delegation) => {
+    const st = delegationState(d)
+    return (
+      <Text
+        className={cn(
+          'h-6 shrink-0 rounded-full px-2 text-xs leading-6 font-medium',
+          st === 'active'
+            ? 'bg-accent-soft text-accent-soft-foreground'
+            : 'bg-surface-secondary text-muted',
+        )}
+      >
+        {st === 'active'
+          ? START_MOCK_LABELS.active
+          : st === 'planned'
+            ? START_MOCK_LABELS.planned
+            : START_MOCK_LABELS.ended}
+      </Text>
+    )
+  }
+  const row = (d: Delegation) => (
+    <InfoRow
+      key={d.id}
+      lead={
+        <Avatar
+          size={36}
+          aria-hidden
+          className="inline-flex! shrink-0 items-center justify-center bg-surface-secondary text-sm font-semibold text-foreground"
+        >
+          {initials(d.person.name)}
+        </Avatar>
+      }
+      label={d.person.name}
+      note={`${d.scope} · ${formatDay(d.start)} – ${formatDay(d.end)}`}
+      extra={state(d)}
+    />
+  )
+  return (
+    <Flex className="flex h-full min-h-0 flex-col gap-6">
+      <ListColumn title={START_MOCK_LABELS.given}>{givenDelegations.map(row)}</ListColumn>
+      <ListColumn title={START_MOCK_LABELS.received}>{receivedDelegations.map(row)}</ListColumn>
+    </Flex>
+  )
+}
+
+/** Yönetim Araçları (100676): yalnızca kısayol karoları (sayfaları yok). */
+function AdminToolsPane() {
+  return (
+    <Section className="min-h-0" title={START_MOCK_LABELS.adminTools}>
+      <Flex
+        role="list"
+        aria-label={START_MOCK_LABELS.adminTools}
+        className="grid grid-cols-3 gap-2"
+      >
+        {adminTools.map((t) => (
+          <Flex
+            key={t.id}
+            role="listitem"
+            vertical
+            align="center"
+            gap={8}
+            className="rounded-2xl px-2 pt-4 pb-3 hover:bg-surface-secondary"
+          >
+            <IconBox icon={t.icon} label={t.label} />
+            <Text className="line-clamp-2 w-full text-center text-sm leading-[1.3] text-foreground">
+              {t.label}
+            </Text>
+          </Flex>
+        ))}
+      </Flex>
+    </Section>
+  )
+}
+
 function StartPanel({
   actions,
   onClose,
@@ -858,11 +1301,11 @@ function StartPanel({
   const openApp = useOpenApp()
   const place = usePlace()
   const { favorites, recent } = useMenuApps()
+  const [shelf, setShelf] = useState<'favorites' | 'recent'>('favorites')
   const counts = useBoxCounts()
   const dark = useIsDark()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<MenuSort>(() => readJson<MenuSort>(SORT_KEY, 'order'))
-  const [shelf, setShelf] = useState<'favorites' | 'recent'>('favorites')
   // Seçili bölüm (sekme); kutu hep Tüm uygulamalar'la açılır
   const [section, setSection] = useState<Section>('apps')
   // Ağaçta kapatılan klasörler (hepsi açık başlar; tercih oturum boyunca)
@@ -906,7 +1349,6 @@ function StartPanel({
 
   const tree = useMemo(() => sortTree(MENU_TREE, sort), [sort])
   // Favorilerdeki güncel sabitleme durumu son kullanılanlarda da geçerli (`useMenuApps`)
-  const shelfApps = shelf === 'favorites' ? favorites : recent.slice(0, 12)
 
   const viewActions = [
     { id: 'theme', icon: Palette, label: START_LABELS.themeSettings, fn: actions.onTheme },
@@ -971,7 +1413,11 @@ function StartPanel({
   }, [q, tree, counts, place, dark])
 
   useEffect(() => setHi(0), [q])
-  useEffect(() => onWide(!searching && section === 'work'), [onWide, searching, section])
+  // Geniş kutu: İş Akış Yönetimi (beş karo yan yana) ve Doküman Yönetimi (iki alan yan yana)
+  useEffect(
+    () => onWide(!searching && (section === 'work' || section === 'docs')),
+    [onWide, searching, section],
+  )
   useEffect(() => {
     hiRef.current?.scrollIntoView({ block: 'nearest' })
   }, [hi, q])
@@ -1106,6 +1552,7 @@ function StartPanel({
   const workPane = <WorkPane onGo={go} />
 
   // Favoriler ↔ Son kullanılanlar: karo ızgarası
+  const shelfApps = shelf === 'favorites' ? favorites : recent.slice(0, 12)
   const shelfPane = (
     <Section
       className="min-h-0"
@@ -1156,7 +1603,25 @@ function StartPanel({
       )}
     </Section>
   )
-  const panes: Record<Section, ReactNode> = { apps: appsPane, work: workPane, shelf: shelfPane }
+
+  // Doküman Yönetimi: iki alan yan yana (kutu geniş), örnek içerik
+  const docsPane = <DocsPane />
+  // Orijinalin üst çubuğundaki paneller ve kullanıcı menüsü (maketler; `shared/startMock.ts`)
+  const newsPane = <AnnouncementsPane onAll={() => run(() => actions.onPanel('news'))} />
+  const activityPane = <ActivitiesPane />
+  const delegationsPane = <DelegationsPane />
+  const adminPane = <AdminToolsPane />
+
+  const panes: Record<Section, ReactNode> = {
+    apps: appsPane,
+    work: workPane,
+    docs: docsPane,
+    news: newsPane,
+    activity: activityPane,
+    delegations: delegationsPane,
+    admin: adminPane,
+    shelf: shelfPane,
+  }
 
   return (
     <>
@@ -1216,7 +1681,7 @@ function StartPanel({
             // bölmenin köşesinden aşağıda biter, ilk yaprağın kavsi düz kenara oturur)
             inset="pt-3 pb-2"
             // Dar sütun: adlar iki satıra sarar, ikonlar büyük (şerit = sekme eni + satırın 4px payı)
-            className="min-h-0 flex-1 [--tab-h:11rem] [--tab-l:4.25rem]"
+            className="shrink-0 [--tab-h:11rem] [--tab-l:4.25rem]"
           >
             <TabGroup id="start">
               {SECTIONS.map((sct) => {
@@ -1247,19 +1712,25 @@ function StartPanel({
         <Flex
           role="tabpanel"
           aria-label={searching ? START_UI.results : SECTIONS.find((x) => x.id === section)?.label}
-          className="@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-5"
+          className="@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-3"
         >
-          {/* İçerik doğrudan bölmenin zemininde (kart yok) */}
-          {searching ? (
-            <Scroll className="-m-1 min-h-0 flex-1 p-1">{results}</Scroll>
-          ) : (
-            <Flex
-              key={section}
-              className="flex min-h-0 flex-1 flex-col animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
-            >
-              {panes[section]}
-            </Flex>
-          )}
+          {/* İçerik kutunun zemininde (yüzey) bir kartta, kontursuz ve gölgesiz: bölmenin tonu kartın
+              çevresinde çerçeve */}
+          <Card
+            className="flex min-h-0 flex-1 flex-col rounded-2xl bg-surface shadow-none ring-0"
+            classNames={{ body: 'flex min-h-0 flex-1 flex-col p-4' }}
+          >
+            {searching ? (
+              <Scroll className="-m-1 min-h-0 flex-1 p-1">{results}</Scroll>
+            ) : (
+              <Flex
+                key={section}
+                className="flex min-h-0 flex-1 flex-col animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
+              >
+                {panes[section]}
+              </Flex>
+            )}
+          </Card>
         </Flex>
       </Flex>
     </>

@@ -154,7 +154,15 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   it), while the inset keeps `--tab-f` so the selected sheet's flare isn't clipped by the scroller.
   "Solda" = left column
   with the logo (centred on the tab row) and the dock in the middle (three-row grid), the dock
-  (`StartDock` in `StartMenu.tsx`, morphs into the start menu: 85 % of the viewport
+  (`StartDock` in `StartMenu.tsx`, opens the start menu from the **Başlat button** in every
+  layout — by hand, not `layoutId`: the box (`StartBox`) measures its final place on mount and
+  animates x / y / width / height / corner and background (accent → surface, a `color-mix` driven
+  by a motion value) from the button's rect with the dock spring, and on close back to the button
+  before it is removed (`usePresence`); the button is hidden while the box is open and fades back
+  as the box lands, and the box shows the Başlat icon in its centre as it turns blue, so the handoff
+  to the button is seamless; the dock stays in place; contour and shadow sit on a child ring that fades in
+  with the content, so nothing is scaled and the 1px lines never jump; the shared-layout morph
+  scaled the box, crossfaded the dock as a blue blob and drew the shrinking dock under the tab row: 85 % of the viewport
   high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its content
   (`StartPanel`, redesigned on explicit request after launcher research: search as the spine, pinned
   tiles before the browse list, stable positions): search on top (autofocus; typing turns
@@ -165,11 +173,12 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   **vertical** (`TabStrip orientation="vertical" side="start"`, `round`, `sizing="content"`, strip width
   = `--tab-h` 11rem + the row's 4px pad, tab height `--tab-l` 4.25rem, 26px icons and two-line
   labels (`TabButton` `iconSize` / `lines`); the box is 44rem wide (top nav: 55vw) and grows to
-  58rem (72vw) with the dock spring while the İş Akış Yönetimi tab is shown so the five count tiles
-  sit in one row (`PANEL_WIDTH`, `StartPanel` `onWide` → `animate={{ width }}` on the dialog), `TAB_BG` + `SHEET`: the selected sheet merges
-  with its concave flares into the pane on the right (`START_PANE_BG`: accent 7 % over the
-  surface, written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, content straight on it, `p-5`;
-  no card) with three tabs for the three sections, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
+  58rem (72vw) with the dock spring while the İş Akış Yönetimi / Doküman Yönetimi tab is shown so
+  the tiles / columns sit in one row (`panelWidthPx`, `StartPanel` `onWide` → the box's width
+  motion value), `TAB_BG` + `SHEET`: the selected sheet merges
+  with its concave flares into the pane on the right (`START_PANE_BG`: accent 10 % over the
+  surface, written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, `p-3`; inside it the content sits in a plain surface-coloured card (no contour, no
+  shadow), so the tint frames it) with eight tabs, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
   folders as collapsible rows with a muted icon and rotating chevron, children indented behind a
   guide line; `AppRow plain`; all open at first, collapsed ones remembered
   for the session, `TreeFolder`; order ↔ A–Z, `SORT_KEY` shared with the Tüm uygulamalar panel; scrolls
@@ -177,7 +186,14 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   tried and dropped: two nested strips and three scroll contexts in a popup): the five boxes as
   count tiles (selected one in the accent, press = select), under them the selected box's process
   list (project, process, count; a row opens that process list in the workspace, "Tümünü Göster"
-  the box; no request grid), Favoriler ↔ Son Kullanılan Uygulamalar as a grid of 6rem icon tiles (star toggles `togglePin`; only that changes positions); no footer (Duyurular /
+  the box; no request grid), Doküman Yönetimi (`DocsPane`, a mock added on explicit request: Son Kullanılan Dokümanlar, Son
+  Kullanılan Depolar and Favoriler side by side from `shared/documents.ts`, informational rows, no
+  page; the box widens for it like for İş Akış Yönetimi), then four mocks mirroring the original's
+  top-bar panels and user menu (data and tr_TR labels in `shared/startMock.ts`; informational
+  rows, `InfoRow` / `ListColumn`): Duyurular (unread dot, "Tümü" opens the shell's Duyurular panel),
+  Aktiviteler (comments / mentions with avatars), Vekaletler (Verdiğim / Aldığım, Aktif / Planlı /
+  Bitti pills), Yönetim Araçları (the seven admin shortcuts as tiles), and Favoriler ↔ Son Kullanılan Uygulamalar as a grid of
+  6rem icon tiles (star toggles `togglePin`; only that changes positions); no footer (Duyurular /
   Sohbet / Tema stay in the tab row's actions and are search hits); sections rise in with a 50ms stagger (`rise`
   keyframes × `--motion-time`), results don't; no section rail inside anymore); "Üstte" = three columns: corner handle + logo | centered dock | empty (the
   handle — added on explicit request, a trial — is
