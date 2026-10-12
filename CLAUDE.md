@@ -331,7 +331,14 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   2.75rem, `TabButton`s, the card is the tabpanel; the fold (column) / close (sheet) button is a bare
   32px icon button centred in the strip's right corner inset, over the card's corner (`end` slot,
   absolute; `FOLD_BUTTON`; no morph between it and the rail's "Paneli aç" button: tried and
-  dropped);
+  dropped); a tab can be torn off downward (added on explicit request): dragging a tab vertically
+  past 14px (`useTear`, mouse / pen; a ghost sheet follows the pointer, a dashed drop zone covers
+  the target half) and dropping it in the lower half splits the side info into two cards, the
+  remaining tabs on top and that tab alone in its own strip (`sizing="content"`, same concave
+  sheet) and card below, half the height each, so both are visible at once; dragging the bottom
+  tab into the upper half merges it back and selects it; the same via the tabs' context menu
+  ("Alta ayır" / "Üste birleştir", touch and keyboard); the split tab is stored in `localStorage`
+  (`synergy.side.split`, a tiny store shared by every request screen, `useSideSplit`);
   Tarihçe's "Tüm Tarihçeyi Göster" + options row pinned under the scroll area via `historyFooter` →
   `SideTabs` `footers`; the required-documents warning selects Dokümanlar and shakes the card;
   Özellikler rows use dotted leaders), each with its own scrolling

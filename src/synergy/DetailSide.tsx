@@ -6,6 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -25,13 +27,13 @@ import {
 import { flushSync } from 'react-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Files, History, Info, PanelRightClose, PanelRightOpen, PanelTopClose } from 'lucide-react'
-import { Button, Card, Divider, Flex } from 'antd'
+import { Button, Card, Divider, Flex, Typography } from 'antd'
 import { DOCUMENT_LABELS } from '@/synergy/shared/workflowData'
 import { useMediaQuery } from '@/synergy/shared/hooks'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { useTransition } from '@/synergy/motion'
 import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
-import { SHEET_ON_SURFACE } from '@/synergy/tabs/shape'
+import { SHEET_ON_SURFACE, STRIP_VARS } from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 
 /* -------------------------------------------------------------------------------------------------
@@ -252,6 +254,145 @@ const tabVariants = (enter: Transition, exit: Transition): Variants => ({
 /** Katlama / açma / kapatma düğmesi: çıplak simge, üzerine gelince yüzey rengi. Rafta ve şeridin ucunda aynı. */
 const FOLD_BUTTON = 'text-muted hover:bg-surface-secondary! hover:text-foreground!'
 
+/* --- Alta ayrılan sekme ------------------------------------------------------------------------- */
+
+/**
+ * Bir sekme tutulup aşağı bırakılınca kart ikiye bölünür: o sekme altta kendi şeridi ve kartıyla
+ * durur, üstteki kartta kalan sekmeler; ikisi aynı anda görünür. Tercih tarayıcıda saklanır ve
+ * bütün talep ekranlarında ortaktır. Alttaki sekme yukarı bırakılınca birleşir.
+ */
+const SPLIT_KEY = 'synergy.side.split'
+let split: SideTab | null = loadSplit()
+const splitListeners = new Set<() => void>()
+function loadSplit(): SideTab | null {
+  try {
+    const v = localStorage.getItem(SPLIT_KEY)
+    return v === 'props' || v === 'history' || v === 'docs' ? v : null
+  } catch {
+    return null
+  }
+}
+function setSplit(v: SideTab | null) {
+  if (v === split) return
+  split = v
+  try {
+    if (v) localStorage.setItem(SPLIT_KEY, v)
+    else localStorage.removeItem(SPLIT_KEY)
+  } catch {
+    // Depolama kapalıysa tercih yalnızca bu oturumda
+  }
+  for (const l of splitListeners) l()
+}
+function subscribeSplit(l: () => void) {
+  splitListeners.add(l)
+  return () => {
+    splitListeners.delete(l)
+  }
+}
+const getSplit = () => split
+function useSideSplit() {
+  return useSyncExternalStore(subscribeSplit, getSplit, getSplit)
+}
+
+/** Sürüklenen sekme: hangi karttan tutuldu, imlecin altındaki yarı. */
+interface Tear {
+  key: SideTab
+  label: string
+  from: 'top' | 'bottom'
+}
+type Zone = 'top' | 'bottom' | null
+
+/** Sürükleme bu kadar dikey yol alınca başlar (yatayı aşmalı: yatay hareket sekme seçimi değildir). */
+const TEAR_THRESHOLD = 14
+
+/**
+ * Sekmeyi tutup aşağı / yukarı taşıma. Hayalet (sekmenin yaprağı gibi bir kutu) imleci izler
+ * (MotionValue: React çizmez); imlecin bulunduğu yarı (`zone`) değişince ve başlarken / biterken
+ * çizilir. Bırakınca: üstten alta → o sekme ayrılır, alttan üste → birleşir.
+ */
+function useTear(box: RefObject<HTMLElement | null>, onDrop: (tear: Tear, zone: Zone) => void) {
+  const [tear, setTear] = useState<Tear | null>(null)
+  const [zone, setZone] = useState<Zone>(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const session = useRef<{
+    id: number
+    tear: Tear
+    startX: number
+    startY: number
+    rect: DOMRect
+    started: boolean
+    zone: Zone
+  } | null>(null)
+  const latest = useRef(onDrop)
+  latest.current = onDrop
+
+  const start = useCallback(
+    (e: ReactPointerEvent<HTMLElement>, t: Tear) => {
+      const el = box.current
+      if (e.button !== 0 || e.pointerType === 'touch' || session.current || !el) return
+      const d = {
+        id: e.pointerId,
+        tear: t,
+        startX: e.clientX,
+        startY: e.clientY,
+        rect: el.getBoundingClientRect(),
+        started: false,
+        zone: null as Zone,
+      }
+      session.current = d
+      const move = (ev: PointerEvent) => {
+        if (ev.pointerId !== d.id) return
+        const dx = ev.clientX - d.startX
+        const dy = ev.clientY - d.startY
+        if (!d.started) {
+          if (Math.abs(dy) < TEAR_THRESHOLD || Math.abs(dy) < Math.abs(dx)) return
+          d.started = true
+          d.rect = el.getBoundingClientRect()
+          setTear(d.tear)
+        }
+        // Hayalet imlecin solunda / üstünde biter: tutulan yerden taşınıyor gibi
+        x.set(ev.clientX - d.rect.left - 48)
+        y.set(ev.clientY - d.rect.top - 20)
+        const half = d.rect.top + d.rect.height / 2
+        const inside =
+          ev.clientX >= d.rect.left - 40 &&
+          ev.clientX <= d.rect.right + 40 &&
+          ev.clientY >= d.rect.top - 40 &&
+          ev.clientY <= d.rect.bottom + 40
+        const z: Zone = !inside ? null : ev.clientY > half ? 'bottom' : 'top'
+        if (z !== d.zone) {
+          d.zone = z
+          setZone(z)
+        }
+      }
+      const end = (ev: PointerEvent) => {
+        if (ev.pointerId !== d.id) return
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', end)
+        window.removeEventListener('pointercancel', end)
+        session.current = null
+        if (!d.started) return
+        setTear(null)
+        setZone(null)
+        if (ev.type === 'pointerup') latest.current(d.tear, d.zone)
+        // Sürüklemenin sonundaki tıklama sekmeyi seçmesin
+        const stop = (c: Event) => {
+          c.stopPropagation()
+          c.preventDefault()
+        }
+        el.addEventListener('click', stop, { capture: true, once: true })
+        setTimeout(() => el.removeEventListener('click', stop, { capture: true }))
+      }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', end)
+      window.addEventListener('pointercancel', end)
+    },
+    [box, x, y],
+  )
+  return { tear, zone, x, y, start }
+}
+
 /* --- Yan bilgiler -------------------------------------------------------------------------------- */
 
 /**
@@ -352,23 +493,103 @@ export function SidePanel({
       </Tip>
     ) : undefined
 
-  // Tek kart, üç sekme (Özellikler, Tarihçe, Dokümanlar); `fill` (sütun, sayfa): kabı doldurur ve içi
-  // kayar, telefonda doğal boy. Zorunlu doküman uyarısı kartı sallar (Dokümanlar sekmesi seçilir)
+  // Bir sekme alta ayrılmış olabilir (`useSideSplit`): üstte kalan sekmelerin kartı, altta onun kartı.
+  // Üstte seçili sekme ayrılan sekmeyse yerine ilk kalan
+  const splitTab = useSideSplit()
+  const topTabs = TABS.filter((t) => t.key !== splitTab)
+  const bottom = TABS.find((t) => t.key === splitTab)
+  const topTab = tab === splitTab ? topTabs[0].key : tab
+  const box = useRef<HTMLElement | null>(null)
+  const { tear, zone, x, y, start } = useTear(box, (t, z) => {
+    if (t.from === 'top' && z === 'bottom') {
+      setSplit(t.key)
+      if (tab === t.key) onTab(topTabs.find((o) => o.key !== t.key)?.key ?? t.key)
+    } else if (t.from === 'bottom' && z === 'top') {
+      setSplit(null)
+      onTab(t.key)
+    }
+  })
+  // Sürüklemeyle aynı iş sağ tık menüsünden de (dokunmatik, klavye)
+  const tearMenu = (key: SideTab, from: 'top' | 'bottom') => [
+    from === 'top'
+      ? { key: 'split', label: 'Alta ayır', onClick: () => setSplit(key) }
+      : {
+          key: 'join',
+          label: 'Üste birleştir',
+          onClick: () => {
+            setSplit(null)
+            onTab(key)
+          },
+        },
+  ]
+
+  // Üstte kalan sekmelerin kartı ve (ayrılmışsa) alttaki sekmenin kartı; `fill` (sütun, sayfa): kabı
+  // doldurur, ikisi yarı yarıya, içleri kayar; telefonda doğal boy. Zorunlu doküman uyarısı
+  // Dokümanlar'ın bulunduğu kartı sallar (sekmesi seçilir)
   const cards = (fill: boolean) => (
     <MotionFlex
+      ref={box}
       variants={card}
       vertical
-      className={fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0'}
+      className={cn('relative gap-3', fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0')}
     >
       <SideTabs
-        tab={tab}
+        tabs={topTabs}
+        tab={topTab}
         onTab={onTab}
         panes={{ props, history, docs }}
         footers={{ history: historyFooter }}
         fill={fill}
         extra={control}
-        warning={warning}
+        warning={warning && splitTab !== 'docs'}
+        tearing={tear?.from === 'top' ? tear.key : null}
+        onTear={(e, key, label) => start(e, { key, label, from: 'top' })}
+        menu={(key) => tearMenu(key, 'top')}
       />
+      {bottom && (
+        <SideTabs
+          tabs={[bottom]}
+          tab={bottom.key}
+          onTab={() => {}}
+          sizing="content"
+          panes={{ props, history, docs }}
+          footers={{ history: historyFooter }}
+          fill={fill}
+          warning={warning && splitTab === 'docs'}
+          tearing={tear?.from === 'bottom' ? tear.key : null}
+          onTear={(e, key, label) => start(e, { key, label, from: 'bottom' })}
+          menu={(key) => tearMenu(key, 'bottom')}
+        />
+      )}
+      {/* Bırakma alanı: tutulan sekmenin gideceği yarı; imleç oradayken belirgin */}
+      {tear && (
+        <Flex
+          className={cn(
+            'pointer-events-none absolute inset-x-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed transition-colors',
+            tear.from === 'top' ? 'top-1/2 bottom-0 mt-1.5' : 'top-0 bottom-1/2 mb-1.5',
+            zone === (tear.from === 'top' ? 'bottom' : 'top')
+              ? 'border-accent bg-accent/10'
+              : 'border-border bg-surface/60',
+          )}
+        >
+          <Typography.Text className="font-medium text-muted">
+            {tear.from === 'top' ? 'Alta ayır' : 'Üste birleştir'}
+          </Typography.Text>
+        </Flex>
+      )}
+      {/* Hayalet: sekmenin yaprağı gibi bir kutu imleci izler */}
+      {tear && (
+        <MotionFlex
+          aria-hidden
+          style={{ x, y }}
+          className={cn(
+            STRIP_VARS,
+            'pointer-events-none absolute start-0 top-0 z-30 flex h-(--tab-h) items-center rounded-t-(--tab-r) bg-surface px-6 font-medium text-accent-soft-foreground shadow-overlay ring-1 ring-border',
+          )}
+        >
+          {tear.label}
+        </MotionFlex>
+      )}
     </MotionFlex>
   )
 
@@ -484,16 +705,24 @@ export function SidePanel({
  * sabit boylu, iki içerik üst üste binmez); yeni içerik baştan başlar.
  */
 function SideTabs({
+  tabs,
   tab,
   onTab,
+  sizing = 'fill',
   panes,
   footers,
   fill,
   extra,
   warning = false,
+  tearing,
+  onTear,
+  menu,
 }: {
+  /** Bu kartın sekmeleri (alta ayrılan sekme kendi kartında tek başına). */
+  tabs: { key: SideTab; label: string }[]
   tab: SideTab
   onTab: (tab: SideTab) => void
+  sizing?: 'fill' | 'content'
   panes: Record<SideTab, ReactNode>
   /** Sekmenin altında, kayan alanın dışında sabit duran satır. */
   footers?: Partial<Record<SideTab, ReactNode>>
@@ -502,6 +731,12 @@ function SideTabs({
   extra?: ReactNode
   /** Zorunlu dokümanlar görülmedi: kart sallanır, uyarı halkası. */
   warning?: boolean
+  /** Şu an tutulup taşınan sekme (soluk). */
+  tearing?: SideTab | null
+  /** Sekmeye basıldı: aşağı / yukarı taşıma başlayabilir (`useTear`). */
+  onTear?: (e: ReactPointerEvent<HTMLElement>, key: SideTab, label: string) => void
+  /** Sekmenin sağ tık menüsü (Alta ayır / Üste birleştir). */
+  menu?: (key: SideTab) => { key: string; label: string; onClick: () => void }[]
 }) {
   const enter = useTransition({ duration: 0.24, ease: 'easeOut' })
   const exit = useTransition({ duration: 0.12, ease: 'easeIn' })
@@ -518,14 +753,14 @@ function SideTabs({
 
   const panelId = useId()
   return (
-    <>
+    <Flex vertical className={cn(fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0')}>
       {/* Ortak sekme şeridi, kartın üstünde (Başlangıç kategorileri gibi): seçili yaprak kartla aynı
           yüzeyde, kartın konturu kavisler boyunca kartın üst çizgisine iner (`SHEET_ON_SURFACE`).
           Katlama / kapatma düğmesi şeridin kaymayan ucunda */}
       <TabStrip
         label="Yan bilgiler"
         selected={tab}
-        sizing="fill"
+        sizing={sizing}
         sheet={SHEET_ON_SURFACE}
         inset="px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-f))]"
         className="relative z-1 shrink-0 [--tab-h:2.75rem]"
@@ -539,8 +774,14 @@ function SideTabs({
         }
       >
         <TabGroup id="side">
-          {TABS.map(({ key, label }) => (
-            <Tab key={key} id={key} selected={key === tab}>
+          {tabs.map(({ key, label }) => (
+            <Tab
+              key={key}
+              id={key}
+              selected={key === tab}
+              menu={menu && (() => menu(key))}
+              className={cn(tearing === key && 'opacity-40')}
+            >
               <TabButton
                 label={label}
                 current={key === tab}
@@ -549,7 +790,8 @@ function SideTabs({
                 aria-controls={panelId}
                 tabIndex={key === tab ? 0 : -1}
                 onClick={() => onTab(key)}
-                className="flex-1 justify-center"
+                onPointerDown={(e) => onTear?.(e, key, label)}
+                className={cn('justify-center', sizing === 'fill' ? 'flex-1' : 'px-6')}
               />
             </Tab>
           ))}
@@ -590,7 +832,7 @@ function SideTabs({
         {/* Sekmenin sabit alt satırı (Tarihçe: Tüm Tarihçeyi Göster ve seçenekler) */}
         {footers?.[tab] && <Flex className="block shrink-0 pt-3">{footers[tab]}</Flex>}
       </Card>
-    </>
+    </Flex>
   )
 }
 
