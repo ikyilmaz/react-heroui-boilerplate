@@ -18,6 +18,7 @@ export const APP_THEME: ThemeKit = {
     shadow: 'none',
     border: 1,
     nav: 'compact',
+    detail: 'embedded',
     motion: 'full',
     motionSpeed: 1,
     tabContent: 'full',

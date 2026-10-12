@@ -26,7 +26,7 @@ import {
   type Navigator,
   type To,
 } from 'react-router'
-import { Columns2, SquareArrowOutUpRight } from 'lucide-react'
+import { ChevronRight, Columns2, SquareArrowOutUpRight } from 'lucide-react'
 import { AnimatePresence, LayoutGroup } from 'framer-motion'
 import { Dropdown, Flex, type MenuProps } from 'antd'
 import { panelSizeOf, type PanelSize } from '@/synergy/shared/workflowData'
@@ -152,7 +152,6 @@ interface Actions {
   closeSide: (screen: string) => void
   closeGroup: (group: string) => void
   moveUnit: (key: string, to: number) => void
-  moveTab: (tab: string, to: number, group: string) => void
   pair: (tab: string) => void
   unpair: (tab: string) => void
   /** Yan yana sekmenin iki ekranının yerini değiştirir. */
@@ -396,7 +395,6 @@ export function Workspace({
         keepFocus()
       },
       moveUnit: (key, to) => act({ type: 'moveUnit', key, to }),
-      moveTab: (t, to, group) => act({ type: 'moveTab', tab: t, to, group }),
       pair: (t) => run({ type: 'pair', tab: t, with: latest.current.st.active }),
       unpair: (t) => run({ type: 'unpair', tab: t }),
       // Düzen animasyonu: geçiş olmadan (bölmeler hemen kayar)
@@ -617,6 +615,19 @@ export function Workspace({
   // Ekranların adresleri (sekmenin adı ve ikonu bundan): yalnızca kendi sırasınınki
   const pathOf = (k: string) => screenOf(st, k)?.path ?? ''
   const unitPaths = units.map((u) => u.tabs.map((t) => t.screens.map(pathOf).join('\t')).join('\n'))
+  // Aile bağları (sıraya göre değil, gerçek bağa göre): sekme başına iki işaret, sağdaki sekme bu
+  // sekmedeki bir formun child'ını tutuyor mu, yan yana sekmede ikinci ekran birincinin child'ı mı
+  const parentOf = (k: string) => screenOf(st, k)?.parent
+  const unitLinks = units.map((u) =>
+    u.tabs
+      .map((t, i) => {
+        const next = u.tabs[i + 1]
+        const out = !!next && next.screens.some((k) => t.screens.includes(parentOf(k) ?? ''))
+        const inner = t.screens.length > 1 && parentOf(t.screens[1]!) === t.screens[0]
+        return `${out ? 1 : 0}${inner ? 1 : 0}`
+      })
+      .join('\n'),
+  )
   const activeGroup = tab.group ? st.groups.find((g) => g.key === tab.group) : undefined
 
   return (
@@ -673,9 +684,9 @@ export function Workspace({
               key={u.key}
               unit={u}
               paths={unitPaths[i]!}
+              links={unitLinks[i]!}
               position={i - 1}
               count={units.length - 1}
-              first={units.slice(0, i).reduce((n, x) => n + x.tabs.length, 0)}
               selected={u.tabs.some((t) => t.key === tab.key) ? tab.key : undefined}
               // Yalnızca seçili sekmenin sırası için (diğerleri geçişte yeniden çizilmesin)
               split={split && u.tabs.some((t) => t.key === tab.key)}
@@ -882,9 +893,9 @@ function OpenMenu({ ref, wide }: { ref: Ref<MenuHandle>; wide: boolean }) {
 const UnitView = memo(function UnitView({
   unit,
   paths,
+  links,
   position,
   count,
-  first,
   selected,
   split,
   wide,
@@ -894,11 +905,11 @@ const UnitView = memo(function UnitView({
   unit: Unit
   /** Sekmelerin ekranlarının adresleri (satır başına bir sekme, sekmede bir sekme karakteriyle). */
   paths: string
+  /** Aile bağları, sekme başına iki işaret (`1` / `0`): sağdaki sekmeyle, yan yana sekmenin içinde. */
+  links: string
   /** Başlangıç hariç sırası. */
   position: number
   count: number
-  /** İlk sekmesinin şeritteki sırası. */
-  first: number
   /** Seçili sekme bu sıradaysa anahtarı. */
   selected: string | undefined
   /** Seçili sekme bu sıradaysa ve yan yanaysa. */
@@ -910,10 +921,9 @@ const UnitView = memo(function UnitView({
 }) {
   const start = unit.key === START
   const g = unit.group
-  const order = unit.tabs.map((t) => t.key).join('|')
-  const siblings = useMemo(() => order.split('|'), [order])
   const onMove = useCallback((to: number) => actions.moveUnit(unit.key, to), [actions, unit.key])
   const lines = paths.split('\n')
+  const linkLines = links.split('\n')
   return (
     <TabGroup
       id={unit.key}
@@ -925,6 +935,9 @@ const UnitView = memo(function UnitView({
     >
       {unit.tabs.map((t, i) => {
         const screenPaths = lines[i]!.split('\t')
+        // Sağdaki sekme bu sekmedekinin child'ı: ayırıcının yerinde yön oku
+        const linked = linkLines[i]?.[0] === '1'
+        const innerLinked = linkLines[i]?.[1] === '1'
         const isSelected = t.key === selected
         // Tutamak: grupsuz sekme ve grubun ilk sekmesi (sırayı sürükler)
         const handle = !start && i === 0
@@ -964,22 +977,8 @@ const UnitView = memo(function UnitView({
                 onClick: () => actions.moveUnit(unit.key, position + 1),
               },
             )
-          else if (g)
-            items.push(
-              {
-                key: 'left',
-                label: 'Sola taşı',
-                disabled: i <= 1,
-                onClick: () => actions.moveTab(t.key, first + i - 1, g.key),
-              },
-              {
-                key: 'right',
-                label: 'Sağa taşı',
-                disabled: i >= unit.tabs.length - 1,
-                onClick: () => actions.moveTab(t.key, first + i + 1, g.key),
-              },
-            )
-          else
+          // Grubun öbür sekmeleri grubun içinde sıralanmaz (açık istek üzerine): taşıma yok
+          else if (!g)
             items.push(
               {
                 key: 'left',
@@ -994,8 +993,8 @@ const UnitView = memo(function UnitView({
                 onClick: () => actions.moveUnit(unit.key, position + 1),
               },
             )
+          if (items.length && items.at(-1)?.type !== 'divider') items.push({ type: 'divider' })
           items.push(
-            { type: 'divider' },
             {
               key: 'link',
               label: 'Bağlantıyı kopyala',
@@ -1019,19 +1018,23 @@ const UnitView = memo(function UnitView({
             selected={isSelected}
             handle={handle}
             menu={start ? undefined : menu}
-            onMove={g && !handle ? (to) => actions.moveTab(t.key, first + to, g.key) : undefined}
-            siblings={siblings}
             min={1}
-            className={start ? PINNED : undefined}
+            className={cn(start && PINNED, linked && 'after:hidden')}
           >
+            {linked && (
+              <FamilyLink className="absolute end-0 top-[calc(50%-var(--tab-gap)/2)] translate-x-1/2 -translate-y-1/2" />
+            )}
             {t.screens.map((k, j) => (
               <Fragment key={k}>
-                {j > 0 && (
-                  <Flex
-                    aria-hidden
-                    className="relative z-2 mx-0.5 block h-4 w-px shrink-0 self-center bg-border"
-                  />
-                )}
+                {j > 0 &&
+                  (innerLinked ? (
+                    <FamilyLink className="relative mx-0.5 self-center" />
+                  ) : (
+                    <Flex
+                      aria-hidden
+                      className="relative z-2 mx-0.5 block h-4 w-px shrink-0 self-center bg-border"
+                    />
+                  ))}
                 <ScreenLabel
                   screen={k}
                   tab={t.key}
@@ -1056,6 +1059,26 @@ const UnitView = memo(function UnitView({
 })
 
 /** Sekmedeki ekran: ikon ve ad (ipucunda yerin tam yolu), yanında kapatma. Başlangıç yalnızca ikon. */
+/**
+ * Aile bağının yön oku (açık istek üzerine): ayırıcının yerinde, açandan açılana bakar; sekmeler
+ * arasındaysa iki sekmenin birleşim yerinde, grubun renginde küçük bir yuvarlakta (grupsuzsa
+ * sönük), ok beyaz. Gerçek parent bağından (`links`), sıradan değil.
+ */
+function FamilyLink({ className }: { className?: string }) {
+  return (
+    <Flex
+      aria-hidden
+      className={cn(
+        'pointer-events-none z-3 flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[color:var(--g,var(--muted))] text-white',
+        className,
+      )}
+    >
+      {/* Kollar uzun: ikon büyük, çizgi aynı kalınlıkta (3 × 12 / 15) */}
+      <ChevronRight {...IC} size={15} strokeWidth={2.4} />
+    </Flex>
+  )
+}
+
 function ScreenLabel({
   screen,
   tab,

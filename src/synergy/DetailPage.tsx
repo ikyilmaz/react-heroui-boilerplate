@@ -72,8 +72,13 @@ import { ContentSwitch } from '@/synergy/tabs/ContentSwitch'
 import { useDirection } from '@/synergy/tabs/motion'
 import { appFormOf } from '@/synergy/shared/appForms'
 import { APP_EVENTS, AppFormBody, useAppEvent } from '@/synergy/AppForm'
+import { useLook } from '@/synergy/shared/themeSettings'
 import {
+  NOTCH_GAP,
+  NOTCH_ROOM,
+  NOTCH_ROW,
   SIDE_LABEL,
+  SideNotch,
   SidePanel,
   useSidePanel,
   type SideState,
@@ -439,6 +444,10 @@ function Viewer({
   // Form kartının yan sütunla birlikte hareketi (aşağıda); sayfa açılınca kart yalnızca gizlenir
   // (düzen animasyonu yok, ölçülmez)
   const sideLayout = side.mode === 'column' ? `column:${side.open}` : side.mode
+  // Sütun düzeni (açık ya da katlı), tema paneli › Detay Sayfası › Gömülü: raf başlık bandının sağ
+  // alt köşesinde (DetailSide.tsx `SideNotch`); Yüzen: katlı sütun formun yanında dikey raf
+  const { detail } = useLook()
+  const notched = side.mode === 'column' && detail === 'embedded'
   // Sayfa açıkken yerini o alır: form kartı gizli (bağlı kalır; alanlara girilenler gitmez)
   const formHidden = side.mode === 'sheet' && side.open
   const moveT = useTransition({ duration: 0.42, ease: [0.22, 1, 0.36, 1] })
@@ -557,7 +566,12 @@ function Viewer({
        * Başlık bandı: solda süreç ikonu ve süreç adı (sayfa başlığı); sağda Geri / İleri, aralarında
        * listedeki süreçlerin şeridi ve sırası. Altında olaylar.
        */}
-      <Card className={band} classNames={{ body: 'flex flex-col gap-5 p-6' }}>
+      <Card
+        // Sütunun rafı köşede: form kartı bandın altında rafın boşluğu kadar uzakta
+        className={cn(band, notched && NOTCH_GAP)}
+        // Sütunun rafı köşede: olay yoksa bant onun boyu kadar uzar
+        classNames={{ body: cn('flex flex-col gap-5 p-6', notched && !hasActions && NOTCH_ROW) }}
+      >
         <Flex wrap align="start" justify="space-between" gap={16}>
           <Flex align="center" gap={16} className="min-w-0 flex-1">
             <Flex
@@ -624,11 +638,15 @@ function Viewer({
           <Flex
             {...({ inert: scrolled } as Record<string, unknown>)}
             aria-hidden={scrolled || undefined}
-            className={ACTIONS_SCROLL}
+            // Sütunun rafına yer bırakır (sağ alt köşe)
+            className={cn(ACTIONS_SCROLL, notched && NOTCH_ROOM)}
           >
             {actions(solid)}
           </Flex>
         )}
+
+        {/* Sütunun rafı bandın sağ alt köşesinde (açıkken de) */}
+        {notched && <SideNotch side={side} tab={sideTab} onOpen={openSide} warning={docsWarning} />}
       </Card>
 
       {/* --- Bento ---------------------------------------------------------------------------- */}

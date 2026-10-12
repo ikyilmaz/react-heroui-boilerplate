@@ -75,7 +75,9 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
   (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
   on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
-  (root size + `--spacing` together), nav position (Solda / Üstte / Kompakt, each option with a mini preview of the bar's side), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
+  (root size + `--spacing` together), nav position (Solda / Üstte / Kompakt, each option with a mini preview of the bar's side), Detay
+  Sayfası (Gömülü / Yüzen, the request form's side info rail; a preference like nav: presets never
+  set it; `useLook().detail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
   Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
   the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation: Animasyon Açık / Az / Kapalı ("Az"
   and "Açık" are presets for the controls below; Kapalı hides them), Sekme içeriği Tam / Solma /
@@ -234,10 +236,11 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   right-click menu "Yeni sekmede aç" and Ctrl / Cmd / middle-click open a second tab of the app. Child forms
   open from form buttons by the child process's `panelSize` (original `viewOptions.panelSize`):
   1 / 2 split the opener's tab (child right ⅓ / ⅔; in a split the other screen moves to its own tab
-  and returns when the child closes), 3 opens a new tab right after the opener in the opener's group
-  (an automatic group is created if the opener has none); below 1024px (size 2: 1200px) everything
+  and returns when the child closes), 3 opens a new tab right after the opener in the opener's group;
+  either way an automatic group is created if the opener has none (for 1 / 2 a one-tab group, so the
+  strip shows the family as soon as one child opens); below 1024px (size 2: 1200px) everything
   opens as 3. A form has one open child at a time; the parent–child link survives any move: closing
-  or navigating the parent closes its children. Automatic groups dissolve at one tab, aren't written
+  or navigating the parent closes its children. Automatic groups dissolve when their tabs no longer hold a form together with its child, aren't written
   to the address and become the user's once renamed / recoloured / joined; user groups (name, colour
   `--group-1…6`, collapse) are contiguous runs, max 6. Limit 12 screens besides Başlangıç (a list kept
   under a form counts; `isBlocked`, warning). Address: the path is the selected screen (a child's
@@ -252,8 +255,12 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   their screen), `ScreenContext` (`close`, `open`), `OpenChildContext` and a `LayoutGroup`, all built
   once per screen. Strip: `TabStrip` › one `TabGroup` per unit (Başlangıç, a group, or an ungrouped tab;
   units drag as a whole from their first tab) › `Tab` with one `ScreenLabel` per screen (icon + name
-  from `screenMeta`, the tooltip gives the full path, which replaced the breadcrumb); context menu:
-  Yan yana aç, Yer değiştir (a split tab, wide screens), Ayrı sekmelere ayır, Sola / Sağa taşı (Grubu … for a group's first tab), Bağlantıyı
+  from `screenMeta`; between a tab and the next one holding its child,
+  and between a split tab's two screens when the right one is the left one's child, a white chevron in a
+  small group-coloured circle replaces the separator (`FamilyLink`, from the real parent link
+  (`links`), never the order; added on explicit request), the tooltip gives the full path, which replaced the breadcrumb); context menu:
+  Yan yana aç, Yer değiştir (a split tab, wide screens), Ayrı sekmelere ayır, Sola / Sağa taşı (ungrouped tabs; Grubu sola / sağa taşı on a group's first tab;
+  tabs are never reordered inside a group, no drag and no menu item, on explicit request), Bağlantıyı
   kopyala (the tab's own address), Kapat / Grubu kapat (built when it opens; "Yan yana aç" only while
   the selected tab is single; no pair button on the tab itself, so selecting never changes a tab's
   width; swap and separate only in this menu, no buttons at the strip's end). Screens are elements built once per screen and
@@ -350,10 +357,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   the phone's bottom bar scroll sideways, `ACTIONS_SCROLL` / `ACTIONS_DOCK`); the form row reaches the bottom of
   its container (`useFillHeight` against the page or the screen's pane); side info = one card with three tabs on top — Tarihçe, Dokümanlar, Özellikler (Özellikler selected at first) — on the shared
   `TabStrip` sitting on the card like the Başlangıç categories (`SHEET_ON_SURFACE`, `--tab-h`
-  2.75rem, `TabButton`s, the card is the tabpanel; the fold (column) / close (sheet) button is a bare
-  32px icon button centred in the strip's right corner inset, over the card's corner (`end` slot,
-  absolute; `FOLD_BUTTON`; no morph between it and the rail's "Paneli aç" button: tried and
-  dropped); a tab can be torn off downward (added on explicit request): dragging a tab vertically
+  2.75rem, `TabButton`s, the card is the tabpanel; the sheet's close button (and the column's fold
+  button in Yüzen) is a bare 32px icon button centred in the strip's right corner inset, over the
+  card's corner (`end` slot, absolute; `FOLD_BUTTON`); in Gömülü the column has no button there, it
+  opens and folds from the rail; a tab can be torn off downward (added on explicit request): dragging a tab vertically
   past 14px (`useTear`, mouse / pen; a ghost sheet follows the pointer, a dashed drop zone covers
   the target half) and dropping it in the lower half splits the side info into two cards, the
   remaining tabs on top and that tab alone in its own strip (`sizing="content"`, same concave
@@ -367,7 +374,24 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   Özellikler rows use dotted leaders), each with its own scrolling
   (`FadeScroll`: edges fade through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
-  folds to an icon rail (remembered), narrower (a split pane, e.g. `panelSize` 1) no rail: an info
+  folds (remembered). Tema paneli › Detay Sayfası picks the rail: Yüzen = the folded column becomes
+  a 56px vertical rail card beside the form (open button, divider, tab icons); Gömülü (default) =
+  a horizontal icon rail cut into the header band's bottom-right corner, open or folded (`SideNotch`, added on explicit request; first in the form
+  card's top-right corner and only while folded, the vertical rail beside the form was dropped;
+  its first button is "Paneli aç" / "Paneli katla", the tab icons select a tab and open the column): a pane-coloured box (`--tab-bg`) with the band contour on its
+  left and top, a round inner corner, and the band's two convex corners at the cut's ends drawn like
+  the tab flares (`NOTCH_FLARE`, an f + contour square whose top-left corner is the arc's centre:
+  `corner-shape` scoop box with a real border and the fill under it (Chrome paints no
+  padding-clipped fill on a scoop corner), otherwise a transparent convex box with a spread shadow
+  clipped to its square; offsets are relative to the notch's padding box; the fallback path is
+  written by analogy and not screenshot-tested); the notch radius is the card radius capped at 20px
+  and the inner corner at 40px + gap − radius, so the two arcs never overlap; the buttons sit in
+  their own card (`CARD`, surface, corner = the flare radius) aligned with the band's right and
+  bottom edges, `--ng` (0.5rem) from the cut, whose inner corner is concentric with it; the
+  band's event row leaves room for it at its end (`NOTCH_ROOM`) and a band without events grows by
+  its height (`NOTCH_ROW`); the band sits `--ng` above the form card too, the rail's gap
+  (`NOTCH_GAP`, instead of the view's 12px);
+  the column itself collapses to 0 (`-ms-3` cancels the gap), narrower (a split pane, e.g. `panelSize` 1) no rail: an info
   button in the header band (and the scrolled strip; `SideButton`) opens a sheet that takes the form
   card's place (the card is hidden, stays mounted so typed values survive; nothing scrolls behind,
   the scroll position is restored on close), wipes down from the top (`clipPath`, "Az" fades only),

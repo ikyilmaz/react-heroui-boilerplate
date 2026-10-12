@@ -186,6 +186,29 @@ test('child 1 / 2: sekmeyi böler; bölünmüşse sığmayan çıkar ve child ka
   assert.equal(activeTab(back).ratio, 200 / 3)
 })
 
+test('child 1 / 2: tek sekmeli otomatik grup; aile ayrılınca sürer, child kapanınca dağılır', () => {
+  let s = run(initWorkspace(), open(REQ1), open(APP))
+  s = run(s, { type: 'select', tab: tabKeyOf(s, REQ1) })
+  s = run(s, { type: 'child', from: keyOf(s, REQ1), path: CHILD1, size: 1 })
+  assert.equal(s.groups.length, 1)
+  const g = s.groups[0]
+  assert.equal(g.auto, true)
+  assert.equal(groupOf(s, CHILD1), g.key)
+  assert.equal(groupOf(s, APP), undefined)
+  // Child'ın yan yana child'ı: açan kendi sekmesine çıkar, aile aynı grupta kalır
+  const split = run(s, { type: 'child', from: keyOf(s, CHILD1), path: CHILD2, size: 2 })
+  assert.equal(groupOf(split, REQ1), g.key)
+  assert.equal(groupOf(split, CHILD2), g.key)
+  // Ayrı sekmelere ayırınca grup sürer
+  const apart = run(s, { type: 'unpair', tab: tabKeyOf(s, REQ1) })
+  assert.equal(groupOf(apart, REQ1), g.key)
+  assert.equal(groupOf(apart, CHILD1), g.key)
+  // Child kapanınca dağılır
+  const closed = run(s, { type: 'close', screen: keyOf(s, CHILD1) })
+  assert.deepEqual(closed.groups, [])
+  assert.equal(groupOf(closed, REQ1), undefined)
+})
+
 test('açan–child bağı taşınınca da sürer: açan kapanınca / gidince child kapanır', () => {
   let s = run(initWorkspace(), open(LIST), open(REQ1))
   const req = keyOf(s, REQ1)

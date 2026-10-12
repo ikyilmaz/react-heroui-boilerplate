@@ -421,7 +421,7 @@ export function SidePanel({
   side: SideState
   tab: SideTab
   onTab: (tab: SideTab) => void
-  /** Raftan bir yer açılınca (sekme seçilir, panel açılır). */
+  /** Yüzen rafta bir yer açılınca (sekme seçilir, panel açılır). */
   onOpen: (target: SideTarget) => void
   /** Zorunlu dokümanlar görülmedi: Dokümanlar kartı sallanır. */
   warning: boolean
@@ -437,8 +437,11 @@ export function SidePanel({
   const container = useMemo(() => ({ current: side.scroller }), [side.scroller])
   const { scrollY } = useScroll(side.scroller ? { container } : undefined)
   const sticky = { '--scrolled': useMotionTemplate`${scrollY}px` } as MotionStyle
-  const foldLabel = 'Paneli katla'
   const { stack: stackVariants, card, fade } = useStack(mode === 'sheet')
+  // Tema paneli › Detay Sayfası: gömülüde raf bandın köşesinde (`SideNotch`), yüzende katlı sütun
+  // formun yanında dikey bir kart, katlama düğmesi şeridin ucunda
+  const floating = useLook().detail === 'floating'
+  const foldLabel = 'Paneli katla'
 
   // Sayfa açılınca odak kapatma düğmesine geçer; kapanınca (odak sayfadaysa) açan öğeye döner. Açan
   // öğe kalktıysa (şeritteki düğme: sayfa açılınca kaydırma başa döner, şerit gizlenir) formun bilgi
@@ -466,10 +469,10 @@ export function SidePanel({
     }
   }, [sheetOpen, opener])
 
-  // Sütunda katlama (şeridin sağ ucundaki köşe boşluğunda, kartın köşesinin üstünde), sayfada
-  // kapatma
+  // Sayfada kapatma, yüzen sütunda katlama (şeridin sağ ucundaki köşe boşluğunda, kartın köşesinin
+  // üstünde); gömülü sütunda açma / katlama bandın köşesindeki rafta (`SideNotch`)
   const control =
-    mode === 'column' ? (
+    mode === 'column' && floating ? (
       <Tip label={foldLabel} placement="bottom">
         <Button
           type="text"
@@ -600,7 +603,7 @@ export function SidePanel({
       </Flex>
     )
 
-  // Raf: katlı sütun; ikonlar kartları / sekmeleri açar
+  // Yüzen raf: katlı sütun; ikonlar kartları / sekmeleri açar
   const rail = (
     <Card
       className={cn(CARD, 'w-14 shrink-0', warning && !open && 'ring-2 ring-warning')}
@@ -663,13 +666,15 @@ export function SidePanel({
           STICKY,
           PASS_FILL,
           'z-10 shrink-0 self-start',
-          open ? 'w-[calc((100%-0.75rem)/3)]' : 'w-14',
+          // Katlıyken yüzende raf kadar; gömülüde sütun yok (raf bandın köşesinde, `SideNotch`),
+          // kabın boşluğu da gider
+          open ? 'w-[calc((100%-0.75rem)/3)]' : floating ? 'w-14' : '-ms-3 w-0',
         )}
       >
         <AnimatePresence initial={false} mode="popLayout" anchorX="right">
           {open ? (
             stack('cards', cn(FILL, 'w-full'))
-          ) : (
+          ) : floating ? (
             <MotionFlex
               key="rail"
               initial={{ opacity: 0 }}
@@ -679,7 +684,7 @@ export function SidePanel({
             >
               {rail}
             </MotionFlex>
-          )}
+          ) : null}
         </AnimatePresence>
       </MotionFlex>
     )
@@ -697,6 +702,122 @@ export function SidePanel({
           sheetBox,
         )}
     </AnimatePresence>
+  )
+}
+
+/*
+ * Sütun düzeninin gömülü rafı (tema paneli › Detay Sayfası › Gömülü; açık ya da katlı): başlık
+ * bandının sağ alt köşesinde yatay (açık istek üzerine; önce form
+ * kartının sağ üst köşesindeydi, dikey raf bırakıldı). Bant o köşeden rafın sığacağı kadar
+ * kesilir: sayfa renginde bir kutu (`--bw` kalınlığında bandın konturu solunda ve üstünde, iç köşesi
+ * dışbükey yuvarlak) ve kesiğin iki ucunda bandın dışbükey köşeleri — sekme yaprağının kavisleri
+ * gibi (`tabs/shape.ts`): `corner-shape` olan tarayıcıda köşesi içbükey (scoop; squircle temada
+ * `--corner-concave`) sayfa renginde bir kutu, kenarlığı kontur; diğerlerinde saydam, dışbükey
+ * köşeli bir kutu, kenarlığı kontur, dışını yayılmış gölge sayfa rengine boyar, kutuya kırpılır.
+ * Bandın altına / sağına kadar uzanır; kutu bandın halkasını (`--bw`) da örter. Sayfa rengi
+ * bölmenin rengi (`--tab-bg`, çalışma alanının bölme kabından kalıtılır). Bant kartının içinde
+ * (antd `Card` `relative`, kırpmaz).
+ */
+/**
+ * Kesiğin köşe yarıçapı = kartın köşesi (`CARD_RADIUS`; Tailwind için düz metin), en çok 20px: kavis
+ * ve iç köşe kesiğin boyunu paylaşır, büyük yarıçapta üst üste binmesin; rafın kartının köşesi de bu.
+ * Kontur kalınlığı, kart ile kesik arasındaki boşluk (`--ng`).
+ */
+const NOTCH_VARS =
+  '[--nf:min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3),20px)] [--bw:var(--border-width)] [--ng:0.5rem] [--page:var(--tab-bg,var(--background))]'
+/*
+ * Kavis kutusu (f + bw kare): bandın dışbükey köşesinin yayı, konturu bandın halkası gibi bandın
+ * dışında (yarıçap f..f + bw). Sol üst köşesi yayın merkezinde. corner-shape yolunda sayfa renginde,
+ * sol üst köşesi içbükey (yarıçap f), kenarlık solda ve üstte; diğer yolda saydam, sağ alt köşesi
+ * dışbükey (yarıçap f + bw), kenarlık altta ve sağda, dışı yayılmış gölgeyle sayfa renginde, kutuya
+ * kırpılır. İki yolda da aynı yerde durur. Dolgu kenarlığın altına da girer (`bg-clip-padding`
+ * yok: Chrome içbükey köşeli kutuda padding'e kırpılan dolguyu hiç çizmiyor); kontur bandın
+ * halkası gibi sayfa renginin üstünde durduğundan görünüm aynı.
+ */
+const NOTCH_FLARE =
+  'pointer-events-none absolute block size-[calc(var(--nf)+var(--bw))] rounded-br-[calc(var(--nf)+var(--bw))] border-b-(length:--bw) border-e-(length:--bw) border-border bg-transparent shadow-[0_0_0_calc(var(--nf)+var(--bw))_var(--page)] [clip-path:inset(0)] supports-[corner-shape:scoop]:rounded-br-none supports-[corner-shape:scoop]:rounded-tl-(--nf) supports-[corner-shape:scoop]:border-b-0 supports-[corner-shape:scoop]:border-e-0 supports-[corner-shape:scoop]:border-s-(length:--bw) supports-[corner-shape:scoop]:border-t-(length:--bw) supports-[corner-shape:scoop]:bg-(--page) supports-[corner-shape:scoop]:shadow-none supports-[corner-shape:scoop]:[clip-path:none] supports-[corner-shape:scoop]:[corner-shape:var(--corner-concave,scoop)]'
+
+/**
+ * Raf bantta yer kaplar: olay satırı sağda rafın (ve sol kavisinin) genişliği kadar boşluk bırakır,
+ * olay yoksa bant rafın boyu kadar uzar (Geri / İleri'nin altına girmesin).
+ */
+export const NOTCH_ROOM = 'me-[12.5rem]'
+export const NOTCH_ROW = 'pb-[60px]'
+/**
+ * Raf bandın köşesindeyken bantla form kartı arası rafın kesikten boşluğu kadar (`--ng`, 0.5rem):
+ * görünümün kabının 12px'lik aralığı bandın eksi alt payıyla daralır.
+ */
+export const NOTCH_GAP = 'mb-[calc(0.5rem-12px)]'
+
+/**
+ * Bandın köşesindeki raf (sütun düzeni, açık ya da katlı): kendi kartında açma / katlama düğmesi
+ * ve sekmelerin ikonları. Kart
+ * kesikten `--ng` boşlukla ayrılır; kesiğin iç köşesi kartın köşesi + boşluk (eş merkezli), ama
+ * kesiğin boyu (40px kart + boşluk) kavisle paylaşıldığından en çok 40px + boşluk − kavis: iki yay
+ * üst üste binmez.
+ */
+export function SideNotch({
+  side,
+  tab,
+  onOpen,
+  warning,
+}: {
+  side: SideState
+  tab: SideTab
+  onOpen: (target: SideTarget) => void
+  warning: boolean
+}) {
+  const foldLabel = side.open ? 'Paneli katla' : 'Paneli aç'
+  const FoldIcon = side.open ? PanelRightClose : PanelRightOpen
+  return (
+    <Flex
+      role="toolbar"
+      aria-label="Yan bilgiler"
+      className={cn(
+        NOTCH_VARS,
+        'absolute -bottom-(--bw) -end-(--bw) z-20 block rounded-tl-[min(calc(var(--nf)+var(--ng)+var(--bw)),calc(40px+var(--ng)-var(--nf)))] border-s-(length:--bw) border-t-(length:--bw) border-border bg-(--page) ps-(--ng) pt-(--ng) pb-(--bw) pe-(--bw)',
+        warning && 'animate-shake',
+      )}
+    >
+      {/* Kesiğin uçlarındaki dışbükey köşeler: bandın alt kenarında (solda) ve sağ kenarında
+          (üstte). Konumlar kutunun padding kutusuna göre (sol kenarlık ve üst kenarlık dışarıda) */}
+      <Flex aria-hidden className={cn(NOTCH_FLARE, 'bottom-0 end-full')} />
+      <Flex aria-hidden className={cn(NOTCH_FLARE, 'bottom-full end-0')} />
+      {/* Rafın kendi kartı: sağ ve alt kenarı bandınkiyle hizalı (kontur ve gölge kartlarınki gibi
+          kutunun dışında), köşesi kavisle aynı; kesiğin iç köşesi ona eş merkezli (+ boşluk) */}
+      <Flex
+        align="center"
+        gap={4}
+        className={cn(CARD, 'rounded-(--nf) bg-surface p-1', warning && 'ring-2 ring-warning')}
+      >
+        {/* Sütunu açar / katlar; raf sütun açıkken de yerinde kalır */}
+        <Tip label={foldLabel} placement="bottom">
+          <Button
+            type="text"
+            aria-label={foldLabel}
+            aria-expanded={side.open}
+            icon={<FoldIcon {...IC} size={18} />}
+            onClick={() => side.setOpen(!side.open)}
+            className={FOLD_BUTTON}
+          />
+        </Tip>
+        <Divider orientation="vertical" className="mx-1 h-5" />
+        {RAIL.map(({ id, label, icon: Icon }) => (
+          <Tip key={id} label={label} placement="bottom">
+            <Button
+              type="text"
+              aria-label={label}
+              icon={<Icon {...IC} size={18} />}
+              onClick={() => onOpen(id)}
+              className={cn(
+                id === tab && 'bg-accent/12! text-accent-soft-foreground! hover:bg-accent/18!',
+                warning && id === 'docs' && 'ring-2 ring-warning',
+              )}
+            />
+          </Tip>
+        ))}
+      </Flex>
+    </Flex>
   )
 }
 

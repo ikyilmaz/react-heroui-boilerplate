@@ -18,6 +18,7 @@ import {
   useIsDark,
   type Background,
   type CardStyle,
+  type DetailStyle,
   type ContentMotion,
   type CornerShape,
   type Density,
@@ -112,6 +113,12 @@ const DENSITY_OPTIONS: { id: Density; label: string }[] = [
   { id: 'compact', label: 'Kompakt' },
   { id: 'normal', label: 'Normal' },
   { id: 'roomy', label: 'Geniş' },
+]
+
+/** Detay sayfası: yan bilgilerin rafı bandın köşesine gömülü ya da formun yanında yüzen kart. */
+const DETAIL_STYLES: { id: DetailStyle; label: string }[] = [
+  { id: 'embedded', label: 'Gömülü' },
+  { id: 'floating', label: 'Yüzen' },
 ]
 
 const CARD_STYLES: { id: CardStyle; label: string }[] = [
@@ -590,6 +597,15 @@ export const ThemePanel = memo(function ThemePanel({
           }))}
           onChange={(nav) => set({ nav })}
           grid={3}
+        />
+      </Section>
+
+      <Section title="Detay Sayfası">
+        <Segments
+          label="Detay Sayfası"
+          value={settings.detail}
+          options={DETAIL_STYLES}
+          onChange={(detail) => set({ detail })}
         />
       </Section>
 

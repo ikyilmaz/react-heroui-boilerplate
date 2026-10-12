@@ -56,6 +56,8 @@ export type ContentMotion = 'full' | 'fade' | 'off'
 export type LoadingStyle = 'skeleton' | 'spinner' | 'off'
 /** Tek bir hareketin açık / kapalı ayarı. */
 export type Toggle = 'on' | 'off'
+/** Detay sayfasının yan bilgi rafı: bandın köşesinde gömülü ya da formun yanında yüzen kart. */
+export type DetailStyle = 'embedded' | 'floating'
 /**
  * Zemin dokusu (zeminin üstünde, kartların arkasında): düz, nokta / çizgi ızgarası ya da birincil
  * renkten geçişler (üstten, alttan, köşeden, tepeden ışık, çapraz iki köşe, aurora).
@@ -85,6 +87,8 @@ export interface ThemeSettings {
   border: number
   /** Gezinme konumu; seçenekler `ThemeKit.navOptions`, `default` uygulamanın kendisi. */
   nav: string
+  /** Detay sayfası (talep formu): yan bilgilerin rafı bandın köşesine gömülü ya da yüzen kart. */
+  detail: DetailStyle
   /** Animasyon düzeyi; sistem "hareketi azalt" diyorsa `full` da az sayılır. */
   motion: MotionLevel
   /** Sekme içeriğinin geçişi (şeridin kendisi değil). */
@@ -144,7 +148,7 @@ export interface ThemePreset {
   id: string
   label: string
   description: string
-  look: Partial<Omit<ThemeSettings, 'nav' | 'corner' | MotionKey>>
+  look: Partial<Omit<ThemeSettings, 'nav' | 'detail' | 'corner' | MotionKey>>
 }
 
 /** Tarayıcı squircle köşe çizebiliyor mu (`corner-shape`); çizemiyorsa ayar hiçbir şey yazmaz. */
@@ -559,6 +563,7 @@ const NOTHING = {
   shadow: '',
   border: -1,
   nav: '',
+  detail: 'embedded',
   motion: 'full',
   motionSpeed: 1,
   tabContent: 'fade',
@@ -613,6 +618,7 @@ function load(kit: ThemeKit): ThemeSettings {
       cardStyle: Object.keys(FIELD_FILL),
       // Kaldırılmış gezinme konumu (ör. "İkisi de") varsayılana döner
       nav: kit.navOptions.map((o) => o.id),
+      detail: ['embedded', 'floating'],
       motion: ['full', 'reduced', 'off'],
       tabContent: ['full', 'fade', 'off'],
       loading: ['skeleton', 'spinner', 'off'],
@@ -672,6 +678,8 @@ export function animOf(s: ThemeSettings, reduced: boolean): Anim {
 
 export interface Look {
   nav: string
+  /** Detay sayfasının yan bilgi rafı. */
+  detail: DetailStyle
   /** Geçerli animasyon düzeyi (sistem tercihi dahil). */
   motion: MotionLevel
   /** Animasyon hızı çarpanı. */
@@ -682,6 +690,7 @@ export interface Look {
 
 export const LookContext = createContext<Look>({
   nav: 'default',
+  detail: 'embedded',
   motion: 'full',
   speed: 1,
   anim: {
@@ -836,7 +845,10 @@ export function useThemeSettings(kit: ThemeKit) {
 
   // Bağlamın değeri yalnızca görünüm değişince yenilenir: kabuk her çizildiğinde (ör. konum
   // değişince) `useLook` okuyan her bileşen, gizli form sekmeleri dahil, yeniden çizilmesin
-  const { nav, motionSpeed: speed } = settings
-  const look = useMemo<Look>(() => ({ nav, motion, speed, anim }), [nav, motion, speed, anim])
+  const { nav, detail, motionSpeed: speed } = settings
+  const look = useMemo<Look>(
+    () => ({ nav, detail, motion, speed, anim }),
+    [nav, detail, motion, speed, anim],
+  )
   return [settings, update, look] as const
 }

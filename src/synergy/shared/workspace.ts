@@ -358,12 +358,26 @@ function move<T>(list: T[], from: number, to: number): T[] {
   return out
 }
 
-/** Boş grupları siler, tek sekmeye inen otomatik grubu dağıtır. */
+/**
+ * Boş grupları siler, ailesi kalmayan otomatik grubu dağıtır: otomatik grup, sekmelerinde bir form
+ * ile child'ını birlikte tuttukça durur (yan yana açılan tek child da: grup tek sekmeli olur).
+ */
 function tidy(s: WorkspaceState): WorkspaceState {
   const counts = new Map<string, number>()
-  for (const t of s.tabs) if (t.group) counts.set(t.group, (counts.get(t.group) ?? 0) + 1)
+  const members = new Map<string, Set<string>>()
+  for (const t of s.tabs)
+    if (t.group) {
+      counts.set(t.group, (counts.get(t.group) ?? 0) + 1)
+      const set = members.get(t.group) ?? new Set<string>()
+      t.screens.forEach((k) => set.add(k))
+      members.set(t.group, set)
+    }
+  const family = (key: string) => {
+    const set = members.get(key)
+    return !!set && s.screens.some((x) => set.has(x.key) && !!x.parent && set.has(x.parent))
+  }
   const gone = new Set(
-    s.groups.filter((g) => (counts.get(g.key) ?? 0) < (g.auto ? 2 : 1)).map((g) => g.key),
+    s.groups.filter((g) => (g.auto ? !family(g.key) : (counts.get(g.key) ?? 0) < 1)).map((g) => g.key),
   )
   if (gone.size === 0) return s
   return {
@@ -680,7 +694,14 @@ function childIn(s: WorkspaceState, from: string, path: string, size: PanelSize)
     return tidy({ ...next, seq, tabs, groups, active: tab.key })
   }
 
-  // 1 / 2: açanın yanında. Sekme zaten bölünmüşse yanındaki ekran kendi sekmesine çıkar
+  // 1 / 2: açanın yanında. Sekme zaten bölünmüşse yanındaki ekran kendi sekmesine çıkar. Açan
+  // grupsuzsa sekmesi otomatik gruba girer (tek sekmeli; child kapanınca dağılır)
+  let groups = next.groups
+  let group = host.group
+  if (!group && groups.length < MAX_GROUPS) {
+    group = `g${seq++}`
+    groups = [...groups, { key: group, name: '', color: freeColor(groups), collapsed: false, auto: true }]
+  }
   let undo: Undo | undefined
   if (host.screens.length === 2) {
     const left = host.screens[1] === from
@@ -689,11 +710,15 @@ function childIn(s: WorkspaceState, from: string, path: string, size: PanelSize)
     undo = { tab: host.key, out: out.key, left, ratio: host.ratio, base: host.base }
   }
   const ratio = LEFT_SHARE[size]
-  tabs[tabs.indexOf(host)] = { ...host, screens: [from, made.key], focus: made.key, ratio, base: ratio }
+  tabs[tabs.indexOf(host)] = withGroup(
+    { ...host, screens: [from, made.key], focus: made.key, ratio, base: ratio },
+    group,
+  )
   return tidy({
     ...next,
     seq,
     tabs,
+    groups,
     active: host.key,
     screens: undo ? next.screens.map((x) => (x.key === made.key ? { ...x, undo } : x)) : next.screens,
   })
