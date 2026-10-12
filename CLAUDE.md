@@ -335,7 +335,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   past 14px (`useTear`, mouse / pen; a ghost sheet follows the pointer, a dashed drop zone covers
   the target half) and dropping it in the lower half splits the side info into two cards, the
   remaining tabs on top and that tab alone in its own strip (`sizing="content"`, same concave
-  sheet) and card below, half the height each, so both are visible at once; dragging the bottom
+  sheet; a strip under the card, mirrored, was tried and dropped) and card below, half the height
+  each, so both are visible at once; dragging the bottom
   tab into the upper half merges it back and selects it; the same via the tabs' context menu
   ("Alta ayır" / "Üste birleştir", touch and keyboard); the split tab is stored in `localStorage`
   (`synergy.side.split`, a tiny store shared by every request screen, `useSideSplit`);
