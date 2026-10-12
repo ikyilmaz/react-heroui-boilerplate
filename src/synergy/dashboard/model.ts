@@ -2,11 +2,15 @@ import { useCallback, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   AppWindow,
+  ArrowLeftRight,
+  Bell,
   CalendarDays,
   Clock3,
   CloudSun,
+  FileText,
   Hand,
   LayoutDashboard,
+  MessageSquare,
   Sparkles,
   SlidersHorizontal,
   StickyNote,
@@ -40,6 +44,10 @@ export type WidgetKind =
   | 'calendar'
   | 'controls'
   | 'notes'
+  | 'announcements'
+  | 'activity'
+  | 'delegations'
+  | 'documents'
 
 export interface WidgetSize {
   id: string
@@ -80,6 +88,7 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     sizes: [
       size('wide', 'Yatay', 7, 2),
       size('tall', 'Dikey', 3, 6),
+      size('short', 'Kısa', 3, 4),
       size('column', 'Sütun', 3, 9),
       size('square', 'Kare', 4, 4),
       size('full', 'Tam genişlik', 12, 2),
@@ -117,6 +126,7 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     icon: CloudSun,
     sizes: [
       size('m', 'Orta', 4, 2),
+      size('n', 'Dar', 3, 2),
       size('s', 'Küçük', 2, 2),
       size('l', 'Büyük', 4, 4),
       size('xs', 'Şerit', 3, 1),
@@ -161,6 +171,51 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     icon: StickyNote,
     sizes: [size('m', 'Orta', 3, 3), size('l', 'Büyük', 4, 4), size('tall', 'Uzun', 4, 7)],
   },
+  // Akış widget'ları (maketler; verileri başlat kutusuyla ortak, `dashboard/feeds.tsx`)
+  announcements: {
+    kind: 'announcements',
+    title: 'Duyurular',
+    description: 'Kurumsal duyurular (örnek veri)',
+    icon: Bell,
+    sizes: [
+      size('m', 'Orta', 4, 3),
+      size('s', 'Küçük', 3, 3),
+      size('tall', 'Uzun', 3, 4),
+      size('l', 'Geniş', 5, 3),
+      size('wide', 'Yatay', 6, 3),
+    ],
+  },
+  activity: {
+    kind: 'activity',
+    title: 'Aktiviteler',
+    description: 'Yorumlar ve etiketlemeler (örnek veri)',
+    icon: MessageSquare,
+    sizes: [
+      size('m', 'Orta', 4, 3),
+      size('s', 'Küçük', 3, 3),
+      size('tall', 'Uzun', 4, 4),
+      size('wide', 'Yatay', 6, 3),
+    ],
+  },
+  delegations: {
+    kind: 'delegations',
+    title: 'Vekaletler',
+    description: 'Verdiğiniz ve aldığınız vekaletler (örnek veri)',
+    icon: ArrowLeftRight,
+    sizes: [size('m', 'Orta', 4, 2), size('s', 'Küçük', 3, 2), size('l', 'Büyük', 4, 3)],
+  },
+  documents: {
+    kind: 'documents',
+    title: 'Son Dokümanlar',
+    description: 'Son açılan dokümanlar (örnek veri)',
+    icon: FileText,
+    sizes: [
+      size('m', 'Orta', 4, 3),
+      size('s', 'Küçük', 3, 3),
+      size('tall', 'Uzun', 3, 6),
+      size('wide', 'Yatay', 6, 3),
+    ],
+  },
 }
 
 export const WIDGET_ORDER = Object.keys(WIDGETS) as WidgetKind[]
@@ -194,49 +249,65 @@ const box = (kind: WidgetKind, x: number, y: number, w: number, h: number): Plac
 })
 
 /**
- * Hazır düzenler: hepsi 12 sütunluk ızgarayı boşluksuz doldurur (Varsayılan 10, diğerleri 9 satır;
+ * Hazır düzenler: hepsi 12 sütunluk ızgarayı boşluksuz doldurur (9 satır;
  * satır yüksekliği ekrana göre hesaplandığından pano görünen alanı tam kaplar, sayfa kaymaz).
  */
 export const PRESETS: Preset[] = [
   {
     id: 'default',
     name: 'Varsayılan',
-    description: 'Üstte karşılama, hava ve uygulamalar; altta iş akışları, saat ve notlar',
-    // üst 3 satır: sol 4 × (2 + 1) | uygulamalar 8 × 3 · alt 7 satır: 9 × 7 | sağ 3 × (1 + 6)
+    description: 'Karşılama ve uygulamalar; altta iş akışları, yanda saat, hava ve duyurular',
+    // üst 2 satır: karşılama 4 | uygulamalar 8 (iki satır çip) · alt 7 satır: iş akışları 9 |
+    // sağ sütun 3 × (1 saat + 2 hava + 4 duyurular)
     items: [
       box('greeting', 0, 0, 4, 2),
-      box('weather', 0, 2, 4, 1),
-      box('apps', 4, 0, 8, 3),
-      box('work', 0, 3, 9, 7),
-      box('clock', 9, 3, 3, 1),
-      box('notes', 9, 4, 3, 6),
+      box('apps', 4, 0, 8, 2),
+      box('work', 0, 2, 9, 7),
+      box('clock', 9, 2, 3, 1),
+      box('weather', 9, 3, 3, 2),
+      box('announcements', 9, 5, 3, 4),
     ],
   },
   {
     id: 'focus',
     name: 'Odak',
-    description: 'Küçük karşılama, saat, hava ve denetimler; altta iş akışları',
+    description:
+      'Tek satır özet (karşılama, saat, hava, vekaletler); altta tam genişlikte iş akışları',
     // 3 + 2 + 4 + 3 | 12 × 7
     items: [
       at('greeting', 0, 0, 's'),
       at('clock', 3, 0, 's'),
       at('weather', 5, 0, 'm'),
-      at('controls', 9, 0, 'compact'),
+      at('delegations', 9, 0, 's'),
       at('work', 0, 2, 'l'),
     ],
   },
   {
     id: 'sidebar',
     name: 'Yan panel',
-    description: 'Solda dikey uygulamalar ve denetimler, sağda iş akışları',
-    // sol 3 × (6 + 3) | sağ 9 × 9
-    items: [at('apps', 0, 0, 'tall'), at('controls', 0, 6, 'square'), at('work', 3, 0, 'm')],
+    description: 'Solda uygulamalar ve duyurular, sağda tam boy iş akışları',
+    // sol 3 × (4 + 5) | sağ 9 × 9
+    items: [at('apps', 0, 0, 'short'), box('announcements', 0, 4, 3, 5), at('work', 3, 0, 'm')],
+  },
+  {
+    id: 'team',
+    name: 'Ekip',
+    description: 'Duyurular, aktiviteler ve son dokümanlar; altta iş akışları',
+    // üst 3 satır: karşılama 3 × (2 + 1 hava) | duyurular 5 | aktiviteler 4 · alt 6: iş akışları 9 | dokümanlar 3
+    items: [
+      box('greeting', 0, 0, 3, 2),
+      box('weather', 0, 2, 3, 1),
+      at('announcements', 3, 0, 'l'),
+      at('activity', 8, 0, 'm'),
+      box('work', 0, 3, 9, 6),
+      at('documents', 9, 3, 'tall'),
+    ],
   },
   {
     id: 'personal',
     name: 'Kişisel',
-    description: 'Asistan, takvim, notlar ve hava durumu',
-    // 5 + 3 + 4 | 4 × 7 · 4 × (5 + 2) · 4 × 7
+    description: 'Asistan, takvim, notlar ve aktiviteler; iş akışları yok',
+    // üst 2: 5 + 3 + 4 · alt 7: asistan 4 | takvim 4 × 5 + denetimler 4 × 2 | aktiviteler 4 × 4 + vekaletler 4 × 3
     items: [
       at('greeting', 0, 0, 'm'),
       at('clock', 5, 0, 'm'),
@@ -244,7 +315,8 @@ export const PRESETS: Preset[] = [
       at('assistant', 0, 2, 'tall'),
       at('calendar', 4, 2, 'l'),
       at('controls', 4, 7, 'wide'),
-      at('notes', 8, 2, 'tall'),
+      at('activity', 8, 2, 'tall'),
+      at('delegations', 8, 6, 'l'),
     ],
   },
 ]

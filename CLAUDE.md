@@ -290,9 +290,23 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   with the same threshold (İK's edit card beside / below the table). Viewport breakpoints stay only
   in the shell, dialogs / popovers (portals) and the phone checks (`max-width: 639px`: fixed bottom
   action bars).
-- `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar (in the horizontal
+- `StartPage.tsx`: widgets for greeting, Favoriler / Son Kullanılan Uygulamalar (`AppsBlock`: two
+  low tabs — star + Favoriler, clock + Son Kullanılan Uygulamalar, `TabButton` icon + label — on the
+  shared strip above the card (`sizing="content"`, `--tab-h` 2.25rem, inset = card corner + flare)
+  whose selected sheet merges into the card like the Tarihçe card (`SHEET_ON_SURFACE`), in every
+  widget size (a vertical icon-only strip at the left was tried and dropped); after them the
+  user's **app groups** (added on explicit request, not in the original; `shared/appGroups.ts`:
+  `{id, name, apps}` in `localStorage` `synergy.app-groups`, a tiny store, `useAppGroups`; two
+  sample groups until the user saves anything, İnsan Kaynakları and Satın Alma, `DEFAULT_GROUPS`):
+  a "+" right after the last tab opens a name dialog (`GroupNameDialog`, `SoftModal`), each group is a folder
+  tab with a context menu (Yeniden adlandır, Grubu sil; a deleted selected group falls back to
+  Favoriler), its card shows the group's apps plus a dashed "Uygulama ekle" tile whose popover
+  lists every app with a checkbox (`AddApps`); every tile has a context menu — Gruba ekle › group
+  (check mark when already in it) on Favoriler / Son Kullanılan, Gruptan çıkar in a group;
+  `useMenuApps` also returns `all`; in the horizontal
   sizes the tiles go to two rows, left to right, when the widget's own height allows: a size container
-  query on its panel, `min-height: 13rem`), and the work block
+  query on its panel, `min-height: 13rem`; the 2-row sizes (Yatay, Tam genişlik: `size.h <= 2`)
+  always show two rows of low chips, icon + name side by side, star at the end (`AppTile chip`)), and the work block
   (5 category tabs — the shared `TabStrip`, `sizing="fill"`, sheet on the card surface with the card
   contour running down the flares into the card's top line (`SHEET_ON_SURFACE`); the work card is
   their `tabpanel` — + process groups ↔ "Süreç Talepleri"; `WorkBlock`, exported for the start
@@ -303,11 +317,19 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   a corner resize handle with pointer events — the dragged cell is written directly, React renders
   only when the target cell changes —, placeholder, vertical compaction; `useWidth`),
   `Dashboard.tsx` (the board with edit mode — drag, resize snapping to the nearest supported size,
-  size menu, add / remove, reset; row height fitted to the visible area so the page never scrolls, presets
-  tile 12 columns with no gaps (Varsayılan 12 × 10: Karşılama 4×2 and Hava 4×1 beside Favoriler
-  8×3, then İş Akışları 9×7 beside Saat 3×1 and Notlar 3×6; the others 12 × 9) and `fillGaps` grows neighbours into any empty cell (view mode and on
+  size menu, add / remove, reset; row height fitted to the visible area so the page never scrolls, five
+  presets tile 12 columns × 9 rows with no gaps (reworked on explicit request): Varsayılan —
+  Karşılama 4×2 beside Favoriler 8×2 (two rows of chips), then İş Akışları 9×7 beside a 3-wide
+  column of Saat 3×1, Hava 3×2 (`n` Dar: today + 2 days) and Duyurular 3×4; Odak — one summary row
+  (Karşılama 3, Saat 2, Hava 4, Vekaletler 3) over İş Akışları 12×7; Yan panel — Favoriler 3×4
+  (`short`) and Duyurular 3×5 beside İş Akışları 9×9; Ekip — Karşılama 3×2 + Hava 3×1, Duyurular
+  5×3, Aktiviteler 4×3, then İş Akışları 9×6 beside Son Dokümanlar 3×6; Kişisel — Karşılama, Saat,
+  Hava over Asistan 4×7, Takvim 4×5 + Denetimler 4×2, Aktiviteler 4×4 + Vekaletler 4×3) and
+  `fillGaps` grows neighbours into any empty cell (view mode and on
   "Bitti"); resize is free (min = smallest supported size), the view picks the nearest supported size;
-  stacked below 960px), `widgets.tsx` (the extra widgets).
+  stacked below 960px), `widgets.tsx` (the extra widgets), `feeds.tsx` (four mock list widgets added
+  with the preset rework, data shared with the start menu: Duyurular, Aktiviteler, Vekaletler
+  (state pill; low sizes hide ended ones), Son Dokümanlar; `Row` / `Rows`, two columns from 6 wide).
 - İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as chips in a white
   toolbar card above the page — not tabs: a tab strip inside a workspace tab blurred the hierarchy;
   `AgendaTabs.tsx`: links, the selected box filled with the accent, the others light grey, a

@@ -13,10 +13,14 @@ import {
   Avatar,
   Button,
   Card,
+  Checkbox,
   Divider,
+  Dropdown,
   Flex,
-  Segmented,
+  Input,
+  Popover,
   Select,
+  type MenuProps,
   Skeleton,
   Spin,
   Table,
@@ -26,7 +30,18 @@ import {
 } from 'antd'
 import { useLook } from '@/synergy/shared/themeSettings'
 import type { SortOrder } from 'antd/es/table/interface'
-import { ExternalLink, History, MousePointerClick, Moon, RefreshCw, Star, Sun } from 'lucide-react'
+import {
+  Check,
+  ExternalLink,
+  Folder,
+  History,
+  MousePointerClick,
+  Moon,
+  Plus,
+  RefreshCw,
+  Star,
+  Sun,
+} from 'lucide-react'
 import {
   isRead,
   markRead,
@@ -70,6 +85,16 @@ import {
 import { boxLink, k, requestLink } from '@/synergy/paths'
 import { openDeck } from '@/synergy/shared/formDeck'
 import {
+  createGroup,
+  deleteGroup,
+  GROUP_LABELS,
+  renameGroup,
+  toggleInGroup,
+  useAppGroups,
+  type AppGroup,
+} from '@/synergy/shared/appGroups'
+import { SoftModal } from '@/synergy/ant/modal'
+import {
   useBand,
   CellValue,
   EmptyNote,
@@ -81,7 +106,7 @@ import { CARD, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { GRID_ROW, GRID_TABLE } from '@/synergy/ant/grid'
 import { Count, Indicator } from '@/synergy/ant/motion'
 import { SHEET_ON_SURFACE } from '@/synergy/tabs/shape'
-import { Tab, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
+import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { FastMenu } from '@/synergy/rows'
 import { useFlow } from '@/synergy/flow'
 import { useMediaQuery } from '@/synergy/shared/hooks'
@@ -89,6 +114,12 @@ import { AnimatePresence } from 'framer-motion'
 import { useLeaving, useTransition } from '@/synergy/motion'
 import { Dashboard } from '@/synergy/dashboard/Dashboard'
 import type { WidgetSize } from '@/synergy/dashboard/model'
+import {
+  ActivityWidget,
+  AnnouncementsWidget,
+  DelegationsWidget,
+  DocumentsWidget,
+} from '@/synergy/dashboard/feeds'
 import {
   AssistantWidget,
   CalendarWidget,
@@ -250,6 +281,14 @@ export function StartPage() {
             return <ControlsWidget size={size} />
           case 'notes':
             return <NotesWidget />
+          case 'announcements':
+            return <AnnouncementsWidget size={size} />
+          case 'activity':
+            return <ActivityWidget size={size} />
+          case 'delegations':
+            return <DelegationsWidget size={size} />
+          case 'documents':
+            return <DocumentsWidget size={size} />
         }
       }}
     />
@@ -422,7 +461,17 @@ function Greeting({
   )
 }
 
-function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
+function AppTile({
+  app,
+  fill = false,
+  chip = false,
+}: {
+  app: MenuApp
+  /** Dolu karo (yatay widget): hücrenin yüksekliğini kaplar, ikon büyük. */
+  fill?: boolean
+  /** Alçak widget (2 satır): yan yana ikon + ad, iki satıra sığacak kadar basık. */
+  chip?: boolean
+}) {
   const Icon = app.icon
   const pinLabel = app.pinned ? APPS_LABELS.unpin : APPS_LABELS.pin
   // Yıldıza her basışta küçük bir sıçrama (anahtar değişince ikon yeniden takılır)
@@ -437,6 +486,8 @@ function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
         'group/app relative h-full min-w-0 rounded-2xl px-2 py-2 transition duration-200 hover:-translate-y-0.5 hover:bg-surface-secondary',
         // Dolu karo (yatay widget): hücrenin yüksekliğini kaplayan yumuşak zeminli kart, ikon büyük
         fill && 'justify-center gap-2.5 bg-surface-secondary/60',
+        // Basık çip: ikon solda, ad yanında, yıldız sağ uçta ortalı
+        chip && 'flex-row justify-start gap-2 rounded-xl bg-surface-secondary/60 px-2 py-1 pe-7',
       )}
     >
       {/* Yıldız karonun sağ üst köşesinde; bağlantı karoyu kaplar, yıldız onun üstünde */}
@@ -459,15 +510,16 @@ function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
             />
           }
           className={cn(
-            'absolute! end-1 top-1 z-10 size-6 min-w-6',
+            'absolute! end-1 z-10 size-6 min-w-6',
+            chip ? 'top-1/2 -translate-y-1/2' : 'top-1',
             app.pinned ? 'text-accent-soft-foreground!' : 'text-muted!',
           )}
         />
       </Tip>
       <Avatar
         aria-hidden
-        size={fill ? 48 : 40}
-        icon={Icon ? <Icon {...IC_BLOCK} size={fill ? 22 : 18} /> : undefined}
+        size={chip ? 26 : fill ? 48 : 40}
+        icon={Icon ? <Icon {...IC_BLOCK} size={chip ? 14 : fill ? 22 : 18} /> : undefined}
         className={cn(
           'inline-flex! shrink-0 items-center justify-center text-sm font-semibold transition-transform duration-200 group-hover/app:scale-110',
           Icon
@@ -486,8 +538,8 @@ function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
           openDeck(app)
         }}
         className={cn(
-          'static block w-full min-w-0 truncate text-center text-foreground no-underline hover:text-foreground hover:no-underline after:absolute after:inset-0',
-          fill ? 'text-sm' : 'text-xs',
+          'static block w-full min-w-0 truncate text-foreground no-underline hover:text-foreground hover:no-underline after:absolute after:inset-0',
+          chip ? 'text-start text-xs' : fill ? 'text-center text-sm' : 'text-center text-xs',
         )}
       >
         {app.caption}
@@ -497,92 +549,203 @@ function AppTile({ app, fill = false }: { app: MenuApp; fill?: boolean }) {
 }
 
 /**
- * Favoriler / Son Kullanılan Uygulamalar: boyuta göre yatay şerit (yatay, tam genişlik; sekmeler
- * solda ikon), iki sütunlu karolar (dikey, sütun; sekmeler tam genişlik) ya da kare ızgara (kare). İçerik hücrede kayar.
+ * Favoriler / Son Kullanılan Uygulamalar / kullanıcının grupları: üstte alçak sekmeler, ikon + ad
+ * (ortak şerit; seçili yaprak Tarihçe kartındaki gibi kartın konturuyla kavislerle karta kaynaşır,
+ * `SHEET_ON_SURFACE`), altında kart. Kartın içi boyuta göre: yatay şerit (yatay boyutlar), iki
+ * sütunlu karolar (dikey, sütun) ya da kare ızgara (kare). İçerik kartta kayar.
+ *
+ * Gruplar (açık istek üzerine; `shared/appGroups.ts`): şeridin sonundaki "+" yeni grup açar (ad
+ * penceresi); her grup bir sekme, sağ tık menüsünde yeniden adlandırma ve silme. Uygulama gruba
+ * karonun sağ tık menüsünden (Gruba ekle › grup; grup sekmesinde Gruptan çıkar) ya da grup
+ * sekmesindeki "Uygulama ekle" karosundan (bütün uygulamalar, işaretle) konur.
  */
-/** Yan sekme ikonları (yatay boyut). */
 const TAB_ICONS = { favorites: Star, recent: History } as const
 
-/** Sekme seçicinin görünümü: seçili sekme yüzeyde, birincil tonda ince halkalı. */
-const TABS =
-  'shrink-0 [&_.ant-segmented-item-selected]:font-semibold [&_.ant-segmented-item-selected]:text-accent-soft-foreground [&_.ant-segmented-item-selected]:bg-surface [&_.ant-segmented-item-selected]:ring-2 [&_.ant-segmented-item-selected]:ring-inset [&_.ant-segmented-item-selected]:ring-accent-soft-foreground/40 [&_.ant-segmented-thumb]:bg-surface [&_.ant-segmented-thumb]:ring-2 [&_.ant-segmented-thumb]:ring-inset [&_.ant-segmented-thumb]:ring-accent-soft-foreground/40 [&_.ant-segmented-item-label]:whitespace-nowrap'
+/** Grup adı penceresi: yeni grup ya da yeniden adlandırma. */
+type GroupEdit = { mode: 'new' } | { mode: 'rename'; id: string; name: string }
 
 function AppsBlock({ size }: { size: WidgetSize }) {
-  // Dikey ve sütun: sekmeler tam genişlik, uygulamalar iki sütunlu karolar
-  const vertical = size.id === 'tall' || size.id === 'column'
+  // Dikey ve sütun: uygulamalar iki sütunlu karolar
+  const vertical = size.id === 'tall' || size.id === 'short' || size.id === 'column'
   const square = size.id === 'square'
-  // Yatay boyutlarda sekmeler solda, alt alta, yalnızca ikon (şerit kalan genişliği kullanır)
+  // Yatay boyutlarda karolar yana kayan bir şerit (hücre yüksekse iki satır); 2 satırlık alçak
+  // widget'ta hep iki satır, basık çipler
   const side = !vertical && !square
+  const low = side && size.h <= 2
   const lists = useMenuApps()
+  const groups = useAppGroups()
   const transition = useTransition()
-  const [tab, setTab] = useState<'favorites' | 'recent'>('favorites')
-  const ids = ['favorites', 'recent'] as const
+  const [picked, setTab] = useState<string>('favorites')
+  // Silinen grubun sekmesi seçiliyse Favoriler
+  const tab =
+    picked === 'favorites' || picked === 'recent' || groups.some((g) => g.id === picked)
+      ? picked
+      : 'favorites'
+  const group = groups.find((g) => g.id === tab)
+  const byId = useMemo(() => new Map(lists.all.map((a) => [a.id, a])), [lists.all])
+  const apps: MenuApp[] = group
+    ? group.apps.flatMap((id) => {
+        const a = byId.get(id)
+        return a ? [a] : []
+      })
+    : lists[tab as 'favorites' | 'recent']
+  const label = group ? group.name : APPS_LABELS[tab as 'favorites' | 'recent']
+  const [edit, setEdit] = useState<GroupEdit | null>(null)
+  const panelId = useId()
+
+  // Karonun sağ tık menüsü: grup sekmesinde çıkarma; diğerlerinde gruba ekleme (grup yoksa not)
+  const tileMenu = (app: MenuApp): MenuProps['items'] =>
+    group
+      ? [
+          {
+            key: 'remove',
+            label: GROUP_LABELS.removeFrom,
+            onClick: () => toggleInGroup(group.id, app.id),
+          },
+        ]
+      : [
+          {
+            key: 'add',
+            label: GROUP_LABELS.addTo,
+            disabled: groups.length === 0,
+            children: groups.length
+              ? groups.map((g) => ({
+                  key: g.id,
+                  label: g.name,
+                  icon: g.apps.includes(app.id) ? <Check {...IC} size={14} /> : undefined,
+                  onClick: () => toggleInGroup(g.id, app.id),
+                }))
+              : undefined,
+          },
+          ...(groups.length === 0
+            ? [{ key: 'none', label: GROUP_LABELS.noGroups, disabled: true }]
+            : []),
+        ]
+  const tile = (a: MenuApp, fill: boolean, chip = false) => (
+    <Dropdown trigger={['contextMenu']} menu={{ items: tileMenu(a) }}>
+      <Flex className="block h-full min-w-0">
+        <AppTile app={a} fill={fill} chip={chip} />
+      </Flex>
+    </Dropdown>
+  )
+  // Grup sekmesinde son karo: uygulama ekleme
+  const adder = group && <AddApps group={group} all={lists.all} chip={low} />
+  const count = apps.length + (adder ? 1 : 0)
+
   return (
-    <Card
-      className={cn(CARD, 'h-full min-h-0')}
-      classNames={{ body: 'flex h-full min-h-0 flex-col p-4' }}
-    >
-      <Flex
-        vertical={!side}
-        gap={side ? 12 : 8}
-        className={cn('min-h-0 flex-1', side && 'items-stretch')}
+    <Flex vertical className="flex h-full min-h-0">
+      {/* Şerit kartın köşesi + kavis kadar içeriden başlar: seçili yaprağın kavsi kartın düz
+          kenarına oturur; sekmeler alçak (2.25rem). Sonda "+" (yeni grup) */}
+      <TabStrip
+        label={`${APPS_LABELS.favorites} / ${APPS_LABELS.recent}`}
+        sizing="content"
+        sheet={SHEET_ON_SURFACE}
+        selected={tab}
+        inset="px-[calc(min(32px*var(--corner-scale,1),var(--radius)*2)+var(--tab-f))]"
+        className="z-1 shrink-0 [--tab-h:2.25rem]"
       >
-        {/* Yanda: tam boy dikey düğme grubu, iki sekme yüksekliği eşit paylaşır */}
-        <Segmented<'favorites' | 'recent'>
-          aria-label={`${APPS_LABELS.favorites} / ${APPS_LABELS.recent}`}
-          value={tab}
-          onChange={setTab}
-          vertical={side}
-          block={vertical}
-          className={cn(
-            TABS,
-            side
-              ? 'h-full self-stretch [&_.ant-segmented-group]:h-full [&_.ant-segmented-item]:flex [&_.ant-segmented-item]:w-11 [&_.ant-segmented-item]:flex-1 [&_.ant-segmented-item]:items-center [&_.ant-segmented-item]:justify-center [&_.ant-segmented-item-label]:px-0'
-              : vertical
-                ? 'w-full'
-                : 'self-start',
-          )}
-          options={ids.map((id) => {
-            const Icon = TAB_ICONS[id]
-            return {
-              value: id,
-              label: side ? (
-                // Yan sekmede yalnızca ikon; ad ipucunda (sekmenin üzerine gelince) ve ekran okuyucuda
-                <Tip label={APPS_LABELS[id]} placement="left">
-                  <Flex align="center" justify="center" className="h-full w-11">
-                    <Icon {...IC} size={17} />
-                    <Text className="sr-only">{APPS_LABELS[id]}</Text>
-                  </Flex>
-                </Tip>
-              ) : (
-                APPS_LABELS[id]
-              ),
-            }
+        <TabGroup id="apps">
+          {(['favorites', 'recent'] as const).map((id) => {
+            const on = id === tab
+            return (
+              <Tab key={id} id={id} selected={on}>
+                <TabButton
+                  label={APPS_LABELS[id]}
+                  icon={TAB_ICONS[id]}
+                  current={on}
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls={panelId}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => setTab(id)}
+                  className="h-full px-4"
+                />
+              </Tab>
+            )
           })}
-        />
+          {groups.map((g) => {
+            const on = g.id === tab
+            return (
+              <Tab
+                key={g.id}
+                id={g.id}
+                selected={on}
+                menu={() => [
+                  {
+                    key: 'rename',
+                    label: GROUP_LABELS.rename,
+                    onClick: () => setEdit({ mode: 'rename', id: g.id, name: g.name }),
+                  },
+                  {
+                    key: 'delete',
+                    label: GROUP_LABELS.remove,
+                    danger: true,
+                    onClick: () => deleteGroup(g.id),
+                  },
+                ]}
+              >
+                <TabButton
+                  label={g.name}
+                  icon={Folder}
+                  current={on}
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls={panelId}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => setTab(g.id)}
+                  className="h-full max-w-48 px-4"
+                />
+              </Tab>
+            )
+          })}
+        </TabGroup>
+        {/* Son sekmenin sağında "+": yeni grup */}
+        <Flex key="add" className="flex h-(--tab-h) shrink-0 items-end ps-1 pb-(--tab-gap)">
+          <Tip label={GROUP_LABELS.newGroup} placement="top">
+            <Button
+              type="text"
+              aria-label={GROUP_LABELS.newGroup}
+              aria-haspopup="dialog"
+              icon={<Plus {...IC} size={16} />}
+              onClick={() => setEdit({ mode: 'new' })}
+              className="h-[calc(var(--tab-h)-var(--tab-gap))] w-9 min-w-9 rounded-(--tab-nr) p-0 text-muted hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)]! hover:text-foreground!"
+            />
+          </Tip>
+        </Flex>
+      </TabStrip>
+      <Card
+        id={panelId}
+        role="tabpanel"
+        aria-label={label}
+        className={cn(CARD, 'min-h-0 min-w-0 flex-1')}
+        classNames={{ body: 'flex h-full min-h-0 flex-col p-4' }}
+      >
         <Flex
           key={tab}
           vertical
-          role="tabpanel"
-          aria-label={APPS_LABELS[tab]}
           // Yatay boyutlarda kendi yüksekliğine göre (kap sorgusu): yer varsa karolar iki satır
           className={cn('min-h-0 min-w-0 flex-1', side && '[container-type:size]')}
         >
-          {lists[tab].length === 0 ? (
+          {count === 0 ? (
             <EmptyNote text="Kullanılabilir öğe yok." className="py-3" />
           ) : vertical || square ? (
             // Dikey liste ya da kare ızgara; hücrede aşağı kayar
             <Scroll className="h-full">
               <Flex
                 role="list"
-                aria-label={APPS_LABELS[tab]}
+                aria-label={label}
                 className={cn('grid gap-1.5', vertical ? 'grid-cols-2' : 'grid-cols-3')}
               >
-                {lists[tab].map((a) => (
+                {apps.map((a) => (
                   <Flex key={a.id} role="listitem" className="block min-w-0">
-                    <AppTile app={a} fill={vertical} />
+                    {tile(a, vertical)}
                   </Flex>
                 ))}
+                {adder && (
+                  <Flex role="listitem" className="block min-w-0">
+                    {adder}
+                  </Flex>
+                )}
               </Flex>
             </Scroll>
           ) : (
@@ -590,24 +753,22 @@ function AppsBlock({ size }: { size: WidgetSize }) {
               {/* Favoriye eklenen / çıkarılan karo yerine süzülür, diğerleri kayarak yer açar */}
               <Flex
                 role="list"
-                aria-label={APPS_LABELS[tab]}
+                aria-label={label}
                 // İki satırda sıra soldan sağa (sütun sayısı öğe sayısının yarısı); sığmazsa yana
                 // kayar
-                style={
-                  side
-                    ? ({ '--cols': Math.ceil(lists[tab].length / 2) } as CSSProperties)
-                    : undefined
-                }
+                style={side ? ({ '--cols': Math.ceil(count / 2) } as CSSProperties) : undefined}
                 className={cn(
                   'grid grid-flow-col gap-1',
                   // Yanda karolar hücrenin yüksekliğini doldurur; hücre yeterince yüksekse iki satır
-                  side
-                    ? 'h-full auto-cols-[9rem] gap-2 [@container_(min-height:13rem)]:grid-flow-row [@container_(min-height:13rem)]:grid-cols-[repeat(var(--cols),9rem)] [@container_(min-height:13rem)]:grid-rows-2'
-                    : 'auto-cols-[8rem]',
+                  low
+                    ? 'h-full grid-flow-row grid-cols-[repeat(var(--cols),11rem)] grid-rows-2 gap-1.5'
+                    : side
+                      ? 'h-full auto-cols-[9rem] gap-2 [@container_(min-height:13rem)]:grid-flow-row [@container_(min-height:13rem)]:grid-cols-[repeat(var(--cols),9rem)] [@container_(min-height:13rem)]:grid-rows-2'
+                      : 'auto-cols-[8rem]',
                 )}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
-                  {lists[tab].map((a) => (
+                  {apps.map((a) => (
                     <MotionFlex
                       key={a.id}
                       role="listitem"
@@ -618,16 +779,153 @@ function AppsBlock({ size }: { size: WidgetSize }) {
                       transition={transition}
                       className={cn('block min-w-0', side && 'h-full')}
                     >
-                      <AppTile app={a} fill={side} />
+                      {tile(a, side && !low, low)}
                     </MotionFlex>
                   ))}
+                  {adder && (
+                    <MotionFlex
+                      key="add"
+                      role="listitem"
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={transition}
+                      className={cn('block min-w-0', side && 'h-full')}
+                    >
+                      {adder}
+                    </MotionFlex>
+                  )}
                 </AnimatePresence>
               </Flex>
             </Scroll>
           )}
         </Flex>
-      </Flex>
-    </Card>
+      </Card>
+      {/* Grup adı penceresi (yeni / yeniden adlandırma); kapanınca kaldırılır */}
+      <AnimatePresence>
+        {edit && (
+          <GroupNameDialog
+            key="group-name"
+            edit={edit}
+            onClose={() => setEdit(null)}
+            onDone={(id) => {
+              setEdit(null)
+              if (id) setTab(id)
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </Flex>
+  )
+}
+
+/** Grup adı penceresi: Enter / Oluştur kaydeder; yeni grup seçilir. */
+function GroupNameDialog({
+  edit,
+  onClose,
+  onDone,
+}: {
+  edit: GroupEdit
+  onClose: () => void
+  /** Kaydedildi; yeni grubun kimliği (yeniden adlandırmada yok). */
+  onDone: (id?: string) => void
+}) {
+  const [name, setName] = useState(edit.mode === 'rename' ? edit.name : '')
+  const valid = name.trim().length > 0
+  const submit = () => {
+    if (!valid) return
+    if (edit.mode === 'new') onDone(createGroup(name))
+    else {
+      renameGroup(edit.id, name)
+      onDone()
+    }
+  }
+  return (
+    <SoftModal
+      open
+      onCancel={onClose}
+      width={400}
+      centered
+      title={
+        <Typography.Text className="text-base font-semibold">
+          {edit.mode === 'new' ? GROUP_LABELS.newGroup : GROUP_LABELS.rename}
+        </Typography.Text>
+      }
+      closable={false}
+      footer={
+        <Flex justify="end" gap={8}>
+          <Button type="text" onClick={onClose}>
+            {GROUP_LABELS.cancel}
+          </Button>
+          <Button type="primary" disabled={!valid} onClick={submit}>
+            {edit.mode === 'new' ? GROUP_LABELS.create : GROUP_LABELS.save}
+          </Button>
+        </Flex>
+      }
+    >
+      <Input
+        autoFocus
+        value={name}
+        maxLength={40}
+        placeholder={GROUP_LABELS.groupName}
+        aria-label={GROUP_LABELS.groupName}
+        onChange={(e) => setName(e.target.value)}
+        onPressEnter={submit}
+      />
+    </SoftModal>
+  )
+}
+
+/**
+ * Grup sekmesinin son karosu: "Uygulama ekle" — bütün uygulamaların işaretli listesi (açılır
+ * panel); işaret gruba koyar / çıkarır.
+ */
+function AddApps({ group, all, chip }: { group: AppGroup; all: MenuApp[]; chip: boolean }) {
+  const [open, setOpen] = useState(false)
+  const content = (
+    <Flex
+      vertical
+      role="group"
+      aria-label={GROUP_LABELS.addApps}
+      className="max-h-72 overflow-y-auto"
+    >
+      {all.map((a) => (
+        <Checkbox
+          key={a.id}
+          checked={group.apps.includes(a.id)}
+          onChange={() => toggleInGroup(group.id, a.id)}
+          className="rounded-lg px-2 py-1.5 hover:bg-surface-secondary"
+        >
+          {a.caption}
+        </Checkbox>
+      ))}
+    </Flex>
+  )
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+      trigger="click"
+      placement="bottom"
+      arrow={false}
+      destroyOnHidden
+      content={content}
+      classNames={{ container: 'w-72 max-w-[calc(100vw-2rem)] p-2' }}
+    >
+      <Button
+        type="text"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={cn(
+          'flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-transparent text-muted hover:bg-surface-secondary! hover:text-foreground!',
+          chip ? 'flex-row rounded-xl px-2 py-1' : 'flex-col px-2 py-2',
+        )}
+      >
+        <Plus {...IC} size={chip ? 16 : 20} />
+        <Typography.Text className="text-xs text-current!">{GROUP_LABELS.addApps}</Typography.Text>
+      </Button>
+    </Popover>
   )
 }
 

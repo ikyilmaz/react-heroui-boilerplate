@@ -60,7 +60,7 @@ export function WidgetCard({ children, className }: { children: ReactNode; class
   )
 }
 
-function WidgetTitle({
+export function WidgetTitle({
   icon: Icon,
   children,
   extra,
@@ -217,7 +217,8 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
         </Flex>
       </WidgetCard>
     )
-  const days = data.days.slice(0, size.id === 'l' ? 5 : 3)
+  // Dar (3 sütun): bugün ve iki gün
+  const days = data.days.slice(0, size.id === 'l' ? 5 : size.id === 'n' ? 2 : 3)
   const current = (
     <Flex className="flex min-w-0 flex-col justify-between gap-1">
       <Text tone="muted" className="truncate text-xs">

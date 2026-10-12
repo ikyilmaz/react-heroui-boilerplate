@@ -96,7 +96,11 @@ function useSlice<K extends keyof State>(key: K): State[K] {
  * Olayı talebe uygular (onay / sebep / yönlendirme pencereleri arayüzde önceden geçilmiş olmalı).
  * Talep Bekleyen Onaylar'dan düşer, Geçmiş › Onaylar'a eklenir, tarihçe uzar. Geri alınamaz.
  */
-export function decide(requestId: string, eventId: number, opts: { reason?: string; forwardTo?: Person } = {}) {
+export function decide(
+  requestId: string,
+  eventId: number,
+  opts: { reason?: string; forwardTo?: Person } = {},
+) {
   const r = findRequest(requestId)
   const event = r && findEvent(r, eventId)
   if (!r || !event || !event.enable || state.decisions.has(requestId)) return
@@ -109,7 +113,10 @@ export function decide(requestId: string, eventId: number, opts: { reason?: stri
     ...(opts.reason?.trim() && { reason: opts.reason.trim() }),
     ...(opts.forwardTo && { forwardTo: opts.forwardTo }),
   }
-  commit({ decisions: new Map(state.decisions).set(requestId, record), read: new Set(state.read).add(requestId) })
+  commit({
+    decisions: new Map(state.decisions).set(requestId, record),
+    read: new Set(state.read).add(requestId),
+  })
 }
 
 /** Karardan sonraki durum: onay son adımdaysa Tamamlandı, ret Reddedildi, diğerleri Devam ediyor. */
@@ -153,7 +160,14 @@ export function withDecision(r: WorkRequest, d: DecisionRecord | undefined): Wor
   }
   if (status === 'Tamamlandı' || status === 'Reddedildi') {
     if (d.kind === 'approve') step = p.steps.length
-    history.push({ id: `${r.id}-de`, step: 'Akış sonlandı', type: 'end', actionerType: 'self', requestDate: d.at, responseDate: d.at })
+    history.push({
+      id: `${r.id}-de`,
+      step: 'Akış sonlandı',
+      type: 'end',
+      actionerType: 'self',
+      requestDate: d.at,
+      responseDate: d.at,
+    })
   }
   return { ...r, box: 'gecmis-onaylar', status, step, responseDate: d.at, read: true, history }
 }
@@ -202,7 +216,8 @@ export function useViewedDocuments(requestId: string | undefined): ReadonlySet<n
   return useMemo(() => {
     const out = new Set<number>()
     if (!requestId) return out
-    for (const k of viewed) if (k.startsWith(`${requestId}:`)) out.add(Number(k.slice(requestId.length + 1)))
+    for (const k of viewed)
+      if (k.startsWith(`${requestId}:`)) out.add(Number(k.slice(requestId.length + 1)))
     return out
   }, [viewed, requestId])
 }
@@ -213,7 +228,10 @@ export function useViewedDocuments(requestId: string | undefined): ReadonlySet<n
  * Kutudaki güncel talepler (saf; kanca dışında da kullanılabilir): Bekleyen Onaylar'dan karar
  * verilenler düşer ve Geçmiş › Onaylar'ın başına eklenir; silinen taslaklar düşer.
  */
-function boxRequests(box: BoxId, s: Pick<State, 'decisions' | 'deletedDrafts'> = state): WorkRequest[] {
+function boxRequests(
+  box: BoxId,
+  s: Pick<State, 'decisions' | 'deletedDrafts'> = state,
+): WorkRequest[] {
   const base = requestsOf(box)
   switch (box) {
     case 'bekleyen':
@@ -235,7 +253,10 @@ function boxRequests(box: BoxId, s: Pick<State, 'decisions' | 'deletedDrafts'> =
 export function useBoxRequests(box: BoxId) {
   const decisions = useSlice('decisions')
   const deletedDrafts = useSlice('deletedDrafts')
-  return useMemo(() => boxRequests(box, { decisions, deletedDrafts }), [box, decisions, deletedDrafts])
+  return useMemo(
+    () => boxRequests(box, { decisions, deletedDrafts }),
+    [box, decisions, deletedDrafts],
+  )
 }
 
 /**
@@ -252,7 +273,12 @@ export function useBoxCounts(opts: { unreadInfo?: boolean } = {}): ReadonlyMap<B
       new Map(
         boxes.map((b) => {
           const rs = boxRequests(b.id, { decisions, deletedDrafts })
-          return [b.id, unreadInfo && b.id === 'bilgilendirmeler' ? rs.filter((r) => !isRead(r, read)).length : rs.length]
+          return [
+            b.id,
+            unreadInfo && b.id === 'bilgilendirmeler'
+              ? rs.filter((r) => !isRead(r, read)).length
+              : rs.length,
+          ]
         }),
       ),
     [decisions, deletedDrafts, read, unreadInfo],
@@ -263,7 +289,11 @@ export function useBoxCounts(opts: { unreadInfo?: boolean } = {}): ReadonlyMap<B
  * Kimliğe göre güncel talep (kararı işlenmiş hâli) ve kararı. Ayrıntı sayfası bunu kullanır; karar
  * verilmiş bir Bekleyen Onaylar talebi `gecmis-onaylar` kutusunda, uzamış tarihçesiyle döner.
  */
-export function useRequest(requestId: string | undefined): { request?: WorkRequest; decision?: DecisionRecord; deleted: boolean } {
+export function useRequest(requestId: string | undefined): {
+  request?: WorkRequest
+  decision?: DecisionRecord
+  deleted: boolean
+} {
   const decisions = useSlice('decisions')
   const deletedDrafts = useSlice('deletedDrafts')
   return useMemo(() => {
@@ -303,10 +333,10 @@ export function togglePin(appId: string) {
 }
 
 /** Son kullanılanlar (ilk 20) ve favoriler (pinned); her ikisinde de güncel `pinned`. */
-export function useMenuApps(): { recent: MenuApp[]; favorites: MenuApp[] } {
+export function useMenuApps(): { recent: MenuApp[]; favorites: MenuApp[]; all: MenuApp[] } {
   const pins = useSlice('pins')
   return useMemo(() => {
     const all = menuApps.map((a) => (pins.has(a.id) ? { ...a, pinned: pins.get(a.id)! } : a))
-    return { recent: all.slice(0, RECENT_LIMIT), favorites: all.filter((a) => a.pinned) }
+    return { recent: all.slice(0, RECENT_LIMIT), favorites: all.filter((a) => a.pinned), all }
   }, [pins])
 }
