@@ -169,7 +169,7 @@ export const DOCK_SPRING: Transition = { type: 'spring', stiffness: 380, damping
 const DOCK_BACK: Transition = { delay: 0.22, duration: 0.12 }
 
 /**
- * Kabuk panellerinin ortak yüzeyi (raf, başlat kutusu). Köşe kartlarınki (`CARD_RADIUS`; tema
+ * Kabuk panellerinin ortak yüzeyi (raf). Köşe kartlarınki (`CARD_RADIUS`; tema
  * paneli › Köşe yuvarlaklığı): "Çok"ta raf tam hap, daha azında köşeli. Raf ve kutuda yarıçap
  * ayrıca px olarak stilde (paylaşılan geçişte framer yarıçapı ölçekte düzeltir); sınıf ilk ölçüme
  * kadar.
@@ -183,7 +183,7 @@ export const CHROME_PANEL = cn(
  * gibi dönüşümün sonuna doğru belirir. Kutu düğmeden büyürken (Motion paylaşılan düzen: ölçek)
  * 1px kenarlık ve gölge halkası da ölçeklenip bitişte tam kalınlığa zıplıyordu.
  */
-const CHROME_SURFACE =
+export const CHROME_SURFACE =
   'pointer-events-auto rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] bg-surface'
 const PANEL_RING =
   'pointer-events-none absolute inset-0 block rounded-[inherit] border border-border shadow-(--overlay-shadow)'
@@ -191,14 +191,16 @@ const PANEL_RING =
 /** Sütun ve çubuk rafı: iç pay, başlat düğmesi (piksel: temanın boşluk ölçeği rafın oranını bozmasın). */
 const COLUMN = {
   shell: 'flex-col items-center p-[6px]',
-  start: 'size-[40px] min-w-[40px]',
-  icon: 18,
+  // Başlat düğmesi rafla aynı ende (40px daire + 6px pay) ve aynı köşede (`radius`)
+  start: 'size-[52px] min-w-[52px]',
+  icon: 20,
 }
 /** Çubukta kompakt: 44px (36px daireler, 4px pay). */
 const BAR = {
   shell: 'h-[44px] flex-row items-center p-[4px]',
-  start: 'size-[36px] min-w-[36px]',
-  icon: 16,
+  // Başlat düğmesi rafla aynı boyda (36px daire + 4px pay) ve aynı köşede
+  start: 'size-[44px] min-w-[44px]',
+  icon: 18,
 }
 /**
  * Yandaki kutu: dikeyde tam ortada (raf gibi; dönüşüm transform kullandığı için `my-auto` ile),
@@ -393,13 +395,15 @@ function StartBox({
     const baseY = cur.y - y.get()
     h.set(cur.height)
     if (typeof w.get() !== 'number') w.set(cur.width)
-    // Düğme daire: köşe boyun yarısı
+    // Düğmenin köşesi (kompaktta daire, solda / üstte rafın köşesi)
+    const corner =
+      parseFloat(getComputedStyle(anchor.current!).borderTopLeftRadius) || to.height / 2
     void Promise.all([
       animate(x, to.x - baseX, t),
       animate(y, to.y - baseY, t),
       animate(w, to.width, t),
       animate(h, to.height, t),
-      animate(r, to.height / 2, t),
+      animate(r, corner, t),
       animate(mix, 1, t),
     ]).then(() => safeToRemove())
   }, [present, safeToRemove, anchor, x, y, w, h, r, mix])
@@ -485,8 +489,10 @@ export function StartDock({
 
   // Kutu her düzende başlat düğmesinden açılır (raf dönüşmez, yerinde kalır)
   const openStart = () => {
-    const r = trigger.current?.getBoundingClientRect()
-    setFrom(r ? { x: r.x, y: r.y, w: r.width, h: r.height, r: r.height / 2 } : null)
+    const el = trigger.current
+    const r = el?.getBoundingClientRect()
+    const corner = el ? parseFloat(getComputedStyle(el).borderTopLeftRadius) || r!.height / 2 : 0
+    setFrom(r ? { x: r.x, y: r.y, w: r.width, h: r.height, r: corner } : null)
     setOpen(true)
   }
   // İçerik dönüşüm sırasında gizli, bitmeye yakın belirir (ölçeklenirken ezik görünmesin)
@@ -501,19 +507,23 @@ export function StartDock({
     <MotionFlex
       animate={{ opacity: open ? 0 : 1 }}
       transition={open ? { duration: 0 } : DOCK_BACK}
-      className="flex shrink-0"
+      // Kabuk sütunu / çubuğu işaretçiyi geçirir (`pointer-events-none`): düğme kendi alır
+      className="pointer-events-auto flex shrink-0"
     >
       <Tip label={START_LABELS.start} placement={CHROME_TIP[place]}>
         <Button
           ref={trigger}
           type="primary"
-          shape="circle"
+          shape={compact ? 'circle' : 'default'}
           aria-label={START_LABELS.start}
           aria-expanded={open}
           onClick={openStart}
           icon={<LayoutDashboard {...IC} size={p.icon} />}
+          // Kompaktta daire; solda / üstte rafla aynı köşe (px, `useRadiusPx`)
+          style={compact ? undefined : radius}
           className={cn(
-            'shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90',
+            'shrink-0 bg-accent p-0 text-accent-foreground hover:bg-accent/90',
+            compact && 'rounded-full',
             p.start,
           )}
         />
@@ -529,9 +539,9 @@ export function StartDock({
           style={radius}
           role="navigation"
           aria-label="Ana menü"
-          className={cn('relative flex shrink-0', p.shell, CHROME_SURFACE)}
+          // Kontur ve gölge kartlar gibi tema panelinden (`CARD`: `--border-width`, `--surface-shadow`)
+          className={cn('relative flex shrink-0', p.shell, CHROME_SURFACE, CARD)}
         >
-          <Flex aria-hidden className={PANEL_RING} />
           <MotionFlex
             // Raf boyu değişince (alt seviyeler eklenince) içerik ezilmesin; raf ile aynı yay
             layout
@@ -611,12 +621,10 @@ export function StartDock({
         {body}
       </>
     )
-  // Başlat düğmesi kendi beyaz kartında yüzer (rafın önünde: solda üstünde, üstte solunda)
+  // Başlat düğmesi kartsız, rafın önünde (solda üstünde, üstte solunda); kutu doğrudan ondan büyür
   return (
     <Flex className={cn('flex shrink-0 items-center gap-2', column && 'flex-col')}>
-      <Flex className={cn('flex shrink-0', column ? 'p-[6px]' : 'p-[4px]', CHROME_PANEL)}>
-        {start}
-      </Flex>
+      {start}
       {body}
     </Flex>
   )

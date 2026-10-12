@@ -84,8 +84,8 @@ import { APP_THEME } from '@/synergy/theme'
 import { MotionScope } from '@/synergy/motion'
 import { AllAppsButton, AllAppsHandle, AllAppsPanel } from '@/synergy/AllApps'
 import {
-  CHROME_PANEL,
   CHROME_SPACE,
+  CHROME_SURFACE,
   CHROME_TIP,
   CloseOnPlace,
   DOCK_SPRING,
@@ -865,7 +865,10 @@ const ShellActions = memo(function ShellActions({
         />
       </Tip>
       <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement="bottom">
-        <UserAvatar size={large ? 40 : 32} className={cn('ms-1', large ? 'text-sm' : 'text-[0.8125rem]')} />
+        <UserAvatar
+          size={large ? 40 : 32}
+          className={cn('ms-1', large ? 'text-sm' : 'text-[0.8125rem]')}
+        />
       </Tip>
     </Flex>
   )
@@ -948,9 +951,11 @@ const CompactDock = memo(function CompactDock({ onApp }: { onApp: DockOpen }) {
                 const el = (e.target as HTMLElement).closest('a,button')
                 if (el && !el.hasAttribute('aria-pressed')) close()
               }}
+              // Kontur ve gölge kartlar gibi tema panelinden (`CARD`)
               className={cn(
                 'fixed start-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-center gap-1 p-[6px]',
-                CHROME_PANEL,
+                CHROME_SURFACE,
+                CARD,
               )}
             >
               <DockApps place="left" onApp={openApp} />

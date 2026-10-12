@@ -1,17 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
+import { MENU_LABELS } from '@/synergy/shared/menuTree'
 import { LayoutGroup, motion } from 'framer-motion'
-import {
-  AppWindow,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  History,
-  Info,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, History, Info, Trash2, X } from 'lucide-react'
 import {
   Avatar,
   Button,
@@ -173,19 +165,17 @@ function RootViewer({ id, boxId }: { id: string; boxId: string | undefined }) {
     const path = own || !next ? `/talepler/${to}` : requestLink(next)
     navigate(path, { replace: true, state: { ids } satisfies DetailNavState })
   }
-  const open = (to: string) => screen?.open(`/talepler/${to}`, 'tab', { ids } satisfies DetailNavState)
+  const open = (to: string) =>
+    screen?.open(`/talepler/${to}`, 'tab', { ids } satisfies DetailNavState)
   return (
     <ContentSwitch id={id} dir={dir} className="relative flex flex-col">
       <Viewer
         r={r}
         process={process}
         caption={processCaption(process)}
-        nav={
-          index >= 0 ? { ids, index, go, open, box, scope: screen?.key ?? 'detail' } : undefined
-        }
+        nav={index >= 0 ? { ids, index, go, open, box, scope: screen?.key ?? 'detail' } : undefined}
         onClose={() => screen?.close()}
         onDeleted={() => screen?.close()}
-        onPopOut={own ? undefined : screen?.popOut}
       />
     </ContentSwitch>
   )
@@ -299,6 +289,7 @@ function AppViewer({ appId, onClose }: { appId: string; onClose: () => void }) {
           >
             {app.caption}
           </Typography.Title>
+          <CloseButton onPress={onClose} onStrip={solid} className="ms-auto" />
         </Flex>
         {!phone && (
           <Flex
@@ -389,7 +380,6 @@ function Viewer({
   nav,
   onClose,
   onDeleted,
-  onPopOut,
   isChild = false,
 }: {
   r: WorkRequest
@@ -399,8 +389,6 @@ function Viewer({
   nav?: DetailNav
   onClose: () => void
   onDeleted: () => void
-  /** Listenin üstünde açıksa: kendi sekmesine taşır ("Ayrı sekmeye taşı"). */
-  onPopOut?: () => void
   /** Child sekmesi: başlıkta Geri / İleri gösterilmez. */
   isChild?: boolean
 }) {
@@ -588,55 +576,45 @@ function Viewer({
               {isDraft ? process.form : process.name}
             </Typography.Title>
           </Flex>
-          {(!isChild || side.mode === 'sheet') && (
-            <Flex className={ROW}>
-              {!isChild && (
-                <>
-                  <NavButton
-                    label={VIEWER_LABELS.prev}
-                    icon={ChevronLeft}
-                    onPress={prev}
-                    onStrip={solid}
-                  />
-                  {/* `LayoutGroup` yalnızca izin çevresinde: çizgi Geri / İleri'de eski kökten
+          <Flex className={ROW}>
+            {!isChild && (
+              <>
+                <NavButton
+                  label={VIEWER_LABELS.prev}
+                  icon={ChevronLeft}
+                  onPress={prev}
+                  onStrip={solid}
+                />
+                {/* `LayoutGroup` yalnızca izin çevresinde: çizgi Geri / İleri'de eski kökten
                       yenisine kayar, gruplar birbirine karışmaz; formun diğer düzen öğeleri gruba
                       girmez */}
-                  {nav && nav.ids.length > 1 && (
-                    <LayoutGroup id={nav.scope}>
-                      <NavTrail nav={nav} process={process} onStrip={solid} />
-                    </LayoutGroup>
-                  )}
-                  <NavButton
-                    label={VIEWER_LABELS.next}
-                    icon={ChevronRight}
-                    onPress={next}
-                    onStrip={solid}
-                  />
-                  {/* Listenin üstündeki form kendi sekmesine geçer, liste yerine döner */}
-                  {onPopOut && (
-                    <Tip label="Ayrı sekmeye taşı" placement="bottom">
-                      <Button
-                        aria-label="Ayrı sekmeye taşı"
-                        onClick={onPopOut}
-                        icon={<AppWindow {...IC} size={18} />}
-                        className={cn(solid ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND, 'ms-2')}
-                      />
-                    </Tip>
-                  )}
-                </>
-              )}
-              {/* Dar bölmede yan bilgiler (Dokümanlar, Özellikler, Tarihçe) bu düğmeyle açılan
-                  sayfada (DetailSide.tsx) */}
-              {side.mode === 'sheet' && (
-                <SideButton
-                  side={side}
-                  warning={docsWarning}
+                {nav && nav.ids.length > 1 && (
+                  <LayoutGroup id={nav.scope}>
+                    <NavTrail nav={nav} process={process} onStrip={solid} />
+                  </LayoutGroup>
+                )}
+                <NavButton
+                  label={VIEWER_LABELS.next}
+                  icon={ChevronRight}
+                  onPress={next}
                   onStrip={solid}
-                  className={cn(!isChild && 'ms-2')}
                 />
-              )}
-            </Flex>
-          )}
+              </>
+            )}
+            {/* Dar bölmede yan bilgiler (Dokümanlar, Özellikler, Tarihçe) bu düğmeyle açılan
+                  sayfada (DetailSide.tsx) */}
+            {side.mode === 'sheet' && (
+              <SideButton
+                side={side}
+                warning={docsWarning}
+                onStrip={solid}
+                className={cn(!isChild && 'ms-2')}
+              />
+            )}
+            {/* Formu kapatır (listenin üstündeyse listeye, kendi sekmesindeyse sekmeyi; child
+                  formu da). Bandın sağ ucunda, her formda */}
+            <CloseButton onPress={onClose} onStrip={solid} className="ms-2" />
+          </Flex>
         </Flex>
 
         {/* Şerit göründüğünde bant kopyası erişilebilirlik ağacından çıkar (tek olay grubu) */}
@@ -924,6 +902,28 @@ function NavButton({
         onClick={onPress}
         icon={<Icon {...IC} size={18} />}
         className={onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND}
+      />
+    </Tip>
+  )
+}
+
+/** Formu kapatan çarpı (her formun bandında, sağ uçta; "Kapat" 100824). */
+function CloseButton({
+  onPress,
+  onStrip,
+  className,
+}: {
+  onPress: () => void
+  onStrip?: boolean
+  className?: string
+}) {
+  return (
+    <Tip label={MENU_LABELS.close} placement="bottom">
+      <Button
+        aria-label={MENU_LABELS.close}
+        onClick={onPress}
+        icon={<X {...IC} size={18} />}
+        className={cn(onStrip ? OUTLINE_ON_STRIP : OUTLINE_ON_BAND, className)}
       />
     </Tip>
   )

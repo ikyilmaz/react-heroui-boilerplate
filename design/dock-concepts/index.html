@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Raf Kavramları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&display=swap" />
+<style>
+  /* Düzen: tek sütun; her kavram bir bölüm, içinde üç çerçeve (Solda / Üstte / Kompakt) yan yana,
+     dar ekranda alt alta. Renkler Synergy temasından (synergy.css), kavramlar aynı tek rengi kullanır. */
+  :root {
+    --bg: oklch(0.96 0.003 250);
+    --fg: oklch(0.21 0.01 260);
+    --muted: oklch(0.52 0.01 260);
+    --surface: oklch(1 0 0);
+    --surface-2: oklch(0.975 0.003 250);
+    --surface-3: oklch(0.955 0.004 250);
+    --border: oklch(0.21 0.01 260 / 0.09);
+    --accent: oklch(0.5 0.16 262);
+    --accent-fg: oklch(1 0 0);
+    --accent-soft: color-mix(in oklab, var(--accent) 15%, transparent);
+    --accent-soft-fg: oklch(0.48 0.16 262);
+    --tab-bg: color-mix(in oklab, var(--accent) 9%, var(--bg));
+    --shadow: 0 0 0 1px var(--border), 0 4px 12px -2px oklch(0.21 0.01 260 / 0.08), 0 12px 32px -8px oklch(0.21 0.01 260 / 0.1);
+    --radius: 0.5rem;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-display: "Bricolage Grotesque", var(--font-sans);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: oklch(0.15 0.006 260); --fg: oklch(0.96 0.003 250); --muted: oklch(0.68 0.01 260);
+      --surface: oklch(0.21 0.007 260); --surface-2: oklch(0.235 0.008 260); --surface-3: oklch(0.26 0.008 260);
+      --border: oklch(1 0 0 / 0.08); --accent: oklch(0.52 0.15 262); --accent-soft-fg: oklch(0.78 0.11 262);
+      --shadow: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: oklch(0.15 0.006 260); --fg: oklch(0.96 0.003 250); --muted: oklch(0.68 0.01 260);
+    --surface: oklch(0.21 0.007 260); --surface-2: oklch(0.235 0.008 260); --surface-3: oklch(0.26 0.008 260);
+    --border: oklch(1 0 0 / 0.08); --accent: oklch(0.52 0.15 262); --accent-soft-fg: oklch(0.78 0.11 262);
+    --shadow: 0 0 0 1px var(--border), 0 12px 32px -8px oklch(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-sans);
+    padding-block: 32px 64px; padding-inline: clamp(16px, 4vw, 48px);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; font-weight: 700; }
+  p { margin: 0; }
+  .lead { color: var(--muted); max-width: 62ch; }
+  header.page { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; margin-bottom: 40px; }
+  .page-title { display: grid; gap: 8px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .toggle {
+    font: inherit; font-weight: 600; font-size: 13px; color: var(--fg); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Kavram bölümü */
+  .concept { display: grid; gap: 16px; padding-block: 32px; border-top: 1px solid var(--border); }
+  .concept-head { display: grid; grid-template-columns: 1fr; gap: 6px 24px; align-items: baseline; }
+  @media (min-width: 900px) { .concept-head { grid-template-columns: 280px 1fr; } }
+  .concept-head .num { color: var(--muted); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; }
+  .concept-head p { color: var(--muted); max-width: 70ch; }
+  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .frame { display: grid; gap: 8px; }
+  .frame-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Küçük uygulama sahnesi: sayfa zemini, içinde bir içerik kartı; rafın bağlamı */
+  .stage {
+    position: relative; height: 330px; overflow: hidden; border-radius: 16px;
+    background: var(--bg); box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .stage .content {
+    position: absolute; inset: 12px; border-radius: 14px; background: var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .stage .content::before, .stage .content::after {
+    content: ""; position: absolute; left: 20px; height: 10px; border-radius: 5px; background: var(--surface-3);
+  }
+  .stage .content::before { top: 20px; width: 42%; }
+  .stage .content::after { top: 42px; width: 68%; }
+  .stage.left .content { inset: 12px 12px 12px 76px; }
+  .stage.top .content { inset: 68px 12px 12px 12px; }
+  .stage.compact .content { inset: 60px 12px 12px 12px; }
+  /* Kompakt: sekme satırı (geri / ileri + sekmeler) */
+  .tabrow { position: absolute; left: 12px; right: 12px; top: 12px; height: 40px; display: flex; align-items: center; gap: 6px; }
+  .tabrow .hist { width: 56px; height: 34px; border-radius: 10px; background: var(--tab-bg); }
+  .tabrow .tab { height: 34px; padding: 0 12px; border-radius: 10px 10px 0 0; background: var(--tab-bg); display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--accent-soft-fg); margin-top: 6px; }
+
+  /* İkonlar */
+  .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .ic.s { width: 16px; height: 16px; }
+  .ic.l { width: 20px; height: 20px; }
+
+  /* Ortak düğme temeli */
+  .app { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: color-mix(in oklab, var(--fg) 70%, transparent); cursor: pointer; font: inherit; padding: 0; transition: background-color .18s, color .18s; }
+  .app:hover { background: var(--surface-2); color: var(--fg); }
+  .app:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .app.is-active { background: var(--accent); color: var(--accent-fg); }
+  .app.is-off { opacity: .45; cursor: default; }
+  .app.star { color: var(--accent); }
+  .start { display: inline-flex; align-items: center; justify-content: center; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-fg); border-radius: 999px; }
+  .start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sep { background: var(--border); flex: none; }
+  @media (prefers-reduced-motion: reduce) { .app, .ind { transition: none !important; } }
+
+  /* ---------- 1. Hap (bugünkü, rafine) ---------- */
+  .c1 .dock { position: absolute; display: flex; align-items: center; gap: 2px; padding: 6px; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); }
+  .c1 .dock .app { width: 40px; height: 40px; border-radius: 999px; }
+  .c1 .startcard { position: absolute; padding: 6px; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); }
+  .c1 .start { width: 40px; height: 40px; }
+  .c1 .left .startcard { left: 12px; top: 12px; }
+  .c1 .left .dock { left: 12px; top: 72px; flex-direction: column; }
+  .c1 .left .sep { width: 24px; height: 1px; margin: 4px 0; }
+  .c1 .top .startcard { left: 50%; top: 12px; transform: translateX(-176px); padding: 4px; }
+  .c1 .top .start { width: 36px; height: 36px; }
+  .c1 .top .dock { left: 50%; top: 12px; transform: translateX(-120px); padding: 4px; }
+  .c1 .top .dock .app { width: 36px; height: 36px; }
+  .c1 .top .sep { height: 20px; width: 1px; margin: 0 2px; }
+  .c1 .compact .start { position: absolute; left: 12px; top: 12px; width: 40px; height: 40px; }
+  .c1 .compact .tabrow { left: 60px; }
+
+  /* ---------- 2. Kayan vurgu ---------- */
+  .c2 .dock { position: absolute; display: flex; align-items: center; gap: 0; padding: 4px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); isolation: isolate; }
+  .c2 .dock .app { width: 40px; height: 40px; border-radius: 12px; position: relative; z-index: 1; }
+  .c2 .dock .app:hover { background: transparent; }
+  .c2 .dock .app.is-active { background: transparent; color: var(--accent-fg); }
+  .c2 .ind { position: absolute; width: 40px; height: 40px; border-radius: 12px; background: var(--accent); transition: transform .3s cubic-bezier(.3,.9,.3,1); }
+  .c2 .start { width: 40px; height: 40px; border-radius: 12px; }
+  .c2 .dock .start { margin-right: 4px; }
+  .c2 .left .dock { left: 12px; top: 12px; flex-direction: column; }
+  .c2 .left .dock .start { margin: 0 0 4px 0; }
+  .c2 .left .sep { width: 20px; height: 1px; margin: 4px 0; }
+  .c2 .top .dock { left: 50%; top: 12px; transform: translateX(-50%); padding: 4px; border-radius: 14px; }
+  .c2 .top .dock .app, .c2 .top .ind, .c2 .top .start { width: 36px; height: 36px; border-radius: 10px; }
+  .c2 .top .sep { height: 18px; width: 1px; margin: 0 4px; }
+  .c2 .compact .start { position: absolute; left: 12px; top: 12px; }
+  .c2 .compact .tabrow { left: 60px; }
+
+  /* ---------- 3. Karo rafı ---------- */
+  .c3 .dock { position: absolute; display: flex; gap: 4px; align-items: center; }
+  .c3 .dock .app { width: 40px; height: 40px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--border); color: color-mix(in oklab, var(--fg) 75%, transparent); }
+  .c3 .dock .app:hover { background: var(--accent-soft); color: var(--accent-soft-fg); }
+  .c3 .dock .app.is-active { background: var(--accent); color: var(--accent-fg); box-shadow: none; }
+  .c3 .dock .app.fav { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+  .c3 .start { width: 40px; height: 40px; border-radius: 12px; }
+  .c3 .left .dock { left: 12px; top: 12px; flex-direction: column; }
+  .c3 .left .sep { width: 20px; height: 1px; margin: 4px 0; }
+  .c3 .top .dock { left: 50%; top: 12px; transform: translateX(-50%); }
+  .c3 .top .dock .app, .c3 .top .start { width: 36px; height: 36px; border-radius: 10px; }
+  .c3 .top .sep { height: 20px; width: 1px; margin: 0 2px; }
+  .c3 .compact .start { position: absolute; left: 12px; top: 12px; }
+  .c3 .compact .tabrow { left: 60px; }
+
+  /* ---------- 4. Çizgi ---------- */
+  .c4 .dock { position: absolute; display: flex; align-items: center; gap: 6px; }
+  .c4 .dock .app { width: 36px; height: 36px; border-radius: 10px; position: relative; color: color-mix(in oklab, var(--fg) 65%, transparent); }
+  .c4 .dock .app:hover { background: var(--surface-2); }
+  .c4 .dock .app.is-active { background: transparent; color: var(--accent); }
+  .c4 .dock .app.is-active::after { content: ""; position: absolute; background: var(--accent); border-radius: 2px; }
+  .c4 .start { width: 36px; height: 36px; border-radius: 10px; }
+  .c4 .left .dock { left: 20px; top: 20px; flex-direction: column; }
+  .c4 .left .dock .app.is-active::after { left: -12px; top: 8px; width: 3px; height: 20px; }
+  .c4 .left .sep { width: 16px; height: 1px; margin: 4px 0; }
+  .c4 .top .dock { left: 50%; top: 16px; transform: translateX(-50%); }
+  .c4 .top .dock .app.is-active::after { left: 8px; bottom: -8px; width: 20px; height: 3px; }
+  .c4 .top .sep { height: 16px; width: 1px; margin: 0 4px; }
+  .c4 .compact .start { position: absolute; left: 12px; top: 14px; }
+  .c4 .compact .tabrow { left: 60px; }
+
+  /* ---------- 5. Etiketli ---------- */
+  .c5 .dock { position: absolute; display: flex; align-items: center; gap: 2px; padding: 6px; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
+  .c5 .dock .app { height: 36px; padding: 0 12px 0 10px; gap: 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .c5 .dock .app .lbl { white-space: nowrap; }
+  .c5 .dock .app.is-active { background: var(--accent); color: var(--accent-fg); }
+  .c5 .start { height: 36px; padding: 0 14px 0 10px; gap: 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .c5 .left .dock { left: 12px; top: 12px; flex-direction: column; align-items: stretch; width: 128px; }
+  .c5 .left .dock .app { justify-content: flex-start; }
+  .c5 .left .sep { height: 1px; margin: 4px 8px; }
+  .c5 .left .content { inset: 12px 12px 12px 152px; }
+  .c5 .top .dock { left: 50%; top: 12px; transform: translateX(-50%); padding: 4px; border-radius: 14px; }
+  .c5 .top .dock .app { height: 32px; padding: 0 10px 0 8px; font-size: 11px; }
+  .c5 .top .dock .app.is-active { }
+  .c5 .top .start { height: 32px; }
+  .c5 .top .sep { height: 16px; width: 1px; margin: 0 4px; }
+  .c5 .top .content { inset: 60px 12px 12px; }
+  .c5 .compact .start { position: absolute; left: 12px; top: 14px; height: 36px; padding: 0 12px 0 10px; border-radius: 12px; }
+  .c5 .compact .tabrow { left: 104px; }
+  @media (max-width: 420px) { .c5 .left .dock { width: 112px; } .c5 .left .content { inset: 12px 12px 12px 136px; } }
+
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-start" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-flow" viewBox="0 0 24 24"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol>
+</svg>
+
+<header class="page">
+  <div class="page-title">
+    <span class="eyebrow">Synergy · Kabuk</span>
+    <h1>Raf için beş kavram</h1>
+    <p class="lead">Her kavram üç gezinme konumunu da taşır: Solda (sütun), Üstte (çubuk) ve Kompakt (yalnızca başlat düğmesi, sekme satırının başında). Sabit uygulamalar, ayraç, ardından favoriler. Simgelere tıklayıp seçili durumu deneyebilirsin; renkler ve yarıçaplar uygulamanın temasından.</p>
+  </div>
+  <button class="toggle" type="button" id="theme-toggle" aria-pressed="false">Koyu tema</button>
+</header>
+
+<!-- 1 -->
+<section class="concept c1" aria-labelledby="h1c">
+  <div class="concept-head">
+    <div><span class="num">01</span><h2 id="h1c">Hap</h2></div>
+    <p>Bugünkü yapının düzenlenmiş hâli: başlat düğmesi kendi küçük kartında, raf ayrı bir hapta, uygulamalar daire. Seçili uygulama dolu birincil renk. Zemini olan tek panel raf olduğundan içerikten net ayrılır; iki ayrı yüzey yan yana durduğu için biraz "parçalı" okunur.</p>
+  </div>
+  <div class="frames">
+    <div class="frame"><span class="frame-label">Solda</span>
+      <div class="stage left">
+        <div class="startcard"><button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button></div>
+        <nav class="dock" aria-label="Raf">
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar" aria-disabled="true"><svg class="ic"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app star" type="button" aria-label="Favoriler"><svg class="ic s"><use href="#i-star"/></svg></button>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic"><use href="#i-cart"/></svg></button>
+          <button class="app" type="button" aria-label="Masraf Bildirimi"><svg class="ic"><use href="#i-receipt"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Üstte</span>
+      <div class="stage top">
+        <div class="startcard"><button class="start" type="button" aria-label="Başlat"><svg class="ic s"><use href="#i-start"/></svg></button></div>
+        <nav class="dock" aria-label="Raf">
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic s"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic s"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic s"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic s"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app star" type="button" aria-label="Favoriler"><svg class="ic s"><use href="#i-star"/></svg></button>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic s"><use href="#i-cart"/></svg></button>
+          <button class="app" type="button" aria-label="Masraf Bildirimi"><svg class="ic s"><use href="#i-receipt"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Kompakt</span>
+      <div class="stage compact">
+        <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+        <div class="tabrow"><span class="hist"></span><span class="tab">Başlangıç</span><span class="tab">Satın Alma Talebi</span></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="concept c2" aria-labelledby="h2c">
+  <div class="concept-head">
+    <div><span class="num">02</span><h2 id="h2c">Kayan vurgu</h2></div>
+    <p>Başlat düğmesi ve raf tek bir parça; seçili uygulamanın arkasındaki dolu kare, tıklayınca yerine kayar (sekme yaprağının kayışıyla aynı dil). Simgeler nötr, yalnızca vurgu renkli; daireler yerine yumuşak kareler, kutuların köşesiyle akraba.</p>
+  </div>
+  <div class="frames">
+    <div class="frame"><span class="frame-label">Solda</span>
+      <div class="stage left">
+        <nav class="dock slide" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+          <span class="ind" aria-hidden="true"></span>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app star" type="button" aria-label="Favoriler"><svg class="ic s"><use href="#i-star"/></svg></button>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic"><use href="#i-cart"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Üstte</span>
+      <div class="stage top">
+        <nav class="dock slide" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic s"><use href="#i-start"/></svg></button>
+          <span class="ind" aria-hidden="true"></span>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic s"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic s"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic s"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic s"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app star" type="button" aria-label="Favoriler"><svg class="ic s"><use href="#i-star"/></svg></button>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic s"><use href="#i-cart"/></svg></button>
+          <button class="app" type="button" aria-label="Masraf Bildirimi"><svg class="ic s"><use href="#i-receipt"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Kompakt</span>
+      <div class="stage compact">
+        <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+        <div class="tabrow"><span class="hist"></span><span class="tab">Başlangıç</span><span class="tab">Satın Alma Talebi</span></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="concept c3" aria-labelledby="h3c">
+  <div class="concept-head">
+    <div><span class="num">03</span><h2 id="h3c">Karo rafı</h2></div>
+    <p>Rafın kendi zemini yok: her uygulama 4px aralıkla dizilmiş bağımsız bir karo, başlat da aynı ölçüde dolu bir karo. Favoriler çizgili (içi boş) karolar, sabit uygulamalar dolu yüzey. Sayfanın kartlarıyla aynı dilde; kalabalık rafta bile ferah kalır.</p>
+  </div>
+  <div class="frames">
+    <div class="frame"><span class="frame-label">Solda</span>
+      <div class="stage left">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic"><use href="#i-flow"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app fav" type="button" aria-label="Satın Alma Talebi"><svg class="ic"><use href="#i-cart"/></svg></button>
+          <button class="app fav" type="button" aria-label="Masraf Bildirimi"><svg class="ic"><use href="#i-receipt"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Üstte</span>
+      <div class="stage top">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic s"><use href="#i-start"/></svg></button>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic s"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic s"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic s"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic s"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app fav" type="button" aria-label="Satın Alma Talebi"><svg class="ic s"><use href="#i-cart"/></svg></button>
+          <button class="app fav" type="button" aria-label="Masraf Bildirimi"><svg class="ic s"><use href="#i-receipt"/></svg></button>
+          <button class="app fav" type="button" aria-label="Personel Rehberi"><svg class="ic s"><use href="#i-users"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Kompakt</span>
+      <div class="stage compact">
+        <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+        <div class="tabrow"><span class="hist"></span><span class="tab">Başlangıç</span><span class="tab">Satın Alma Talebi</span></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="concept c4" aria-labelledby="h4c">
+  <div class="concept-head">
+    <div><span class="num">04</span><h2 id="h4c">Çizgi</h2></div>
+    <p>En hafif seçenek: raf doğrudan sayfanın zemininde, yüzeysiz. Seçili uygulama renkli simge ve yanında / altında kısa bir birincil renk çizgisi; favoriler ince bir ayraçtan sonra. Üstte gezinmede tarayıcı sekmeleri gibi çok az yer kaplar, solda ince bir şerit kalır.</p>
+  </div>
+  <div class="frames">
+    <div class="frame"><span class="frame-label">Solda</span>
+      <div class="stage left">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic"><use href="#i-cart"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Üstte</span>
+      <div class="stage top">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button" aria-label="Başlat"><svg class="ic s"><use href="#i-start"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app is-active" type="button" aria-label="Başlangıç"><svg class="ic s"><use href="#i-house"/></svg></button>
+          <button class="app is-off" type="button" aria-label="Dokümanlar"><svg class="ic s"><use href="#i-folder"/></svg></button>
+          <button class="app" type="button" aria-label="İş Akış Yönetimi"><svg class="ic s"><use href="#i-flow"/></svg></button>
+          <button class="app" type="button" aria-label="İnsan Kaynakları"><svg class="ic s"><use href="#i-users"/></svg></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app" type="button" aria-label="Satın Alma Talebi"><svg class="ic s"><use href="#i-cart"/></svg></button>
+          <button class="app" type="button" aria-label="Masraf Bildirimi"><svg class="ic s"><use href="#i-receipt"/></svg></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Kompakt</span>
+      <div class="stage compact">
+        <button class="start" type="button" aria-label="Başlat"><svg class="ic"><use href="#i-start"/></svg></button>
+        <div class="tabrow"><span class="hist"></span><span class="tab">Başlangıç</span><span class="tab">Satın Alma Talebi</span></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="concept c5" aria-labelledby="h5c">
+  <div class="concept-head">
+    <div><span class="num">05</span><h2 id="h5c">Etiketli</h2></div>
+    <p>Simgelerin yanında adları: solda 128px'lik bir sütun, üstte kısa çipler. İpucuna gerek kalmaz, yeni kullanıcı için en okunaklısı; karşılığında solda daha çok yer alır, üstte favori sayısı sınırlı kalır. Kompaktta başlat düğmesi "Başlat" yazısıyla bir hap.</p>
+  </div>
+  <div class="frames">
+    <div class="frame"><span class="frame-label">Solda</span>
+      <div class="stage left">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button"><svg class="ic"><use href="#i-start"/></svg><span class="lbl">Başlat</span></button>
+          <button class="app is-active" type="button"><svg class="ic"><use href="#i-house"/></svg><span class="lbl">Başlangıç</span></button>
+          <button class="app" type="button"><svg class="ic"><use href="#i-flow"/></svg><span class="lbl">İş Akışları</span></button>
+          <button class="app" type="button"><svg class="ic"><use href="#i-users"/></svg><span class="lbl">İnsan Kayn.</span></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app" type="button"><svg class="ic"><use href="#i-cart"/></svg><span class="lbl">Satın Alma</span></button>
+          <button class="app" type="button"><svg class="ic"><use href="#i-receipt"/></svg><span class="lbl">Masraf</span></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Üstte</span>
+      <div class="stage top">
+        <nav class="dock" aria-label="Raf">
+          <button class="start" type="button"><svg class="ic s"><use href="#i-start"/></svg><span class="lbl">Başlat</span></button>
+          <button class="app is-active" type="button"><svg class="ic s"><use href="#i-house"/></svg><span class="lbl">Başlangıç</span></button>
+          <button class="app" type="button"><svg class="ic s"><use href="#i-flow"/></svg><span class="lbl">İş Akışları</span></button>
+          <span class="sep" aria-hidden="true"></span>
+          <button class="app" type="button"><svg class="ic s"><use href="#i-cart"/></svg><span class="lbl">Satın Alma</span></button>
+        </nav>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="frame"><span class="frame-label">Kompakt</span>
+      <div class="stage compact">
+        <button class="start" type="button"><svg class="ic"><use href="#i-start"/></svg><span class="lbl">Başlat</span></button>
+        <div class="tabrow"><span class="hist"></span><span class="tab">Başlangıç</span><span class="tab">Satın Alma Talebi</span></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>Simgeler lucide, yazı Plus Jakarta Sans ve Bricolage Grotesque, renkler <code>synergy.css</code>. Sayfa bir kavram taslağıdır; ölçüler uygulamadaki rafla aynı (daire 40px / üstte 36px, pay 6px / 4px).</footer>
+
+<script>
+  // Tema düğmesi
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    var root = document.documentElement;
+    function dark() { return root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches); }
+    function render() { var d = dark(); btn.textContent = d ? 'Açık tema' : 'Koyu tema'; btn.setAttribute('aria-pressed', String(d)); }
+    btn.addEventListener('click', function () { root.setAttribute('data-theme', dark() ? 'light' : 'dark'); render(); });
+    render();
+  })();
+  // Seçim: raf içinde tıklanan uygulama seçili olur; 02'de vurgu kayar
+  document.querySelectorAll('.dock').forEach(function (dock) {
+    var ind = dock.querySelector('.ind');
+    function place(target) {
+      if (!ind || !target) return;
+      var d = dock.getBoundingClientRect(), t = target.getBoundingClientRect();
+      ind.style.transform = 'translate(' + (t.left - d.left) + 'px,' + (t.top - d.top) + 'px)';
+    }
+    place(dock.querySelector('.app.is-active'));
+    dock.addEventListener('click', function (e) {
+      var b = e.target.closest('.app');
+      if (!b || b.classList.contains('is-off') || b.classList.contains('star') || !dock.contains(b)) return;
+      dock.querySelectorAll('.app.is-active').forEach(function (x) { x.classList.remove('is-active'); });
+      b.classList.add('is-active');
+      place(b);
+    });
+    addEventListener('resize', function () { place(dock.querySelector('.app.is-active')); });
+  });
+</script>
+</body>
+</html>

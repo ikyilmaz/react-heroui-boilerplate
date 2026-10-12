@@ -48,6 +48,7 @@ import {
 } from '@/synergy/shared/workspace'
 import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { cn, IC, Tip } from '@/synergy/ant/ui'
+import { QuickOpen } from '@/synergy/QuickOpen'
 import { useNotify } from '@/synergy/ant/hr'
 import { FormLoading } from '@/synergy/DetailTiles'
 import {
@@ -683,6 +684,8 @@ export function Workspace({
               actions={actions}
             />
           ))}
+          {/* Son sekmenin sağında "+": favoriler ve son kullanılanlar (QuickOpen.tsx) */}
+          <QuickOpen key="quick-open" />
         </TabStrip>
         {end && <Flex className="h-(--tab-h) shrink-0 items-center pb-2">{end}</Flex>}
       </Flex>

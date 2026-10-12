@@ -154,7 +154,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   it), while the inset keeps `--tab-f` so the selected sheet's flare isn't clipped by the scroller.
   "Solda" = left column
   with the logo (centred on the tab row) and the dock in the middle (three-row grid), the dock
-  (`StartDock` in `StartMenu.tsx`, opens the start menu from the **Başlat button** in every
+  (its contour and shadow follow the tema paneli like cards: `CHROME_SURFACE` + `CARD`, so Kontur 0 =
+  no line and Kart gölgesi drives the shadow; the compact handle's floating dock too) (`StartDock` in `StartMenu.tsx`, opens the start menu from the **Başlat button** in every
   layout — by hand, not `layoutId`: the box (`StartBox`) measures its final place on mount and
   animates x / y / width / height / corner and background (accent → surface, a `color-mix` driven
   by a motion value) from the button's rect with the dock spring, and on close back to the button
@@ -202,7 +203,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   dock circles (`DOCK_SIZE.top`), smaller logo — and content starts at 68px (the bar's page-colour
   strip ends 1 spacing unit above: the card contour
   (`ring`) and shadow are drawn outside the box, so a strip ending exactly at the content would cover
-  a card's top line). The start button sits in its own white card in front of the dock (above it on the left, left of it on top). The dock is fixed circles (`DockApps`), a thin divider, then the favourite apps (`DockMenuApps`, at most 6, the Favoriler widget's list) behind a star in the accent colour; pressing the star swaps them for the recent apps (clock icon) and back; an app opens like its menu entry (`useOpenApp`). Fixed circles: Başlangıç and the apps, the selected
+  a card's top line). The start button sits bare (no card) in front of the dock (above it on the left, left of it on top), the dock's outer size (52px / 44px) and exact corner (`useRadiusPx(CARD_RADIUS)`, squircle included; compact: a 40px circle); the start box grows straight out of it and reads the button's real corner. The dock is fixed circles (`DockApps`), a thin divider, then the favourite apps (`DockMenuApps`, at most 6, the Favoriler widget's list) behind a star in the accent colour; pressing the star swaps them for the recent apps (clock icon) and back; an app opens like its menu entry (`useOpenApp`). Fixed circles: Başlangıç and the apps, the selected
   tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
   app's tab (its list under a form counts) or opens one; Başlangıç and the logo select Başlangıç.
   Back / forward act on the selected tab's own history. Other shell links and `useNavigate` (start
@@ -218,8 +219,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   shell at the end) or beside (split). The same thing never opens twice: requests and app forms
   switch to their tab, lists only on an exact address match. A request opened from a list opens over
   it in the same tab (the list stays mounted, hidden; Kapat / back return to it unchanged); its band
-  then has "Ayrı sekmeye taşı" (`popOut`: the same form screen moves to its own tab right after,
-  `/talepler/:id`, its children and auto group with it; the list comes back). Open actions inside a
+  then has a close "×" in the band (`CloseButton` in `DetailPage.tsx`, on every form band: request, child form, app form; closes the screen: back to the list, or the tab). The former "Ayrı sekmeye taşı" button was removed on request (`popOut` stays in the workspace state and the tab menu). Open actions inside a
   screen (`ScreenEvents`, one capture handler per screen, portals included through the React tree):
   targets are page links (`a[href]`, same origin) and elements with `data-open-path` (request rows
   and cards: `/talepler/:id`; controls inside a row aren't targets, a card's own button
@@ -227,7 +227,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   element's own click, Yeni sekmede aç, Yan yana aç on wide screens; not on Başlangıç, where the
   browser's menu stays); Ctrl / Cmd / middle-click open in a background tab. Menu and modifier opens
   allow a second tab of the same list; requests and app forms stay single. Request rows / cards also
-  show a "Yeni sekmede aç" icon on hover / focus / touch (`OpenTabButton` in `rows.tsx`). The dock's
+  show a "Yeni sekmede aç" icon on hover / focus / touch (`OpenTabButton` in `rows.tsx`). Right after
+  the last tab a 28px "+" (`QuickOpen.tsx`, added on explicit request; tooltip "Uygulamalar") opens a
+  popover with Favoriler as icon tiles and the six most recent apps as rows; a pick opens the app
+  through `useOpenApp` (its tab, or a new one) and closes the popover. The dock's
   right-click menu "Yeni sekmede aç" and Ctrl / Cmd / middle-click open a second tab of the app. Child forms
   open from form buttons by the child process's `panelSize` (original `viewOptions.panelSize`):
   1 / 2 split the opener's tab (child right ⅓ / ⅔; in a split the other screen moves to its own tab
@@ -323,9 +326,11 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   name only (no project name, no status tag); the floating strip after scrolling has the events
   at the far left and only the form's name at the far right (event rows never wrap: band, strip and
   the phone's bottom bar scroll sideways, `ACTIONS_SCROLL` / `ACTIONS_DOCK`); the form row reaches the bottom of
-  its container (`useFillHeight` against the page or the screen's pane); side info = a Dokümanlar card above an Özellikler / Tarihçe
-  card, each half of the side column / sheet with its own scrolling (`FadeScroll`: edges fade
-  through a CSS mask driven by `useScroll`), laid out
+  its container (`useFillHeight` against the page or the screen's pane); side info = an Özellikler / Tarihçe card above a Dokümanlar card
+  (flexible, on request: the documents card is sized to its content up to 45 % of the column /
+  sheet and scrolls past that, the top card takes the rest — few documents, more room for the
+  properties; the fold / close button sits beside the Segmented), each with its own scrolling
+  (`FadeScroll`: edges fade through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
   folds to an icon rail (remembered), narrower (a split pane, e.g. `panelSize` 1) no rail: an info
   button in the header band (and the scrolled strip; `SideButton`) opens a sheet that takes the form

@@ -33,7 +33,7 @@ import { useTransition } from '@/synergy/motion'
 import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
 
 /* -------------------------------------------------------------------------------------------------
- * Talep ayrıntısının yan bilgileri: üstte bağımsız Dokümanlar kartı, altında Özellikler / Tarihçe
+ * Talep ayrıntısının yan bilgileri: üstte Özellikler / Tarihçe kartı, altında bağımsız Dokümanlar
  * sekmeli kart. Yerleşim pencereye değil formun bölmesinin (sayfa ya da yan yana bölme) genişliğine
  * göre seçilir:
  * - Sütun (bölme en az 52rem): formun sağında üçte bir; kaydırırken yapışık kalır, ekrana sığmazsa
@@ -214,7 +214,7 @@ const WIPE_HIDDEN = 'inset(-10% -10% 100% -10%)'
 const WIPE_SHOWN = 'inset(-10% -10% -10% -10%)'
 
 /**
- * Kartların kabı: girişte kartlar sırayla (önce Dokümanlar), çıkışta ters sırayla. Sayfada kabın
+ * Kartların kabı: girişte kartlar sırayla (önce Özellikler / Tarihçe), çıkışta ters sırayla. Sayfada kabın
  * kendisi (tepsi) de belirir ve yukarıdan aşağı açılır (perde; "Az"da yalnızca solma: `clipPath`
  * dönüşüm değil, MotionConfig kapatmaz).
  */
@@ -254,7 +254,8 @@ const MotionCard = motion.create(Card)
 /**
  * Yan bilgiler: Dokümanlar kartı ve Özellikler / Tarihçe kartı; yerleşime göre sütun, form kartını
  * örten sayfa ya da formun altında. Formla aynı kabın (`useSidePanel` ile ölçülen) çocuğudur.
- * Sütunda ve sayfada iki kart kabı yarı yarıya paylaşır, taşan içerik kartın içinde kayar.
+ * Sütunda ve sayfada üstte Özellikler / Tarihçe (kalan boy), altta Dokümanlar (içeriği kadar, en
+ * çok %45); taşan içerik kartın içinde kayar.
  *
  * Hareket (Motion): sütun açılınca kartlar sırayla raftan kayarak gelir, katlanınca ters sırayla
  * çıkar (`AnimatePresence`, `stagger`); sütunun genişliği tek adımda değişir, form kartı Motion düzen
@@ -318,58 +319,60 @@ export function SidePanel({
     }
   }, [sheetOpen, opener])
 
-  // `fill`: kartlar kabı yarı yarıya paylaşır ve içleri kayar (sütun, sayfa); telefonda doğal boy
+  // Sütunda katlama, sayfada kapatma: üstteki kartın bölüm seçicisinin yanında
+  const control =
+    mode === 'column' ? (
+      <Tip label={foldLabel} placement="left">
+        <Button
+          type="text"
+          size="small"
+          aria-label={foldLabel}
+          aria-expanded
+          icon={<PanelRightClose {...IC} size={18} />}
+          onClick={() => setOpen(false)}
+          className="text-muted"
+        />
+      </Tip>
+    ) : mode === 'sheet' ? (
+      <Tip label="Paneli kapat" placement="bottom">
+        <Button
+          type="text"
+          size="small"
+          aria-label="Paneli kapat"
+          data-sheet-close
+          icon={<PanelTopClose {...IC} size={18} />}
+          onClick={() => setOpen(false)}
+          className="text-muted"
+        />
+      </Tip>
+    ) : undefined
+
+  // `fill` (sütun, sayfa): esnek paylaşım — Dokümanlar kartı içeriği kadar (en çok kabın %45'i, taşan
+  // kayar), kalan boy Özellikler / Tarihçe'nin; doküman azsa üstteki kart büyür. Telefonda doğal boy
   const cards = (fill: boolean) => (
     <>
-      <MotionCard
-        variants={card}
-        className={cn(
-          CARD,
-          fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0',
-          warning && 'animate-shake ring-2 ring-warning',
-        )}
-        classNames={{ body: cn('flex flex-col gap-2 p-5 pt-4', fill && 'min-h-0 flex-1') }}
-      >
-        <Flex align="center" justify="space-between" gap={8} className="min-h-8 shrink-0">
-          <Typography.Title level={2} className="m-0 font-display text-base font-semibold">
-            {DOCUMENT_LABELS.title}
-          </Typography.Title>
-          {/* Sütunda katlama, sayfada kapatma kartta */}
-          {mode === 'column' && (
-            <Tip label={foldLabel} placement="left">
-              <Button
-                type="text"
-                size="small"
-                aria-label={foldLabel}
-                aria-expanded
-                icon={<PanelRightClose {...IC} size={18} />}
-                onClick={() => setOpen(false)}
-                className="text-muted"
-              />
-            </Tip>
-          )}
-          {mode === 'sheet' && (
-            <Tip label="Paneli kapat" placement="bottom">
-              <Button
-                type="text"
-                size="small"
-                aria-label="Paneli kapat"
-                data-sheet-close
-                icon={<PanelTopClose {...IC} size={18} />}
-                onClick={() => setOpen(false)}
-                className="text-muted"
-              />
-            </Tip>
-          )}
-        </Flex>
-        <FadeScroll fill={fill}>{docs}</FadeScroll>
-      </MotionCard>
       <MotionCard
         variants={card}
         className={cn(CARD, fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0')}
         classNames={{ body: cn('flex flex-col p-5 pt-4', fill && 'min-h-0 flex-1') }}
       >
-        <SideTabs tab={tab} onTab={onTab} panes={{ props, history }} fill={fill} />
+        <SideTabs tab={tab} onTab={onTab} panes={{ props, history }} fill={fill} extra={control} />
+      </MotionCard>
+      <MotionCard
+        variants={card}
+        className={cn(
+          CARD,
+          fill ? 'flex max-h-[45%] min-h-0 shrink-0 flex-col' : 'shrink-0',
+          warning && 'animate-shake ring-2 ring-warning',
+        )}
+        classNames={{ body: cn('flex flex-col gap-2 p-5 pt-4', fill && 'min-h-0') }}
+      >
+        <Flex align="center" className="min-h-8 shrink-0">
+          <Typography.Title level={2} className="m-0 font-display text-base font-semibold">
+            {DOCUMENT_LABELS.title}
+          </Typography.Title>
+        </Flex>
+        <FadeScroll fill={fill}>{docs}</FadeScroll>
       </MotionCard>
     </>
   )
@@ -491,11 +494,14 @@ function SideTabs({
   onTab,
   panes,
   fill,
+  extra,
 }: {
   tab: SideTab
   onTab: (tab: SideTab) => void
   panes: Record<SideTab, ReactNode>
   fill: boolean
+  /** Seçicinin sağında (sütunu katlama / sayfayı kapatma düğmesi). */
+  extra?: ReactNode
 }) {
   const enter = useTransition({ duration: 0.24, ease: 'easeOut' })
   const exit = useTransition({ duration: 0.12, ease: 'easeIn' })
@@ -512,14 +518,17 @@ function SideTabs({
 
   return (
     <Flex vertical className={cn(fill && 'min-h-0 flex-1')}>
-      <Segmented<SideTab>
-        block
-        aria-label="Yan bilgiler"
-        value={tab}
-        onChange={onTab}
-        options={TABS.map(({ key, label }) => ({ value: key, label }))}
-        className="shrink-0"
-      />
+      <Flex align="center" gap={8} className="shrink-0">
+        <Segmented<SideTab>
+          block
+          aria-label="Yan bilgiler"
+          value={tab}
+          onChange={onTab}
+          options={TABS.map(({ key, label }) => ({ value: key, label }))}
+          className="min-w-0 flex-1"
+        />
+        {extra}
+      </Flex>
       {/* Yanlara nabız halkası kadar (0.75rem) taşar: tarihçedeki halka kesilmesin */}
       <FadeScroll ref={scroller} fill={fill} className="-mx-3 px-3">
         <AnimatePresence
