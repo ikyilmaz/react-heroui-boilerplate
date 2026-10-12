@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -11,7 +12,6 @@ import {
 } from 'react'
 import {
   AnimatePresence,
-  motion,
   stagger,
   useMotionTemplate,
   useMotionValue,
@@ -25,12 +25,14 @@ import {
 import { flushSync } from 'react-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Files, History, Info, PanelRightClose, PanelRightOpen, PanelTopClose } from 'lucide-react'
-import { Button, Card, Divider, Flex, Segmented, Typography } from 'antd'
+import { Button, Card, Divider, Flex } from 'antd'
 import { DOCUMENT_LABELS } from '@/synergy/shared/workflowData'
 import { useMediaQuery } from '@/synergy/shared/hooks'
 import { useLook } from '@/synergy/shared/themeSettings'
 import { useTransition } from '@/synergy/motion'
 import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
+import { SHEET_ON_SURFACE } from '@/synergy/tabs/shape'
+import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 
 /* -------------------------------------------------------------------------------------------------
  * Talep ayrıntısının yan bilgileri: üstte Özellikler / Tarihçe kartı, altında bağımsız Dokümanlar
@@ -47,9 +49,9 @@ import { CARD, cn, IC, MotionFlex, Tip } from '@/synergy/ant/ui'
  * - Telefon: kartlar formun altında, katlama yok.
  * ------------------------------------------------------------------------------------------------- */
 
-export type SideTab = 'props' | 'history'
-/** Raftan açılan yer: Dokümanlar kartı ya da sekmeli kartın bir sekmesi. */
-export type SideTarget = SideTab | 'docs'
+export type SideTab = 'props' | 'history' | 'docs'
+/** Raftan açılan yer: kartın bir sekmesi. */
+export type SideTarget = SideTab
 
 type Mode = 'stack' | 'column' | 'sheet'
 
@@ -82,9 +84,9 @@ const FILL =
 const PASS_FILL = '[--fill-h:inherit] [--view-h:inherit]'
 
 const RAIL: { id: SideTarget; label: string; icon: LucideIcon }[] = [
+  { id: 'history', label: 'Tarihçe', icon: History },
   { id: 'docs', label: DOCUMENT_LABELS.title, icon: Files },
   { id: 'props', label: 'Özellikler', icon: Info },
-  { id: 'history', label: 'Tarihçe', icon: History },
 ]
 
 /** Dar bölmedeki bilgi düğmesinin adı (başlıkta ve şeritte; DetailPage.tsx). */
@@ -247,7 +249,8 @@ const tabVariants = (enter: Transition, exit: Transition): Variants => ({
   exit: (dir: number) => ({ opacity: 0, x: dir * -12, transition: exit }),
 })
 
-const MotionCard = motion.create(Card)
+/** Katlama / açma / kapatma düğmesi: çıplak simge, üzerine gelince yüzey rengi. Rafta ve şeridin ucunda aynı. */
+const FOLD_BUTTON = 'text-muted hover:bg-surface-secondary! hover:text-foreground!'
 
 /* --- Yan bilgiler -------------------------------------------------------------------------------- */
 
@@ -272,6 +275,7 @@ export function SidePanel({
   docs,
   props,
   history,
+  historyFooter,
 }: {
   side: SideState
   tab: SideTab
@@ -283,6 +287,8 @@ export function SidePanel({
   docs: ReactNode
   props: ReactNode
   history: ReactNode
+  /** Tarihçe kartının altında sabit duran satır (Tüm Tarihçeyi Göster ve seçenekler). */
+  historyFooter?: ReactNode
 }) {
   const { mode, open, setOpen } = side
   // Kaydırma miktarı CSS değişkeninde (`FILL`): sütun yapışana kadar kaydırılan kadar uzar, alt
@@ -319,62 +325,51 @@ export function SidePanel({
     }
   }, [sheetOpen, opener])
 
-  // Sütunda katlama, sayfada kapatma: üstteki kartın bölüm seçicisinin yanında
+  // Sütunda katlama (şeridin sağ ucundaki köşe boşluğunda, kartın köşesinin üstünde), sayfada
+  // kapatma
   const control =
     mode === 'column' ? (
-      <Tip label={foldLabel} placement="left">
+      <Tip label={foldLabel} placement="bottom">
         <Button
           type="text"
-          size="small"
           aria-label={foldLabel}
           aria-expanded
           icon={<PanelRightClose {...IC} size={18} />}
           onClick={() => setOpen(false)}
-          className="text-muted"
+          className={FOLD_BUTTON}
         />
       </Tip>
     ) : mode === 'sheet' ? (
       <Tip label="Paneli kapat" placement="bottom">
         <Button
           type="text"
-          size="small"
           aria-label="Paneli kapat"
           data-sheet-close
           icon={<PanelTopClose {...IC} size={18} />}
           onClick={() => setOpen(false)}
-          className="text-muted"
+          className={FOLD_BUTTON}
         />
       </Tip>
     ) : undefined
 
-  // `fill` (sütun, sayfa): esnek paylaşım — Dokümanlar kartı içeriği kadar (en çok kabın %45'i, taşan
-  // kayar), kalan boy Özellikler / Tarihçe'nin; doküman azsa üstteki kart büyür. Telefonda doğal boy
+  // Tek kart, üç sekme (Özellikler, Tarihçe, Dokümanlar); `fill` (sütun, sayfa): kabı doldurur ve içi
+  // kayar, telefonda doğal boy. Zorunlu doküman uyarısı kartı sallar (Dokümanlar sekmesi seçilir)
   const cards = (fill: boolean) => (
-    <>
-      <MotionCard
-        variants={card}
-        className={cn(CARD, fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0')}
-        classNames={{ body: cn('flex flex-col p-5 pt-4', fill && 'min-h-0 flex-1') }}
-      >
-        <SideTabs tab={tab} onTab={onTab} panes={{ props, history }} fill={fill} extra={control} />
-      </MotionCard>
-      <MotionCard
-        variants={card}
-        className={cn(
-          CARD,
-          fill ? 'flex max-h-[45%] min-h-0 shrink-0 flex-col' : 'shrink-0',
-          warning && 'animate-shake ring-2 ring-warning',
-        )}
-        classNames={{ body: cn('flex flex-col gap-2 p-5 pt-4', fill && 'min-h-0') }}
-      >
-        <Flex align="center" className="min-h-8 shrink-0">
-          <Typography.Title level={2} className="m-0 font-display text-base font-semibold">
-            {DOCUMENT_LABELS.title}
-          </Typography.Title>
-        </Flex>
-        <FadeScroll fill={fill}>{docs}</FadeScroll>
-      </MotionCard>
-    </>
+    <MotionFlex
+      variants={card}
+      vertical
+      className={fill ? 'flex min-h-0 flex-1 basis-0 flex-col' : 'shrink-0'}
+    >
+      <SideTabs
+        tab={tab}
+        onTab={onTab}
+        panes={{ props, history, docs }}
+        footers={{ history: historyFooter }}
+        fill={fill}
+        extra={control}
+        warning={warning}
+      />
+    </MotionFlex>
   )
 
   if (mode === 'stack')
@@ -390,14 +385,14 @@ export function SidePanel({
       className={cn(CARD, 'w-14 shrink-0', warning && !open && 'ring-2 ring-warning')}
       classNames={{ body: 'flex flex-col items-center gap-1 p-2' }}
     >
-      <Tip label={open ? foldLabel : 'Paneli aç'} placement="left">
+      <Tip label="Paneli aç" placement="left">
         <Button
           type="text"
-          aria-label={open ? foldLabel : 'Paneli aç'}
-          aria-expanded={open}
-          icon={open ? <PanelRightClose {...IC} size={18} /> : <PanelRightOpen {...IC} size={18} />}
-          onClick={() => setOpen(!open)}
-          className={cn('text-muted', open && 'bg-surface-secondary!')}
+          aria-label="Paneli aç"
+          aria-expanded={false}
+          icon={<PanelRightOpen {...IC} size={18} />}
+          onClick={() => setOpen(true)}
+          className={FOLD_BUTTON}
         />
       </Tip>
       <Divider className="my-1 w-6 min-w-0" />
@@ -485,23 +480,28 @@ export function SidePanel({
 }
 
 /**
- * Özellikler / Tarihçe: bölümlü seçim (antd `Segmented`, tam genişlik; seçim zemini kendi kayar,
- * klavyede oklar). İçerik değişimin yönünden gelir, eskisi önce kısa çıkar (`mode="wait"`: kart
+ * Özellikler / Tarihçe: ortak sekme şeridi (`tabs/`), kartın üstünde; seçili yaprak karta kaynaşır. İçerik değişimin yönünden gelir, eskisi önce kısa çıkar (`mode="wait"`: kart
  * sabit boylu, iki içerik üst üste binmez); yeni içerik baştan başlar.
  */
 function SideTabs({
   tab,
   onTab,
   panes,
+  footers,
   fill,
   extra,
+  warning = false,
 }: {
   tab: SideTab
   onTab: (tab: SideTab) => void
   panes: Record<SideTab, ReactNode>
+  /** Sekmenin altında, kayan alanın dışında sabit duran satır. */
+  footers?: Partial<Record<SideTab, ReactNode>>
   fill: boolean
-  /** Seçicinin sağında (sütunu katlama / sayfayı kapatma düğmesi). */
+  /** Şeridin ucunda (sütunu katlama / sayfayı kapatma düğmesi). */
   extra?: ReactNode
+  /** Zorunlu dokümanlar görülmedi: kart sallanır, uyarı halkası. */
+  warning?: boolean
 }) {
   const enter = useTransition({ duration: 0.24, ease: 'easeOut' })
   const exit = useTransition({ duration: 0.12, ease: 'easeIn' })
@@ -516,49 +516,88 @@ function SideTabs({
         TABS.findIndex((t) => t.key === tab) > TABS.findIndex((t) => t.key === seen.tab) ? 1 : -1,
     })
 
+  const panelId = useId()
   return (
-    <Flex vertical className={cn(fill && 'min-h-0 flex-1')}>
-      <Flex align="center" gap={8} className="shrink-0">
-        <Segmented<SideTab>
-          block
-          aria-label="Yan bilgiler"
-          value={tab}
-          onChange={onTab}
-          options={TABS.map(({ key, label }) => ({ value: key, label }))}
-          className="min-w-0 flex-1"
-        />
-        {extra}
-      </Flex>
-      {/* Yanlara nabız halkası kadar (0.75rem) taşar: tarihçedeki halka kesilmesin */}
-      <FadeScroll ref={scroller} fill={fill} className="-mx-3 px-3">
-        <AnimatePresence
-          mode="wait"
-          initial={false}
-          custom={seen.dir}
-          onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}
-        >
-          <MotionFlex
-            key={tab}
-            aria-label={TABS.find((t) => t.key === tab)?.label}
-            role="region"
+    <>
+      {/* Ortak sekme şeridi, kartın üstünde (Başlangıç kategorileri gibi): seçili yaprak kartla aynı
+          yüzeyde, kartın konturu kavisler boyunca kartın üst çizgisine iner (`SHEET_ON_SURFACE`).
+          Katlama / kapatma düğmesi şeridin kaymayan ucunda */}
+      <TabStrip
+        label="Yan bilgiler"
+        selected={tab}
+        sizing="fill"
+        sheet={SHEET_ON_SURFACE}
+        inset="px-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-f))]"
+        className="relative z-1 shrink-0 [--tab-h:2.75rem]"
+        end={
+          // Şeridin sağ ucundaki köşe boşluğunun (`inset`) ortasında, sekmelerin hizasında
+          extra && (
+            <Flex className="absolute inset-y-0 end-0 flex w-[calc(min(32px*var(--corner-scale,1),var(--radius)*3)+var(--tab-f))] items-center justify-center pb-(--tab-gap)">
+              {extra}
+            </Flex>
+          )
+        }
+      >
+        <TabGroup id="side">
+          {TABS.map(({ key, label }) => (
+            <Tab key={key} id={key} selected={key === tab}>
+              <TabButton
+                label={label}
+                current={key === tab}
+                role="tab"
+                aria-selected={key === tab}
+                aria-controls={panelId}
+                tabIndex={key === tab ? 0 : -1}
+                onClick={() => onTab(key)}
+                className="flex-1 justify-center"
+              />
+            </Tab>
+          ))}
+        </TabGroup>
+      </TabStrip>
+      <Card
+        id={panelId}
+        role="tabpanel"
+        aria-label={TABS.find((t) => t.key === tab)?.label}
+        className={cn(
+          CARD,
+          fill ? 'flex min-h-0 flex-1 flex-col' : 'shrink-0',
+          warning && 'animate-shake ring-2 ring-warning',
+        )}
+        classNames={{ body: cn('flex flex-col p-6 pt-5', fill && 'min-h-0 flex-1') }}
+      >
+        {/* Yanlara nabız halkası kadar (1rem) taşar: tarihçedeki halka kesilmesin */}
+        <FadeScroll ref={scroller} fill={fill} className="-mx-4 px-4">
+          <AnimatePresence
+            mode="wait"
+            initial={false}
             custom={seen.dir}
-            variants={tabVariants(enter, exit)}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            className="block pt-4"
+            onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}
           >
-            {panes[tab]}
-          </MotionFlex>
-        </AnimatePresence>
-      </FadeScroll>
-    </Flex>
+            <MotionFlex
+              key={tab}
+              custom={seen.dir}
+              variants={tabVariants(enter, exit)}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="block pt-4"
+            >
+              {panes[tab]}
+            </MotionFlex>
+          </AnimatePresence>
+        </FadeScroll>
+        {/* Sekmenin sabit alt satırı (Tarihçe: Tüm Tarihçeyi Göster ve seçenekler) */}
+        {footers?.[tab] && <Flex className="block shrink-0 pt-3">{footers[tab]}</Flex>}
+      </Card>
+    </>
   )
 }
 
 const TABS: { key: SideTab; label: string }[] = [
-  { key: 'props', label: 'Özellikler' },
   { key: 'history', label: 'Tarihçe' },
+  { key: 'docs', label: DOCUMENT_LABELS.title },
+  { key: 'props', label: 'Özellikler' },
 ]
 
 /**

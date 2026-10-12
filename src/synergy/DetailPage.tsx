@@ -415,7 +415,7 @@ function Viewer({
   // (form kartının yerini alır) ya da formun altında
   const [side, attachSide] = useSidePanel(scroller)
   const openSide = (target: SideTarget) => {
-    if (target !== 'docs') setSideTab(target)
+    setSideTab(target)
     side.setOpen(true)
   }
   // Beyaz bant; koyu zeminli bantta öğeler şerit gibi ters renkte olurdu
@@ -494,28 +494,30 @@ function Viewer({
     ),
     history:
       r.history.length > 0 ? (
-        <Flex vertical gap={12}>
-          {/* Kart kendi içinde kayar (DetailSide.tsx); nabız halkasına yer orada bırakılır */}
-          <HistoryTimeline r={r} options={historyOptions} compact />
-          {/* Görünüm seçenekleri (bilgilendirmeler, ham tarih) tam tarihçe düğmesinin yanında */}
-          <Flex align="center" gap={8}>
-            <Button
-              variant="filled"
-              color="default"
-              onClick={() => {
-                setView('history')
-                side.dismiss()
-              }}
-              className="flex-1"
-            >
-              {VIEWER_LABELS.showFullHistory}
-            </Button>
-            {historyMenu}
-          </Flex>
-        </Flex>
+        // Kart kendi içinde kayar (DetailSide.tsx); nabız halkasına yer orada bırakılır
+        <HistoryTimeline r={r} options={historyOptions} compact />
       ) : (
         <Typography.Text type="secondary">{VIEWER_LABELS.propertiesEmpty}</Typography.Text>
       ),
+    // Kartın altında sabit (kayan listenin dışında): tam tarihçe ve görünüm seçenekleri
+    // (bilgilendirmeler, ham tarih)
+    historyFooter:
+      r.history.length > 0 ? (
+        <Flex align="center" gap={8}>
+          <Button
+            variant="filled"
+            color="default"
+            onClick={() => {
+              setView('history')
+              side.dismiss()
+            }}
+            className="flex-1"
+          >
+            {VIEWER_LABELS.showFullHistory}
+          </Button>
+          {historyMenu}
+        </Flex>
+      ) : undefined,
   }
 
   return (
@@ -601,7 +603,7 @@ function Viewer({
                 />
               </>
             )}
-            {/* Dar bölmede yan bilgiler (Dokümanlar, Özellikler, Tarihçe) bu düğmeyle açılan
+            {/* Dar bölmede yan bilgiler (Özellikler, Tarihçe, Dokümanlar) bu düğmeyle açılan
                   sayfada (DetailSide.tsx) */}
             {side.mode === 'sheet' && (
               <SideButton
@@ -711,6 +713,7 @@ function Viewer({
           docs={sideContent.docs}
           props={sideContent.props}
           history={sideContent.history}
+          historyFooter={sideContent.historyFooter}
         />
       </Flex>
 

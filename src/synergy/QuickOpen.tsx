@@ -95,8 +95,9 @@ export function QuickOpen() {
     </Flex>
   )
   return (
-    // Sekme yuvası gibi: tab boyunda, hapın merkezinde (alt pay `--tab-gap`)
-    <Flex className="flex h-(--tab-h) shrink-0 items-center ps-1.5 pb-(--tab-gap)">
+    // Sekme yuvası gibi: tab boyunda; düğmenin kendisi Başlangıç sekmesinin hover hapı gibi
+    // (sekme − boşluk yüksekliğinde, komşu hap köşesinde, kabın çizgisinden `--tab-gap` yukarıda)
+    <Flex className="flex h-(--tab-h) shrink-0 items-end ps-1 pb-(--tab-gap)">
       {/* İpucu ile açılır panel aynı tetikleyiciyi paylaşamaz: ipucu sarmalayıcıda */}
       <Tip label={MENU_LABELS.apps} placement="bottom">
         <Flex className="inline-flex">
@@ -116,7 +117,7 @@ export function QuickOpen() {
               aria-haspopup="dialog"
               aria-expanded={open}
               icon={<Plus {...IC} size={16} />}
-              className="size-[28px] min-w-[28px] rounded-full p-0 text-muted hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)]! hover:text-foreground!"
+              className="h-[calc(var(--tab-h)-var(--tab-gap))] w-11 min-w-11 rounded-(--tab-nr) p-0 text-muted transition-colors hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)]! hover:text-foreground!"
             />
           </Popover>
         </Flex>

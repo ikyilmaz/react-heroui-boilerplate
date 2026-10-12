@@ -326,10 +326,15 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   name only (no project name, no status tag); the floating strip after scrolling has the events
   at the far left and only the form's name at the far right (event rows never wrap: band, strip and
   the phone's bottom bar scroll sideways, `ACTIONS_SCROLL` / `ACTIONS_DOCK`); the form row reaches the bottom of
-  its container (`useFillHeight` against the page or the screen's pane); side info = an Özellikler / Tarihçe card above a Dokümanlar card
-  (flexible, on request: the documents card is sized to its content up to 45 % of the column /
-  sheet and scrolls past that, the top card takes the rest — few documents, more room for the
-  properties; the fold / close button sits beside the Segmented), each with its own scrolling
+  its container (`useFillHeight` against the page or the screen's pane); side info = one card with three tabs on top — Tarihçe, Dokümanlar, Özellikler (Özellikler selected at first) — on the shared
+  `TabStrip` sitting on the card like the Başlangıç categories (`SHEET_ON_SURFACE`, `--tab-h`
+  2.75rem, `TabButton`s, the card is the tabpanel; the fold (column) / close (sheet) button is a bare
+  32px icon button centred in the strip's right corner inset, over the card's corner (`end` slot,
+  absolute; `FOLD_BUTTON`; no morph between it and the rail's "Paneli aç" button: tried and
+  dropped);
+  Tarihçe's "Tüm Tarihçeyi Göster" + options row pinned under the scroll area via `historyFooter` →
+  `SideTabs` `footers`; the required-documents warning selects Dokümanlar and shakes the card;
+  Özellikler rows use dotted leaders), each with its own scrolling
   (`FadeScroll`: edges fade through a CSS mask driven by `useScroll`), laid out
   by the pane's measured width, not the viewport: ≥ 52rem a sticky ⅓ column that
   folds to an icon rail (remembered), narrower (a split pane, e.g. `panelSize` 1) no rail: an info
@@ -341,8 +346,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   rail side and leave in reverse (`AnimatePresence` + variants with `stagger`; column swap with the
   rail via `popLayout` + `anchorX="right"`); the column width switches in one step and the form card
   follows with a layout animation (`layout` + content `layout="position"`, px corner radius); the
-  Özellikler / Tarihçe is an antd `Segmented` (block) and the content enters from the chosen
-  side's direction (`mode="wait"`); between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
+  Özellikler / Tarihçe content enters from the chosen side's direction (`mode="wait"`); between Geri / İleri the "Süreçler" trail — added on explicit request, not in the
   original: one tick per request of the list it was opened from (the current request's page of 8)
   with its position below (e.g. 2 / 8);
   pressing it opens a popover with that list as the workflow DataGrid — same columns, date groups,

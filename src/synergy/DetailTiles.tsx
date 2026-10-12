@@ -23,7 +23,6 @@ import {
   Button,
   Card,
   ConfigProvider,
-  Descriptions,
   Dropdown,
   Empty,
   Flex,
@@ -403,20 +402,30 @@ export function FileBody({ doc, onShowForm }: { doc: FlowDocument; onShowForm: (
 
 /* --- Akış özellikleri -------------------------------------------------------------------------- */
 
+/**
+ * Özellikler: ad solda soluk, değer sağda tam renk; arada noktalı kılavuz (içindekiler tablosu
+ * gibi), satırlar arasında çizgi yok. Uzun değer sağa yaslı sarar.
+ */
 export function PropertiesList({ items }: { items: FlowProperty[] }) {
   if (!items.length) return <Text type="secondary">{VIEWER_LABELS.propertiesEmpty}</Text>
   return (
-    <Descriptions
-      column={1}
-      size="small"
-      colon={false}
-      classNames={{ label: 'w-2/5 text-muted', content: 'break-words' }}
-      items={items.map((it) => ({
-        key: it.name,
-        label: it.name,
-        children: <Text>{it.value ?? '-'}</Text>,
-      }))}
-    />
+    <Flex vertical role="list" aria-label="Özellikler" className="gap-3">
+      {items.map((it) => (
+        <Flex key={it.name} role="listitem" align="baseline" gap={8} className="min-w-0">
+          <Text type="secondary" className="shrink-0 text-sm leading-5">
+            {it.name}
+          </Text>
+          {/* Noktalı kılavuz: kalan genişliği doldurur, metnin tabanına yakın */}
+          <Flex
+            aria-hidden
+            className="block min-w-4 flex-1 self-end border-b-2 border-dotted border-border mb-[0.3em]"
+          />
+          <Text className="max-w-[60%] text-end text-[0.9375rem] leading-5 break-words">
+            {it.value ?? '-'}
+          </Text>
+        </Flex>
+      ))}
+    </Flex>
   )
 }
 
@@ -578,7 +587,7 @@ export function HistoryTimeline({
   const items = r.history.filter((h) => options.notify || h.type !== 'notify')
   const isDone = items.every((h) => !!h.responseDate)
   return (
-    <Flex vertical gap={16}>
+    <Flex vertical gap={20}>
       <Flex wrap align="center" gap={8}>
         <Text strong>{FLOW_TEXT.mainFlow}</Text>
         <StatusTag status={r.status} />
@@ -589,8 +598,12 @@ export function HistoryTimeline({
       </Flex>
       <Timeline
         aria-label={VIEWER_LABELS.history}
-        // Başlık ayrı sütunda değil: adım adı, tarih ve ayrıntılar ikonun sağında tek blokta
-        classNames={{ itemContent: 'min-w-0 flex-1 pb-4' }}
+        // Başlık ayrı sütunda değil: adım adı, tarih ve ayrıntılar ikonun sağında tek blokta.
+        // 32px ikon antd'nin noktasına ortalanır ve sola 11px taşar: çizelge soldan 1rem içeride ki
+        // ikon ve bekleyen adımın nabız halkası (0.75rem) kartın kenarında kesilmesin. Adımlar
+        // arasında ferah boşluk, içerik ikondan biraz uzak
+        className="ps-5"
+        classNames={{ itemContent: 'min-w-0 flex-1 ps-1 pb-7' }}
         items={items.map((h, i) => {
           const waiting = !h.responseDate && h.type === 'approver'
           return {
@@ -653,7 +666,10 @@ function StepHead({
     res && res.getTime() !== h.requestDate.getTime() ? [h.requestDate, res] : [h.requestDate]
   return (
     <Flex justify="space-between" align="start" gap={12} className="w-full">
-      <Text type={waiting ? 'secondary' : undefined} className="text-sm font-medium">
+      <Text
+        type={waiting ? 'secondary' : undefined}
+        className="text-[0.9375rem] leading-5 font-medium"
+      >
         {h.step}
       </Text>
       <Tooltip
@@ -687,7 +703,7 @@ function StepHead({
 function StepBody({ h, waiting }: { h: HistoryEntry; waiting: boolean }) {
   const status = statusText(h)
   return (
-    <Flex vertical gap={2}>
+    <Flex vertical gap={4} className="mt-1">
       {h.approver && <Text className="text-sm">({h.approver.name})</Text>}
       {status && (
         <Flex wrap align="center" gap={6}>
