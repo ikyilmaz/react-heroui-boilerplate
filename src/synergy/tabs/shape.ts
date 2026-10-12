@@ -138,6 +138,9 @@ export const GROUP_TONE = [
   '[--g:var(--group-6)]',
 ] as const
 
+/** Otomatik grubun (form ailesi) rengi: birincil renk (açık istek üzerine). */
+export const ACCENT_TONE = '[--g:var(--accent)]'
+
 /**
  * Grubun alt çizgisi (Chrome gibi): grubun sekmelerinin gövdesinin altında 2px; seçili sekmede
  * yaprak örter, çizgi yaprağın çerçevesiyle sekmenin çevresinden dolaşır.

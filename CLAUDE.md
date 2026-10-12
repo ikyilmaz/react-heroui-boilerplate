@@ -241,7 +241,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   strip shows the family as soon as one child opens); below 1024px (size 2: 1200px) everything
   opens as 3. A form has one open child at a time; the parent–child link survives any move: closing
   or navigating the parent closes its children. Automatic groups dissolve when their tabs no longer hold a form together with its child, aren't written
-  to the address and become the user's once renamed / recoloured / joined; user groups (name, colour
+  to the address and become the user's once renamed / recoloured / joined; automatic groups are drawn in the primary colour (`ACCENT_TONE`,
+  `--accent`: ring, dot, line, family chevron; on request); user groups (name, colour
   `--group-1…6`, collapse) are contiguous runs, max 6. Limit 12 screens besides Başlangıç (a list kept
   under a form counts; `isBlocked`, warning). Address: the path is the selected screen (a child's
   family root), `?sekmeler=` the other tabs in order with `*` for the selected one (`ia.` / `t.` /

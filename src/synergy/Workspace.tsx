@@ -59,7 +59,14 @@ import {
 } from '@/synergy/tabs/context'
 import { useTabMotion } from '@/synergy/tabs/motion'
 import { Divider, Pane, type Entered, type PaneSlot } from '@/synergy/tabs/Panes'
-import { GROUP_TONE, ROUND_STRIP_VARS, SHEET, SHEET_RING, TAB_BG } from '@/synergy/tabs/shape'
+import {
+  ACCENT_TONE,
+  GROUP_TONE,
+  ROUND_STRIP_VARS,
+  SHEET,
+  SHEET_RING,
+  TAB_BG,
+} from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabClose, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
 import { encodeWorkspace } from '@/synergy/shared/workspaceUrl'
 import { ScreenRoutes, isFormPath, isValidPath, screenMeta } from '@/synergy/screens'
@@ -605,7 +612,7 @@ export function Workspace({
   // Şeridin sıraları ve yapısı (değişince sekmeler ölçülüp kayar)
   const units = useMemo(() => unitsOf(st.tabs, st.groups), [st.tabs, st.groups])
   const sig = (u: Unit) =>
-    `${u.key}:${u.group ? `${u.group.name}.${u.group.color}` : ''}:${u.tabs.map((t) => `${t.key}=${t.screens.join('+')}`).join(',')}`
+    `${u.key}:${u.group ? `${u.group.name}.${u.group.color}${u.group.auto ? '.a' : ''}` : ''}:${u.tabs.map((t) => `${t.key}=${t.screens.join('+')}`).join(',')}`
   const stripKey = units.map(sig).join('|')
   const orderKey = units
     .slice(1)
@@ -666,9 +673,7 @@ export function Workspace({
         <TabStrip
           label="Açık sekmeler"
           selected={tab.key}
-          sheet={
-            activeGroup ? cn(SHEET_RING, GROUP_TONE[activeGroup.color % GROUP_TONE.length]) : SHEET
-          }
+          sheet={activeGroup ? cn(SHEET_RING, toneOf(activeGroup)) : SHEET}
           layoutKey={stripKey}
           // Soldan içeri girme payı = kabın köşesi (`rounded-3xl`) + kavis: seçili sekmenin
           // kavisi kabın düz üst kenarına oturur. Geri / ileri soldayken yalnızca kavis kadar
@@ -927,7 +932,7 @@ const UnitView = memo(function UnitView({
   return (
     <TabGroup
       id={unit.key}
-      tone={g ? GROUP_TONE[g.color % GROUP_TONE.length] : undefined}
+      tone={g ? toneOf(g) : undefined}
       toned={!!g}
       label={g?.name || undefined}
       onMove={start ? undefined : onMove}
@@ -1059,6 +1064,12 @@ const UnitView = memo(function UnitView({
 })
 
 /** Sekmedeki ekran: ikon ve ad (ipucunda yerin tam yolu), yanında kapatma. Başlangıç yalnızca ikon. */
+/**
+ * Grubun rengi: otomatik grup (form ailesi) birincil renkte, kullanıcının grubu kendi renginde
+ * (`--group-1…6`).
+ */
+const toneOf = (g: Group) => (g.auto ? ACCENT_TONE : GROUP_TONE[g.color % GROUP_TONE.length])
+
 /**
  * Aile bağının yön oku (açık istek üzerine): ayırıcının yerinde, açandan açılana bakar; sekmeler
  * arasındaysa iki sekmenin birleşim yerinde, grubun renginde küçük bir yuvarlakta (grupsuzsa
