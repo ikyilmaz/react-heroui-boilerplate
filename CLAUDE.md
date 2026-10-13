@@ -168,20 +168,24 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   scaled the box, crossfaded the dock as a blue blob and drew the shrinking dock under the tab row: 85 % of the viewport
   high when the nav is on the left, 55 % of the viewport wide (min 44rem) when it is on top; its content
   (`StartPanel`, redesigned on explicit request after launcher research: search as the spine, pinned
-  tiles before the browse list, stable positions): search on top (autofocus; typing turns
+  tiles before the browse list, stable positions): search on top (autofocus; borderless white pill,
+  large text; its placeholder types examples — apps, workflow boxes, Görünüm actions — letter by
+  letter, `useTypewriter` writes it straight to the input, static when animation is off; the
+  accessible name stays "Uygulama, iş akışı ya da ayar ara"; typing turns
   everything into one flat result list — apps with their folder, workflow boxes with counts, Görünüm
-  actions — with a virtual ↑ ↓ highlight and Enter), below it a left column with the greeting card
-  (the dashboard's accent band, `useBand()`: greeting only; inset 4px from the left like the
-  tabs, 0.75rem from the pane and the first tab — the same gap as under the search field) over the shared tab strip
+  actions — with a virtual ↑ ↓ highlight and Enter), below it a left column (no greeting card;
+  the tabs start at the pane's top edge; the pane's top-left corner is square only while the
+  first tab is selected, `rounded-ss-none`, rounded otherwise) with the shared tab strip
   **vertical** (`TabStrip orientation="vertical" side="start"`, `round`, `sizing="content"`, strip width
   = `--tab-h` 11rem + the row's 4px pad, tab height `--tab-l` 4.25rem, 26px icons and two-line
   labels (`TabButton` `iconSize` / `lines`); the box is 44rem wide (top nav: 55vw) and grows to
   58rem (72vw) with the dock spring while the İş Akış Yönetimi / Doküman Yönetimi tab is shown so
   the tiles / columns sit in one row (`panelWidthPx`, `StartPanel` `onWide` → the box's width
   motion value), `TAB_BG` + `SHEET`: the selected sheet merges
-  with its concave flares into the pane on the right (`START_PANE_BG`: accent 10 % over the
-  surface, written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, `p-3`; inside it the content sits in a plain surface-coloured card (no contour, no
-  shadow), so the tint frames it) with eight tabs, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
+  with its concave flares into the pane on the right (`START_PANE_BG`: white, the surface,
+  written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, `p-4`; the content sits directly in the
+  white pane (no inner card); the box itself has the page background (`START_BG`: `--start-bg` =
+  `--background`, follows tema paneli › Arka plan; the open / close morph mixes accent into it) with eight tabs, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
   folders as collapsible rows with a muted icon and rotating chevron, children indented behind a
   guide line; `AppRow plain`; all open at first, collapsed ones remembered
   for the session, `TreeFolder`; order ↔ A–Z, `SORT_KEY` shared with the Tüm uygulamalar panel; scrolls

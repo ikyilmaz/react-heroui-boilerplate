@@ -1080,12 +1080,12 @@ function FamilyLink({ className }: { className?: string }) {
     <Flex
       aria-hidden
       className={cn(
-        'pointer-events-none z-3 flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[color:var(--g,var(--muted))] text-white',
+        'pointer-events-none z-3 flex size-[15px] shrink-0 items-center justify-center rounded-full bg-[color:var(--g,var(--muted))] text-white',
         className,
       )}
     >
-      {/* Kollar uzun: ikon büyük, çizgi aynı kalınlıkta (3 × 12 / 15) */}
-      <ChevronRight {...IC} size={15} strokeWidth={2.4} />
+      {/* Kollar yuvarlağa göre uzun; çizgi 1.5px (kalınlık × boy / 24) */}
+      <ChevronRight {...IC} size={12} strokeWidth={3} />
     </Flex>
   )
 }

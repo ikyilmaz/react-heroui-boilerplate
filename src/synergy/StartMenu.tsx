@@ -37,7 +37,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { Avatar, Button, Card, Flex, Typography } from 'antd'
+import { Avatar, Button, Flex, Typography } from 'antd'
 import { togglePin, useBoxCounts, useBoxRequests, useMenuApps } from '@/synergy/shared/decisions'
 import {
   MENU_LABELS,
@@ -49,14 +49,12 @@ import {
 } from '@/synergy/shared/menuTree'
 import { readJson, writeJson } from '@/synergy/shared/grid'
 import { useRemembered } from '@/synergy/shared/remembered'
-import { setColorMode, useIsDark } from '@/synergy/shared/themeSettings'
+import { setColorMode, useIsDark, useLook } from '@/synergy/shared/themeSettings'
 import {
-  CURRENT_USER,
   HISTORY_GROUP_LABEL,
   APPS_LABELS,
   findApp,
   findBox,
-  greetingOf,
   historyBoxes,
   initials,
   mainBoxes,
@@ -68,7 +66,7 @@ import {
 } from '@/synergy/shared/workflowData'
 import { Highlight, SORT_KEY } from '@/synergy/AllApps'
 import { useTransition } from '@/synergy/motion'
-import { EmptyNote, SearchField, useBand } from '@/synergy/ant/parts'
+import { EmptyNote, SearchField } from '@/synergy/ant/parts'
 import { CARD, CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
 import { boxLink, k, processLink, useOpenApp } from '@/synergy/paths'
@@ -187,6 +185,12 @@ export const CHROME_SURFACE =
   'pointer-events-auto rounded-[min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3))] bg-surface'
 const PANEL_RING =
   'pointer-events-none absolute inset-0 block rounded-[inherit] border border-border shadow-(--overlay-shadow)'
+
+/**
+ * Başlat kutusunun zemini: sayfanın zemini (`--start-bg` = `--background`; tema paneli › Arka plan
+ * ne seçildiyse o). Sekmelerin yaprağı ve bölmesi beyaz (`START_PANE_BG`).
+ */
+const START_BG = '[--start-bg:var(--background)]'
 
 /** Sütun ve çubuk rafı: iç pay, başlat düğmesi (piksel: temanın boşluk ölçeği rafın oranını bozmasın). */
 const COLUMN = {
@@ -314,11 +318,11 @@ function StartBox({
   const w = useMotionValue<number | string>('')
   const h = useMotionValue<number | string>('')
   const r = useMotionValue<number | string>(radiusPx ?? '')
-  // Zemin: düğmenin birincil renginden kutunun yüzeyine (0 = yüzey, 1 = birincil); CSS karıştırır
+  // Zemin: düğmenin birincil renginden kutunun yumuşak zeminine (0 = `--start-bg`, 1 = birincil); CSS karıştırır
   const mix = useMotionValue(0)
   const background = useTransform(
     mix,
-    (v) => `color-mix(in oklab, var(--accent) ${Math.round(v * 100)}%, var(--surface))`,
+    (v) => `color-mix(in oklab, var(--accent) ${Math.round(v * 100)}%, var(--start-bg))`,
   )
   const latest = useRef({ wide, radiusPx, morph, from })
   latest.current = { wide, radiusPx, morph, from }
@@ -416,6 +420,7 @@ function StartBox({
       className={cn(
         // Dönüşürken kendi katmanında (her karede yalnızca kutu boyanır)
         'fixed z-50 flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden will-change-transform',
+        START_BG,
         PLACE[place].panel,
         CHROME_SURFACE,
         className,
@@ -665,16 +670,19 @@ const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
 ]
 
 /**
- * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: birincil rengin yüzeye karışmış açık tonu,
- * çalışma alanının kabından biraz daha açık (`--tab-bg`; `SHEET` bunu okur).
+ * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: beyaz (yüzey), kutunun yumuşak zemininden
+ * ayrışır (`--tab-bg`; `SHEET` bunu okur).
  */
-const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_10%,var(--surface))]'
+const START_PANE_BG = '[--tab-bg:var(--surface)]'
 
 const START_UI = {
   pin: APPS_LABELS.pin,
   unpin: APPS_LABELS.unpin,
   allApps: MENU_LABELS.apps, // "Uygulamalar" (101882): sekme ve bölüm başlığı
   results: 'Arama sonuçları',
+  // Arama uygulamaları, iş akışı kutularını ve görünüm eylemlerini birlikte tarar
+  search: 'Uygulama, iş akışı ya da ayar ara',
+  searchPrefix: 'Ara: ',
 } as const
 
 /** Bölüm: 13px orta kalın başlık, sağda isteğe bağlı ek. */
@@ -1295,6 +1303,68 @@ function AdminToolsPane() {
   )
 }
 
+/**
+ * Aramanın daktilo yer tutucusundaki örnekler: aranabilecek her türden birkaç gerçek ad, karışık
+ * sırayla (uygulama, iş akışı kutusu, uygulama, görünüm eylemi…). Veri sabit: bir kez hesaplanır.
+ */
+const SEARCH_EXAMPLES: string[] = (() => {
+  const apps = leavesOf(MENU_TREE)
+    .map(({ n }) => n.caption)
+    .filter((_, i) => i > 1 && i % 4 === 2)
+  const boxes = mainBoxes.map((b) => b.label)
+  return [apps[0], boxes[0], apps[1], START_LABELS.themeSettings, apps[2], boxes[1]].filter(
+    (x): x is string => !!x,
+  )
+})()
+
+/**
+ * Daktilo yer tutucu: "Ara: " ve ardından örnekler harf harf yazılır, bekler, silinir, sıradakine
+ * geçer. React çizmez: yer tutucu zamanlayıcıyla doğrudan girişe yazılır (her harfte bütün menü
+ * yeniden çizilmesin). Tema panelinde animasyon kapalıysa ya da sistem "hareketi azalt" diyorsa
+ * sabit metin; hız tema panelinin hızına bölünür. Erişilebilir ad (`aria-label`) hep sabit.
+ */
+function useTypewriter(
+  host: React.RefObject<HTMLElement | null>,
+  examples: string[],
+  still: string,
+) {
+  const { anim, speed } = useLook()
+  useEffect(() => {
+    const input = host.current?.querySelector('input')
+    if (!input) return
+    if (anim.off || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      input.placeholder = still
+      return
+    }
+    const ms = (v: number) => v / (speed || 1)
+    let word = 0
+    let n = 0
+    let deleting = false
+    let timer = 0
+    const step = () => {
+      const text = examples[word]
+      let wait = ms(deleting ? 35 : 70)
+      if (!deleting && n === text.length) {
+        // Tam yazıldı: okunacak kadar bekler, sonra siler
+        deleting = true
+        wait = ms(1600)
+      } else if (deleting && n === 0) {
+        // Silindi: kısa bir ara, sıradaki örnek
+        deleting = false
+        word = (word + 1) % examples.length
+        wait = ms(300)
+      } else n += deleting ? -1 : 1
+      input.placeholder = START_UI.searchPrefix + examples[word].slice(0, n)
+      timer = window.setTimeout(step, wait)
+    }
+    step()
+    return () => {
+      window.clearTimeout(timer)
+      input.placeholder = still
+    }
+  }, [host, examples, still, anim.off, speed])
+}
+
 function StartPanel({
   actions,
   onClose,
@@ -1313,6 +1383,8 @@ function StartPanel({
   const counts = useBoxCounts()
   const dark = useIsDark()
   const [query, setQuery] = useState('')
+  const searchHost = useRef<HTMLElement>(null)
+  useTypewriter(searchHost, SEARCH_EXAMPLES, START_UI.search)
   const [sort, setSort] = useState<MenuSort>(() => readJson<MenuSort>(SORT_KEY, 'order'))
   // Seçili bölüm (sekme); kutu hep Tüm uygulamalar'la açılır
   const [section, setSection] = useState<Section>('apps')
@@ -1349,10 +1421,6 @@ function StartPanel({
     setSort(next)
   }
 
-  const now = new Date()
-  const { text: hello, daytime } = greetingOf(now)
-  // Selamlama kartı Başlangıç'taki karşılama bandıyla aynı yüzeyde (dolu birincil renk)
-  const band = useBand()
   const pending = counts.get('bekleyen') ?? 0
 
   const tree = useMemo(() => sortTree(MENU_TREE, sort), [sort])
@@ -1635,13 +1703,17 @@ function StartPanel({
     <>
       {/* Üst: arama (kutunun omurgası) */}
       {/* Altındakilerle aynı hizada (0.75rem kenar payı), altında kartın bölmeye uzaklığı kadar boşluk */}
-      <Flex onKeyDown={onKey} className="flex shrink-0 px-3 pt-3 pb-3">
+      <Flex ref={searchHost} onKeyDown={onKey} className="flex shrink-0 px-3 pt-3 pb-3">
         <SearchField
           autoFocus
           value={query}
           onChange={setQuery}
-          label={MENU_LABELS.searchAll}
-          className="h-12 min-w-0 flex-1 rounded-full px-4 text-base"
+          // Yer tutucu daktiloyla değişir (`useTypewriter`); bu ad sabit kalır
+          label={START_UI.search}
+          // Kontursuz, beyaz (kutunun yumuşak zemininde); büyük yazı ve simge. Odak halkası yok: kutu
+          // açılınca odak hep burada, halka kontur gibi görünürdü (imleç yeter)
+          variant="borderless"
+          className="h-14 min-w-0 flex-1 rounded-full bg-surface! px-5 text-lg [&_.ant-input-prefix_svg]:size-5 [&_input]:text-lg!"
         />
       </Flex>
 
@@ -1653,29 +1725,6 @@ function StartPanel({
        */}
       <Flex className={cn('flex min-h-0 flex-1 px-3 pb-3', START_PANE_BG)}>
         <Flex vertical className="w-[calc(11rem+4px)] shrink-0">
-          {/* Selamlama kartı: Başlangıç'taki karşılama bandı (dolu birincil renk), yalnızca selamlama;
-              şeridin üstündeki boşlukta, bölmenin köşesinden aşağıda bitecek kadar yüksek */}
-          <Card
-            // Soldan şeridin 4px payı kadar içeride (sekmelerle aynı hizada); sağdan ve alttan aramanın
-            // altındaki boşluk kadar (0.75rem)
-            className={cn(CARD, 'ms-[4px] me-3 shrink-0', band.band)}
-            classNames={{ body: 'flex min-h-[4.5rem] flex-col justify-center px-3.5 py-3' }}
-          >
-            <Flex align="start" gap={8} className="min-w-0">
-              {daytime ? (
-                <Sun {...IC} size={20} className="mt-0.5 shrink-0" />
-              ) : (
-                <Moon {...IC} size={20} className="mt-0.5 shrink-0" />
-              )}
-              {/* Dar sütun: ad gerekirse ikinci satıra iner (kesilmez) */}
-              <Typography.Title
-                level={2}
-                className="m-0! min-w-0 flex-1 font-display text-lg leading-tight font-bold text-current! line-clamp-2"
-              >
-                {hello}, {CURRENT_USER.firstName}.
-              </Typography.Title>
-            </Flex>
-          </Card>
           <TabStrip
             label={START_LABELS.start}
             orientation="vertical"
@@ -1685,9 +1734,10 @@ function StartPanel({
             selected={searching ? undefined : section}
             // Squircle temada da yuvarlak (çalışma alanının şeridi gibi); sekme boyu kavislere yeter
             round
-            // Kartla ilk sekme arası = kartın bölmeye ve aramanın içeriğe uzaklığı (0.75rem; kart
-            // bölmenin köşesinden aşağıda biter, ilk yaprağın kavsi düz kenara oturur)
-            inset="pt-3 pb-2"
+            // Sekmeler en üstte: ilk sekme bölmenin üst kenarıyla aynı hizada başlar; ilk yaprak
+            // seçiliyken bölmenin sol üst köşesi köşesiz, düz bir üst kenar olur (üstteki kavsi
+            // şeridin kabı kırpar)
+            inset="pt-0 pb-2"
             // Dar sütun: adlar iki satıra sarar, ikonlar büyük (şerit = sekme eni + satırın 4px payı)
             className="shrink-0 [--tab-h:11rem] [--tab-l:4.25rem]"
           >
@@ -1720,25 +1770,23 @@ function StartPanel({
         <Flex
           role="tabpanel"
           aria-label={searching ? START_UI.results : SECTIONS.find((x) => x.id === section)?.label}
-          className="@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-3"
+          // İçerik doğrudan beyaz bölmede (kart yok). Sol üst köşe yalnızca ilk sekme seçiliyken
+          // köşesiz (yaprakla düz bir üst kenar); başka sekmede yuvarlak, yaprakla birlikte geçer
+          className={cn(
+            '@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-4 transition-[border-radius] duration-200',
+            !searching && section === SECTIONS[0].id && 'rounded-ss-none',
+          )}
         >
-          {/* İçerik kutunun zemininde (yüzey) bir kartta, kontursuz ve gölgesiz: bölmenin tonu kartın
-              çevresinde çerçeve */}
-          <Card
-            className="flex min-h-0 flex-1 flex-col rounded-2xl bg-surface shadow-none ring-0"
-            classNames={{ body: 'flex min-h-0 flex-1 flex-col p-4' }}
-          >
-            {searching ? (
-              <Scroll className="-m-1 min-h-0 flex-1 p-1">{results}</Scroll>
-            ) : (
-              <Flex
-                key={section}
-                className="flex min-h-0 flex-1 flex-col animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
-              >
-                {panes[section]}
-              </Flex>
-            )}
-          </Card>
+          {searching ? (
+            <Scroll className="-m-1 min-h-0 flex-1 p-1">{results}</Scroll>
+          ) : (
+            <Flex
+              key={section}
+              className="flex min-h-0 flex-1 flex-col animate-[fade-in_calc(0.2s*var(--motion-time,1))_ease-out]"
+            >
+              {panes[section]}
+            </Flex>
+          )}
         </Flex>
       </Flex>
     </>

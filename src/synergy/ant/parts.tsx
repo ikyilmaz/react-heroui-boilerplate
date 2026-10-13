@@ -30,17 +30,21 @@ export function SearchField({
   onChange,
   label = 'Ara',
   autoFocus,
+  variant,
   className,
 }: {
   value: string
   onChange: (v: string) => void
   label?: string
   autoFocus?: boolean
+  /** antd alan görünümü; verilmezse tema panelinin seçimi (kontur → `outlined`, yoksa `filled`). */
+  variant?: 'borderless'
   className?: string
 }) {
   return (
     <Input
       type="search"
+      variant={variant}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       autoFocus={autoFocus}
