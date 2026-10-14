@@ -39,7 +39,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   build key (`.css-var-_R_0_`…) and never match. `hashed: false` (one antd, one theme; the prebuilt
   selectors are unhashed too). `tokensOf` stays runtime-neutral (the design package uses it without
   the prebuilt CSS). Checked by screenshot diff against runtime mode (pages, overlays, dark,
-  outlined fields, presets: identical) and a live panel change against a fresh load. Flat language: no shadows (overlays get a 1px ring), no
+  outlined fields: identical) and a live panel change against a fresh load. Flat language: no shadows (overlays get a 1px ring), no
   wave, **no blur anywhere** (no `backdrop-blur` / `blur()`, opaque surfaces instead), `filled`
   fields, borderless cards; Turkish locale (`tr_TR`, dayjs `tr`). Component tokens only
   in `AntTheme`; everything else with Tailwind. Notifications through `App.useApp().notification`
@@ -51,40 +51,39 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
 - **Theme.** Base theme changes go into `src/themes/synergy.css`; light / dark via `setColorMode` /
   `useIsDark` (`shared/themeSettings.ts`, writes `light` / `dark` class and `data-theme` on `<html>`;
   with no stored choice the mode is light, not the system's).
-  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; defaults (Karo: Mavi, Orta
-  squircle, Serin, Plus Jakarta Sans, Sıkı, Dolu, no shadow (Yok), Gezinme Kompakt — the theme file's
-  `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported), nav
-  positions and four presets in `theme.ts`): presets (Atölye, Kuzey Işığı, Şafak, Lacivert; each sets
-  the look keys only (texture included), never nav / corner shape / motion; cards with a live preview drawn by writing
-  `lookVars()` onto the preview box; "Özel" when nothing matches), primary colour (swatches only,
+  The tema paneli (`shared/ThemePanel.tsx` + `shared/themeSettings.ts`; a floating drawer on the
+  right, `FLOATING_DRAWER` like the Tüm uygulamalar panel; defaults (Karo: Mavi, Orta
+  squircle, Serin, Plus Jakarta Sans, Sıkı, card fill Yüzey, no shadow (Yok), Gezinme Kompakt, Sekme
+  içeriği Solma — the theme file's
+  `--surface-shadow` / `--field-shadow` match it; squircle falls back to round where unsupported) and nav
+  positions in `theme.ts`; no presets (Hazır temalar removed on request)): primary colour (swatches only,
   `COLORS`, incl. Mercan and Zümrüt), Köşe yuvarlaklığı (one 3-column grid of six options with a
-  corner preview each: Az / Orta / Çok (`RADII` 0.25 / 0.5 / 1rem, presets use these too) on the
+  corner preview each: Az / Orta / Çok (`RADII` 0.25 / 0.5 / 1rem) on the
   top row round, on the bottom row squircle; the radius drives **everything**: cards, the dock and
   start box (`CARD_RADIUS` in `ant/ui.tsx`, px via `useRadiusPx` for Motion), tabs and their flares
-  (`TAB_RADIUS` in `tabs/shape.ts`: radius × 2, capped at 16px × `--corner-scale`, like the card's
-  32px cap; the workspace strip and back / forward are always round, at the round theme's radius,
-  even in squircle: `TabStrip round`, `ROUND_STRIP_VARS` / `ROUND_TAB_RADIUS`), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
-  `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (tab flares) and `--corner-scale`
+  (`TAB_RADIUS` in `tabs/shape.ts`: radius × 2, capped at 16px; squircle never reaches tab strips:
+  every strip and back / forward are round, at the round theme's radius (`--corner-scale` undone),
+  `STRIP_VARS` writes `--corner-shape: round`, flares `scoop`), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
+  `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (the side notch flares) and `--corner-scale`
   (radius and the radius caps — card 32px, field 14px… — × 1.6 so corners stay as full; caps read
   in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
-  written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), background
-  (Nötr / Serin / Sıcak / Beyaz + four tints from the primary hue: Benzer −30°, Dörtlü +90°, Üçlü
-  +120°, Zıt +180° (`HARMONY`); options show a colour dot), background texture (Zemin dokusu: Düz —
-  the default, writes nothing — / Nokta / Kareli and six gradients from the primary colour: Üstten,
-  Alttan, Köşe, Işık, Çapraz, Aurora (hue ±40°); `TEXTURES`, written as `--background-texture` /
-  `--background-texture-size`, painted by a viewport-fixed `before:` layer on the shell root
-  (`isolate`, so the layer sits above the root's colour and under the content) and, with `bg-fixed`,
-  on the chrome's page-colour strips so they line up with it; options show a mini swatch), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
+  written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), no background
+  or background texture options (Zemin / Zemin dokusu removed on request: always the defaults Serin /
+  Düz, stored values fall back; the `HARMONY` / `TEXTURES` machinery and the
+  shell's texture layer stay but write nothing), one font for headings and text (default Plus Jakarta Sans; also the theme file's Bricolage + Inter pair, Inter, Bricolage, Figtree, Geist, Outfit), density
   (root size + `--spacing` together), nav position (Solda / Üstte / Kompakt, each option with a mini preview of the bar's side), Detay
-  Sayfası (Gömülü / Yüzen, the request form's side info rail; a preference like nav: presets never
-  set it; `useLook().detail`), card style (fill via `--surface`: Dolu / Çerçeveli / Yükseltilmiş / Tonlu /
-  Gri), card shadow (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one `box-shadow` list with
-  the ring and would void it), contour (`--border-width`, 0–3px; Çerçeveli ≥ 1), animation: Animasyon Açık / Az / Kapalı ("Az"
-  and "Açık" are presets for the controls below; Kapalı hides them), Sekme içeriği Tam / Solma /
-  Kapalı (pane and `ContentSwitch` transitions, not the strip), Kayma ve büyüme / Sekme şeridi /
-  Sayılar Açık / Kapalı (what "Az" turns off: Motion transforms and CSS `--motion-shift`; sheet
-  slide and tab shift; count-up), Yüklenirken İskelet / Döner simge / Kapalı (`FormLoading`, the
-  work block's rows), speed; pages read the effective values from `useLook().anim`. Every card uses `CARD` (`ant/ui.tsx`). Card style / shadow / contour also drive antd form
+  Sayfası (Gömülü / Yüzen, the request form's side info rail; `useLook().detail`), a **Kartlar** box (the card style was replaced on request by
+  separate card properties, grouped in one ringed box with a live card preview on the page
+  background: `CardBox`): Dolgu (`cardFill` via `--surface`: Yüzey / Zemin / Gri / Tonlu), Gölge
+  (`--surface-shadow`, 5 levels Yok / İnce / Hafif / Belirgin / Derin, never `none`: it shares one
+  `box-shadow` list with the ring and would void it), Kontur (`--border-width`, 0–3px; Zemin ≥ 1),
+  Kabarık kenar (`raised`: the raised edge added before the shadow; stored `cardStyle` values are
+  migrated), animation: only Animasyon Açık / Az / Kapalı (the sub-controls Sekme içeriği, Kayma ve
+  büyüme, Sekme şeridi, Sayılar, Yüklenirken and speed were removed from the panel on request; the
+  settings stay: "Az" / "Açık" write their preset values (`MINIMAL_MOTION` / `FULL_MOTION`, both
+  Sekme içeriği Solma), stored values are reset to the level's preset, speed 1, loading Döner simge;
+  the `loading` setting no longer drives anything, forms always come with the loading line);
+  pages read the effective values from `useLook().anim`. Every card uses `CARD` (`ant/ui.tsx`). Card fill / shadow / contour also drive antd form
   fields and outlined buttons through `--field-fill` / `--field-hover` / `--field-border-width` /
   `--field-shadow` (resolved in `AntTheme`): contour > 0 → `outlined` fields with that border width,
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
@@ -137,17 +136,21 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   the app tree (current app) through `PlaceContext`, so a tab switch doesn't re-render the chrome,
   the phone drawer or the panels). Chrome as separate
   floating panels, set by tema paneli › Gezinme (`ChromePlace`: Solda / Üstte / Kompakt — Kompakt: no logo and no dock in the chrome; the tab row is 1.3× high (`Workspace` `tall`,
-  `--tab-h` 3.25rem) with a 40px start button and 40px actions; a handle like Üstte's (`AllAppsHandle`,
+  `--tab-h` 3.25rem) with a start button shaped like the back / forward pill (tab height − `--tab-gap`, corner `--tab-nr`, round,
+  `--tab-gap` channel to the pill, as between the pill and the first tab; on request) and 40px actions; a handle like Üstte's (`AllAppsHandle`,
   label "Uygulamalar") sits on the screen's left edge at mid-height (position is a trial) and opens
   the column dock as a floating panel 12px in (`CompactDock`: closes on an app press, outside click,
   Esc; the star toggle doesn't close it); only the start
   button at the head of the tab row (`Workspace` `lead`, before back / forward; the start menu morphs
   from that button, `StartDock place="compact"`, and opens top left, content runs to the screen's
-  left edge (`CHROME_SPACE.compact`); Sağda / Altta
+  left, right and bottom edges with square corners (on request: no main-area padding, `Workspace`
+  `tall` drops the bottom gap, the panes' container and the panes lose their radius, the strip row
+  keeps 12px side padding; `CHROME_SPACE.compact`); Sağda / Altta
   were removed, stored values move to Solda / Üstte; tooltips and the start menu open toward the
   content; `CHROME_TIP`, `PLACE`). In both positions back / forward (`HistoryButtons`, two 32px buttons, 68px) sit in
   the tab strip's row left of the Başlangıç tab and the actions / profile (`ShellActions`: Sohbet,
-  Duyurular, Tema ayarları, Koyu / Açık tema, avatar; 32px, tooltips and panels open downward) at
+  Duyurular, Tema ayarları, Koyu / Açık tema, Tam ekran (added on request: the Fullscreen API on
+  `<html>`, `Tam ekrandan çık` while on, hidden where unsupported), avatar; 32px, tooltips and panels open downward) at
   its right end, so they take no height (`Workspace` `start` / `end`); the actions sit 4px above
   the tab centre. Back / forward look like part of the strip: no ring, the sheet's fill
   (`--tab-bg`), shaped like a hover pill (tab height − `--tab-gap`, top aligned with the selected sheet, corner `--tab-nr`, square
@@ -176,16 +179,18 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   actions — with a virtual ↑ ↓ highlight and Enter), below it a left column (no greeting card;
   the tabs start at the pane's top edge; the pane's top-left corner is square only while the
   first tab is selected, `rounded-ss-none`, rounded otherwise) with the shared tab strip
-  **vertical** (`TabStrip orientation="vertical" side="start"`, `round`, `sizing="content"`, strip width
+  **vertical** (`TabStrip orientation="vertical" side="start"`, `sizing="content"`, strip width
   = `--tab-h` 11rem + the row's 4px pad, tab height `--tab-l` 4.25rem, 26px icons and two-line
   labels (`TabButton` `iconSize` / `lines`); the box is 44rem wide (top nav: 55vw) and grows to
   58rem (72vw) with the dock spring while the İş Akış Yönetimi / Doküman Yönetimi tab is shown so
   the tiles / columns sit in one row (`panelWidthPx`, `StartPanel` `onWide` → the box's width
   motion value), `TAB_BG` + `SHEET`: the selected sheet merges
-  with its concave flares into the pane on the right (`START_PANE_BG`: white, the surface,
+  with its concave flares into the pane on the right (`START_PANE_BG`: the workspace strip colour,
   written as `--tab-bg` so `SHEET` matches), `rounded-3xl`, `p-4`; the content sits directly in the
-  white pane (no inner card); the box itself has the page background (`START_BG`: `--start-bg` =
-  `--background`, follows tema paneli › Arka plan; the open / close morph mixes accent into it) with eight tabs, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
+  white pane (no inner card); the box uses the workspace's layers (on request): the box is the app background
+  (`START_BG`: `--start-bg` = `--background`), the search field, the selected sheet and the pane the
+  workspace strip colour (`TAB_BG`'s value: accent 3 % into oklch 0.975; inside the pane the secondary /
+  tertiary surfaces are one step darker so hovers stay visible); behind it a `bg-black/30` scrim; the open / close morph mixes accent into it) with eight tabs, each filling the pane: Uygulamalar (`MENU_LABELS.apps`; a plain single-column tree: top-level leaves, then
   folders as collapsible rows with a muted icon and rotating chevron, children indented behind a
   guide line; `AppRow plain`; all open at first, collapsed ones remembered
   for the session, `TreeFolder`; order ↔ A–Z, `SORT_KEY` shared with the Tüm uygulamalar panel; scrolls
@@ -209,7 +214,7 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   dock circles (`DOCK_SIZE.top`), smaller logo — and content starts at 68px (the bar's page-colour
   strip ends 1 spacing unit above: the card contour
   (`ring`) and shadow are drawn outside the box, so a strip ending exactly at the content would cover
-  a card's top line). The start button sits bare (no card) in front of the dock (above it on the left, left of it on top), the dock's outer size (52px / 44px) and exact corner (`useRadiusPx(CARD_RADIUS)`, squircle included; compact: a 40px circle); the start box grows straight out of it and reads the button's real corner. The dock is fixed circles (`DockApps`), a thin divider, then the favourite apps (`DockMenuApps`, at most 6, the Favoriler widget's list) behind a star in the accent colour; pressing the star swaps them for the recent apps (clock icon) and back; an app opens like its menu entry (`useOpenApp`). Fixed circles: Başlangıç and the apps, the selected
+  a card's top line). The start button sits bare (no card) in front of the dock (above it on the left, left of it on top), the dock's outer size (52px / 44px) and exact corner (`useRadiusPx(CARD_RADIUS)`, squircle included; compact: the pill's height and `--tab-nr` corner); the start box grows straight out of it and reads the button's real corner. The dock is fixed circles (`DockApps`), a thin divider, then the favourite apps (`DockMenuApps`, at most 6, the Favoriler widget's list) behind a star in the accent colour; pressing the star swaps them for the recent apps (clock icon) and back; an app opens like its menu entry (`useOpenApp`). Fixed circles: Başlangıç and the apps, the selected
   tab's app filled (a request in its own tab counts as İş Akış Yönetimi); a press switches to the
   app's tab (its list under a form counts) or opens one; Başlangıç and the logo select Başlangıç.
   Back / forward act on the selected tab's own history. Other shell links and `useNavigate` (start
@@ -292,7 +297,10 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `overflow-clip`. Clip only where needed: a clip box cuts the 1px card ring and the card shadow
   of anything at its edge (e.g. the İK edit card's slide wrapper clips only while its width
   animates, via a motion value). Every form screen that enters (request, child, app form) shows
-  `FormSkeleton` (`DetailTiles.tsx`) for `LOAD_MS` (1 s, mock server delay) while the form is
+  the loading line (`tabs/LoadingLine.tsx`, added on request; replaced the skeleton / spinner): a
+  3px accent line at the pane's top edge right under the tab strip, aligned with the cards, with an
+  indeterminate shimmer (`animate-shimmer` in `src/index.css`, × `--motion-time`; static faint line
+  when animation is off), `role="progressbar"`, for `LOAD_MS` (1 s, mock server delay) while the form is
   pre-rendered behind it in a hidden `<Activity>` (React renders it at idle priority, no effects);
   at `LOAD_MS` it becomes visible and crossfades in once; other screens show at once. Pages fit the
   pane's height (`useFillHeight` / the dashboard's room against `useTabScroller()`) and lay out by
@@ -342,11 +350,13 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   stacked below 960px), `widgets.tsx` (the extra widgets), `feeds.tsx` (four mock list widgets added
   with the preset rework, data shared with the start menu: Duyurular, Aktiviteler, Vekaletler
   (state pill; low sizes hide ended ones), Son Dokümanlar; `Row` / `Rows`, two columns from 6 wide).
-- İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as chips in a white
-  toolbar card above the page — not tabs: a tab strip inside a workspace tab blurred the hierarchy;
-  `AgendaTabs.tsx`: links, the selected box filled with the accent, the others light grey, a
-  separator + the "Geçmiş" label before the history boxes (no fill), font weight never changes with
-  selection, the bar scrolls sideways when it doesn't fit; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
+- İş Akış Yönetimi: `WorkflowPage.tsx` + `RequestGrid.tsx` + `rows.tsx` (boxes as segment rails above the
+  page — not tabs: a tab strip inside a workspace tab blurred the hierarchy; `AgendaTabs.tsx`,
+  redesigned on request: the five main boxes in one card-surface rail (`CARD`, `rounded-2xl`, `p-1`)
+  sharing its width, the history boxes in a second rail of natural width with the "Geçmiş" label in
+  front; items are links (icon + label, `h-10`), the selected one's accent fill slides between items
+  and rails (`Indicator`), font weight never changes with selection; rails side by side from `@6xl`,
+  stacked below, a rail that doesn't fit scrolls sideways; content through `ContentSwitch`), search / sort / date range on top of the process list, process list
   (20 %) + request grid with date buckets / sort / paging, fast approve, draft delete). Nothing is
   selected automatically: `/is-akislari` (`WF_HOME`; dock and app links) has no box
   selected ("Görüntülemek için bir öğe seçin", 104028), a box has no process selected ("Süreç
@@ -440,8 +450,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   - Opening: menu links go through `useOpenApp` (`paths.ts`), and the Başlangıç tile uses
     `openDeck`. The deck opens over the current page. A child opens in the same place as its opener
     (original `handleOpenChildForm`).
-  - State lives in `shared/formDeck.ts`: one deck, cards with `parent`, the front-to-back `order`
-    and `parked`. A card has one child at a time: a new child closes the previous one with its
+  - State lives in `shared/formDeck.ts`: one deck, cards with `parent`, the front-to-back `order`,
+    `parked` and `revealed`. A card has one child at a time: a new child closes the previous one with its
     children; the same form is raised instead. Closing a card closes its children; closing the
     root closes the deck.
   - Rendering (`FormDeck.tsx`, mounted in the shell): the whole deck is one antd `Modal`, used
@@ -451,9 +461,15 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   - Behind cards are offset, shrunk and tinted toward the background, with their content `inert`
     and at most three visible. In a modal they shift up from the top; in a drawer they shift left,
     and cards slide in and out on the right.
-  - Hovering a behind card's visible edge lifts it (drawer: name in a tooltip), and clicking it
-    raises the card.
-  - Esc and a card's close button close the front card. Clicking outside parks the deck: it shrinks
+  - Hovering a behind card's visible edge lifts it (drawer: name in a tooltip). Clicking it never
+    raises it (changed on request; the order stays): it is **revealed** and usable — in a drawer it
+    slides left beside the front card (up to the screen's left edge, the rest stays under the front
+    card), in a modal every other card slides down to the screen's bottom edge (scaled 0.85, faded,
+    their tops as 20px strips; hover peeks) and the revealed card moves up just enough that the
+    strips never cover its events (right edge was tried and dropped). The deck collects back with the revealed card's
+    "Yerine koy" button, Esc, or (modal) clicking the front card's strip; clicking another behind
+    card reveals that one. Opening a child, parking and closing the revealed card collect it too.
+  - Esc collects a revealed card first, otherwise it and a card's close button close the front card. Clicking outside parks the deck: it shrinks
     to a faint 48px strip on the right edge, the mask, trap, Esc and scroll lock turn off, and the
     page works. Hovering the strip peeks it out; clicking it brings the deck back.
 - `hr/`: İnsan Kaynakları (original `modules/hr`): module navigator, band with search / company /
@@ -479,7 +495,12 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   `SortMenu`, `RangeFields`, `EmptyNote`, `CellValue`, `GroupLabel`, `compareBy`, `useBand`), `grid.tsx`
   (`GRID_TABLE` Tailwind skin for antd `Table`, row classes, `ViewSwitch` remembered per grid kind via
   `useGridView`, `CardList` / `CardGroup` / `GridCard`, `GridFooter` with page size + pagination),
-  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`).
+  `motion.tsx` (`Indicator`, `Count`), `hr.tsx` (`useNotify`), `Loader.tsx` (the loader, replacing antd
+  `Spin`, in the design language — flat, one colour; brand-coloured ball loaders were tried and
+  dropped on request: a faint accent track ring with a comet arc turning on it (conic gradient
+  from transparent to `--accent`, masked to the ring, round head), constant speed, 0.8 s ×
+  `--motion-time` (off: still); thickness 11 % of `size` (`--w`, min 2px); true circles
+  (`rounded-[50%]` + `corner-shape: round`, since `rounded-full` is the pill radius)).
 - `tabs/`: the one tab system (every strip and content switch in the app):
   - `TabStrip.tsx`: `TabStrip` (scrolling row, WAI-ARIA tablist keyboard — arrows / Home / End move
     focus, Delete closes — or `nav` links, the selected sheet, sizing, closing freeze, drag;
@@ -526,13 +547,13 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
     every render): threshold 16 × width / 256, swap when the leading edge crosses the neighbour's
     centre, one swap per move until the new order renders, auto-scroll within 48px of the edges,
     spring back on release; touch uses the context menu.
-  - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`, `ROUND_TAB_RADIUS` / `ROUND_STRIP_VARS`
-    (round corners and flares in squircle too, `round` strips), gap geometry: `--tab-gap` (3px),
+  - `shape.ts`: class strings (`TAB_RADIUS`, `STRIP_VARS`: round corners and flares in squircle
+    too), gap geometry: `--tab-gap` (3px),
     `--tab-nr` (a neighbour pill's corner) and the flare radius `--tab-f` = `--tab-nr` + gap, so the
     flare is concentric with a neighbouring hover pill or back / forward and the channel between them
     is one width everywhere (hover pill inset by the gap at the sides and bottom, its top level with the selected sheet; tab content and separators centred on the pill — slot `pb-(--tab-gap)` —, the close button as far from the pill's end as from its top and bottom; strip insets use `--tab-f`), `TAB_BG`, `SHEET` / `SHEET_RING` /
     `SHEET_ON_SURFACE`, caps and middle, `PILL`, `SEPARATOR`, `GROUP_TONE` / `GROUP_LINE` /
-    `GROUP_DOT`). Flares: with `corner-shape` a `scoop` (squircle: `--corner-concave`) box whose ring is
+    `GROUP_DOT`). Flares: with `corner-shape` a `scoop` box whose ring is
     a real border; otherwise (Safari, Firefox) a transparent box with a convex corner, the ring as its
     border and the fill as an unoffset spread shadow clipped to the corner square. No radial-gradient
     bands.

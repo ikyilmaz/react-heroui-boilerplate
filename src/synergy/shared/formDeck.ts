@@ -4,11 +4,13 @@ import type { MenuApp, PanelSize } from '@/synergy/shared/workflowData'
 /* -------------------------------------------------------------------------------------------------
  * Form destesi: modal ya da drawer'da açılan formlar (orijinal: menü öğesinin "Şurada aç" seçeneği
  * Modal / Drawer, `openOnType`; modal ya da drawer'da açılmış formun child'ı da aynı yerde açılır,
- * `handleOpenChildForm`). `FormDeck.tsx` çizer. Öne alma ve kenara park etme açık istek üzerine.
+ * `handleOpenChildForm`). `FormDeck.tsx` çizer. Açığa çekme ve kenara park etme açık istek üzerine.
  * - Menüden açılan form destenin ilk kartı (kök). Açık deste aynı uygulamanınsa yeni deste açılmaz
  *   (kenardaysa geri gelir); başka bir uygulamanınsa yerini yenisi alır (tek deste).
- * - Kartların açanı (`parent`) ve önden arkaya sırası (`order`) ayrı: arkadaki kart öne alınabilir,
- *   açan / child ilişkisi değişmez.
+ * - Kartların açanı (`parent`) ve önden arkaya sırası (`order`) ayrı; açan / child ilişkisi değişmez.
+ * - Açığa çekme (`revealed`): arkadaki karta basınca kart öne alınmaz (sıra değişmez), görünür olur:
+ *   drawer'da sola çekilir, modalda diğer kartlar ekranın sağına kayar. Öndeki karta (modalda
+ *   kenardaki kartlara) basmak, Esc ya da kartın "yerine koy" düğmesi desteyi toplar.
  * - Child öndeki karttan açılır, en öne gelir. Kartın aynı anda tek child'ı olur (orijinaldeki
  *   gibi): başka bir child açılınca öncekisi child'larıyla kapanır; aynı form zaten onun child'ıysa
  *   yeniden açılmaz, öne gelir (yazılanlar kaybolmasın).
@@ -42,6 +44,8 @@ export interface FormDeck {
   order: string[]
   /** Ekranın sağ kenarına çekilmiş mi. */
   parked: boolean
+  /** Açığa çekilmiş arkadaki kart (yoksa `null`). */
+  revealed: string | null
 }
 
 let deck: FormDeck | null = null
@@ -70,6 +74,7 @@ function without(d: FormDeck, key: string): FormDeck {
     ...d,
     cards: d.cards.filter((c) => !gone.has(c.key)),
     order: d.order.filter((k) => !gone.has(k)),
+    revealed: d.revealed && gone.has(d.revealed) ? null : d.revealed,
   }
 }
 
@@ -89,6 +94,7 @@ export function openDeck(app: MenuApp) {
     cards: [{ key, form: app.id, parent: null }],
     order: [key],
     parked: false,
+    revealed: null,
   })
 }
 
@@ -103,6 +109,7 @@ export function openDeckChild(from: string, form: string) {
     ...base,
     cards: [...base.cards, { key, form, parent: from }],
     order: [...base.order, key],
+    revealed: null,
   })
 }
 
@@ -112,16 +119,24 @@ export function closeDeckCard(key: string) {
   commit(deck.cards[0]!.key === key ? null : without(deck, key))
 }
 
-/** Kartı öne alır (diğerlerinin sırası değişmez). */
-export function raiseDeckCard(key: string) {
-  if (!deck || frontOf(deck) === key || !deck.order.includes(key)) return
-  commit({ ...deck, order: [...deck.order.filter((k) => k !== key), key] })
+/** Kartı öne alır (diğerlerinin sırası değişmez; zaten child olan form yeniden açılınca). */
+function raiseDeckCard(key: string) {
+  if (!deck || !deck.order.includes(key)) return
+  const order = frontOf(deck) === key ? deck.order : [...deck.order.filter((k) => k !== key), key]
+  commit({ ...deck, order, revealed: null })
 }
 
-/** Desteyi ekranın sağ kenarına çeker ya da geri getirir. */
+/** Arkadaki kartı açığa çeker (öne almadan); öndeki kart ya da `null` desteyi toplar. */
+export function revealDeckCard(key: string | null) {
+  if (!deck) return
+  const next = key && key !== frontOf(deck) && deck.order.includes(key) ? key : null
+  if (deck.revealed !== next) commit({ ...deck, revealed: next })
+}
+
+/** Desteyi ekranın sağ kenarına çeker (açığa çekilen kart yerine döner) ya da geri getirir. */
 export function parkDeck(parked: boolean) {
   if (!deck || deck.parked === parked) return
-  commit({ ...deck, parked })
+  commit({ ...deck, parked, revealed: parked ? null : deck.revealed })
 }
 
 function subscribe(l: () => void) {

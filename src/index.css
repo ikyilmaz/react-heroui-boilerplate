@@ -88,6 +88,9 @@
     cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-halo: halo calc(1.1s * var(--motion-time, 1)) ease-out both;
   --animate-shake: shake calc(0.45s * var(--motion-time, 1)) ease-in-out both;
+  /* Süresi belirsiz yükleme çizgisinin parıltısı (sonsuz; animasyon kapalıyken süre 0: durur) */
+  --animate-shimmer: shimmer calc(1.3s * var(--motion-time, 1)) cubic-bezier(0.45, 0, 0.55, 1)
+    infinite;
 
   @keyframes rise {
     from {
@@ -160,6 +163,14 @@
     }
     to {
       box-shadow: 0 0 0 calc(0.75rem * var(--motion-shift, 1)) transparent;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      translate: -100% 0;
+    }
+    to {
+      translate: 250% 0;
     }
   }
   @keyframes shake {

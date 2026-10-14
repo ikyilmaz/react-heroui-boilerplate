@@ -5,7 +5,7 @@ import {
   type TargetAndTransition,
   type Transition,
 } from 'framer-motion'
-import { FileText, X } from 'lucide-react'
+import { FileText, Undo2, X } from 'lucide-react'
 import { Button, Flex, Modal, Typography } from 'antd'
 import { FLOATING_SURFACE, IC, MotionFlex, Scroll, TintIcon, Tip, cn } from '@/synergy/ant/ui'
 import { useTransition } from '@/synergy/motion'
@@ -16,7 +16,7 @@ import {
   frontOf,
   openDeckChild,
   parkDeck,
-  raiseDeckCard,
+  revealDeckCard,
   useFormDeck,
   type DeckCard,
   type DeckPlace,
@@ -27,16 +27,21 @@ import type { PanelSize } from '@/synergy/shared/workflowData'
 /* -------------------------------------------------------------------------------------------------
  * Form destesi (`shared/formDeck.ts`): modal ya da drawer'da açılan formlar, bulunulan sayfanın
  * üstünde. Bütün deste tek bir antd `Modal`'da (perde, odak tuzağı, Esc, kaydırma kilidi, odağın
- * geri dönüşü antd'den); kartları Motion çizer. Deste, öne alma ve park açık istek üzerine:
+ * geri dönüşü antd'den); kartları Motion çizer. Deste, açığa çekme ve park açık istek üzerine:
  * - Modal: ortada; arkadaki kart yukarı kayar ve üstten küçülür, üst kenarı görünür.
  * - Drawer: sağda yüzen kutu (tüm uygulamalar paneli gibi, `FLOATING_SURFACE`); arkadaki kart sola
  *   kayar ve soldan küçülür, sol kenarı görünür. Kartlar sağdan kayarak gelir, sağa kayarak gider.
  * - Kartlar aynı boyda (menü öğesinin panel boyutu; orijinal `panelSizeToWidth`) ve aynı köşede
  *   (kart köşesi: tema paneli › Köşe yuvarlaklığı, squircle dahil).
  * - Arkadaki kartın görünen kenarı: üzerine gelince biraz daha dışarı çıkar ve adı ipucunda görünür;
- *   basınca kart öne gelir (açan / child ilişkisi değişmez). Arkadaki kartın içeriği kullanılamaz
- *   (`inert`), zemin rengine doğru soluktur; klavyede de Tab ile kenarına gelinir.
- * - Esc ve kartın kapat düğmesi öndeki kartı child'larıyla kapatır; kök kapanınca deste kapanır.
+ *   basınca kart öne alınmaz, açığa çekilir (sıra değişmez): drawer'da sola çekilir (ekranın sol
+ *   kenarına kadar; sığmazsa bir kısmı öndekinin altında kalır), modalda yerinde kalır ve diğer
+ *   kartlar ekranın alt kenarına kayar (küçük, soluk; üst kenarları üst üste şeritler). Açığa çekilen kart
+ *   kullanılır; desteyi toplamak: kartın "yerine koy" düğmesi, Esc, modalda kenardaki kartlardan
+ *   öndekine basmak (başka bir karta basmak onu açığa çeker). Arkadaki (ve modalda kenara kayan)
+ *   kartın içeriği kullanılamaz (`inert`), zemin rengine doğru soluktur; Tab ile kenarına gelinir.
+ * - Esc (açığa çekme yoksa) ve kartın kapat düğmesi kartı child'larıyla kapatır; kök kapanınca
+ *   deste kapanır.
  * - Dışarı tıklamak desteyi ekranın sağ kenarına (gezinme sağdaysa, rafın üstüne düşmesin diye sol
  *   kenarına) çeker (park): perde kalkar, sayfa kullanılır, destenin yalnızca soluk bir şeridi
  *   görünür; üzerine gelince biraz çıkar, basınca geri gelir.
@@ -66,6 +71,24 @@ const STEP: Record<DeckPlace, { shift: number; scale: number; lift: number; show
  * kenarında yalnızca bir şeridi (px) soluk görünür; üzerine gelince biraz çıkar ve belirginleşir.
  */
 const PARK = { scale: 0.7, sliver: 48, opacity: 0.35, peek: 24, hoverOpacity: 0.8 }
+
+/**
+ * Modalda açığa çekmede kenara kayan kartlar: küçülür, ekranın alt kenarında öndekinin üstten
+ * `sliver` px'i, her arkadakinin `step` px daha fazlası görünür; soluk, üzerine gelince biraz
+ * çıkar. Drawer'da açığa çekilen kart ekranın sol kenarından `gap` px içeride durur.
+ */
+const ASIDE = { scale: 0.85, sliver: 56, step: 20, opacity: 0.6, peek: 24, gap: 12 }
+
+/** Destenin kutusunun ölçüsü (dönüşümsüz): açığa çekmede kartların hedefi buradan. */
+interface HostBox {
+  left: number
+  top: number
+  width: number
+  height: number
+  viewportH: number
+}
+
+const DECK_TEXT = { putBack: 'Yerine koy' }
 
 /** Kartların ve destenin hareketi: modal penceresinin açılış yayı (`SoftModal`). */
 const MOVE: Transition = { type: 'spring', stiffness: 300, damping: 30, mass: 0.9 }
@@ -97,6 +120,7 @@ function DeckHost({ deck }: { deck: Deck }) {
   // Etkin deste: perde, odak tuzağı, Esc ve kaydırma kilidi; parkta ve kapanırken yok
   const live = isPresent && !parked
   const front = frontOf(deck)
+  const revealed = deck.revealed
   // Arkadaki kartların taşması (modalda üstte, drawer'da solda)
   const overhang = Math.min(deck.order.length - 1, step.shown) * step.shift
 
@@ -117,6 +141,45 @@ function DeckHost({ deck }: { deck: Deck }) {
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [parked, drawer, overhang])
+
+  // Açığa çekmede kutunun yeri ve eni (kartların hedefi), pencereyle güncellenir
+  const [hostBox, setHostBox] = useState<HostBox | null>(null)
+  useLayoutEffect(() => {
+    if (!revealed) return
+    const measure = () => {
+      const el = box.current
+      const host = el?.parentElement
+      if (!el || !host) return
+      const rect = host.getBoundingClientRect()
+      setHostBox({
+        left: rect.left,
+        top: rect.top,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        viewportH: window.innerHeight,
+      })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [revealed])
+
+  // Modalda açığa çekilen kart, alttaki şeritlere yer açacak kadar yukarı kayar (en çok ekranın
+  // üst kenarından `gap` px içeriye kadar): şeritler kartın olaylarının üstüne binmesin
+  const strips = Math.min(deck.order.length - 1, step.shown)
+  const revealLift =
+    revealed && !drawer && hostBox
+      ? Math.min(
+          hostBox.top - ASIDE.gap,
+          Math.max(
+            0,
+            ASIDE.sliver +
+              (strips - 1) * ASIDE.step +
+              ASIDE.gap -
+              (hostBox.viewportH - hostBox.top - hostBox.height),
+          ),
+        )
+      : 0
 
   const hidden: TargetAndTransition = drawer ? { x: '110%' } : { opacity: 0, scale: 0.98, y: 12 }
   const target: TargetAndTransition = !isPresent
@@ -145,7 +208,9 @@ function DeckHost({ deck }: { deck: Deck }) {
       // Esc öndeki kartı kapatır; dışarı tıklamak desteyi kenara çeker
       onCancel={(e) => {
         if (e.type === 'keydown') {
-          if (front) closeDeckCard(front)
+          // Önce açığa çekme toplanır, sonra öndeki kart kapanır
+          if (revealed) revealDeckCard(null)
+          else if (front) closeDeckCard(front)
           return
         }
         ;(document.activeElement as HTMLElement | null)?.blur()
@@ -198,16 +263,29 @@ function DeckHost({ deck }: { deck: Deck }) {
           )}
         >
           <AnimatePresence initial={false}>
-            {deck.cards.map((c) => (
-              <DeckCardView
-                key={c.key}
-                card={c}
-                place={deck.place}
-                order={deck.order.indexOf(c.key)}
-                depth={deck.order.length - 1 - deck.order.indexOf(c.key)}
-                parked={parked}
-              />
-            ))}
+            {deck.cards.map((c) => {
+              const depth = deck.order.length - 1 - deck.order.indexOf(c.key)
+              const { order } = deck
+              return (
+                <DeckCardView
+                  key={c.key}
+                  card={c}
+                  place={deck.place}
+                  order={order.indexOf(c.key)}
+                  depth={depth}
+                  parked={parked}
+                  revealed={revealed === c.key}
+                  // Modalda kenara kayan kartlar arasındaki sırası (0 = öndeki; açığa çekilen hariç)
+                  aside={
+                    revealed && !drawer && revealed !== c.key
+                      ? depth - (order.length - 1 - order.indexOf(revealed) < depth ? 1 : 0)
+                      : null
+                  }
+                  hostBox={hostBox}
+                  revealLift={revealLift}
+                />
+              )
+            })}
           </AnimatePresence>
           {/* Parkta destenin tamamı (arkadaki kartların taşan kenarları dahil) geri getirme düğmesi */}
           {parked && isPresent && frontTitle && (
@@ -240,6 +318,10 @@ function DeckCardView({
   order,
   depth,
   parked,
+  revealed,
+  aside,
+  hostBox,
+  revealLift,
 }: {
   card: DeckCard
   place: DeckPlace
@@ -248,6 +330,13 @@ function DeckCardView({
   /** Önden uzaklığı: 0 önde. */
   depth: number
   parked: boolean
+  /** Açığa çekilmiş (öne alınmadan görünür ve kullanılır). */
+  revealed: boolean
+  /** Modalda açığa çekme varken kenara kayan kartların arasındaki sırası (0 = öndeki); yoksa `null`. */
+  aside: number | null
+  hostBox: HostBox | null
+  /** Modalda açığa çekilen kartın yukarı kayması (px). */
+  revealLift: number
 }) {
   const move = useTransition(MOVE)
   const leave = useTransition(LEAVE)
@@ -261,10 +350,12 @@ function DeckCardView({
   const drawer = place === 'drawer'
   const step = STEP[place]
   const behind = depth > 0
-  // Öne gelince (açılınca, öne alınınca, parktan dönünce) odak kartın içine
+  // Kullanılan kart: öndeki (modalda açığa çekme yokken) ya da açığa çekilen
+  const usable = !parked && (revealed || (!behind && aside === null))
+  // Kullanılır olunca (açılınca, açığa çekilince, parktan dönünce) odak kartın içine
   useEffect(() => {
-    if (!behind && !parked) content.current?.focus({ preventScroll: true })
-  }, [behind, parked])
+    if (usable) content.current?.focus({ preventScroll: true })
+  }, [usable])
   useEffect(() => {
     if (!info) closeDeckCard(card.key)
     // Yalnızca form yoksa
@@ -273,22 +364,53 @@ function DeckCardView({
   if (!info) return null
 
   const shift = depth * step.shift
-  const at: TargetAndTransition = {
-    x: drawer ? -shift : 0,
-    y: drawer ? 0 : -shift,
-    scale: 1 - depth * step.scale,
-    opacity: depth > step.shown ? 0 : 1,
-    transition: move,
-  }
-  const lift: TargetAndTransition = drawer
-    ? { x: -(shift + step.lift), transition: move }
-    : { y: -(shift + step.lift), transition: move }
+  // Modalda kenara kayan kart: üst kenarı ekranın altından `sliver` (+ sıra × `step`) px yukarıda
+  // (küçülme üst kenarın ortasından: üst kenar yerinde kalır)
+  const asideY =
+    aside !== null && hostBox
+      ? hostBox.viewportH - hostBox.top - ASIDE.sliver - aside * ASIDE.step
+      : 0
+  // Drawer'da açığa çekilen kart: eni ve aradaki boşluk kadar sola, en çok ekranın sol kenarına
+  const revealX = hostBox
+    ? -Math.min(hostBox.width + ASIDE.gap, hostBox.left - ASIDE.gap)
+    : -shift
+  const at: TargetAndTransition =
+    revealed && drawer
+      ? { x: revealX, y: 0, scale: 1, opacity: 1, transition: move }
+      : revealed
+        ? { x: 0, y: -revealLift, scale: 1, opacity: 1, transition: move }
+        : aside !== null
+          ? {
+              x: 0,
+              y: asideY,
+              scale: ASIDE.scale,
+              opacity: aside >= step.shown ? 0 : ASIDE.opacity,
+              transition: move,
+            }
+          : {
+              x: drawer ? -shift : 0,
+              y: drawer ? 0 : -shift,
+              scale: 1 - depth * step.scale,
+              opacity: depth > step.shown ? 0 : 1,
+              transition: move,
+            }
+  const lift: TargetAndTransition | undefined =
+    parked || revealed
+      ? undefined
+      : aside !== null
+        ? { y: asideY - ASIDE.peek, opacity: 1, transition: move }
+        : !behind
+          ? undefined
+          : drawer
+            ? { x: -(shift + step.lift), transition: move }
+            : { y: -(shift + step.lift), transition: move }
   const Icon = info.icon ?? FileText
   const raise = (
     <Button
       type="text"
-      aria-label={`Öne getir: ${info.caption}`}
-      onClick={() => raiseDeckCard(card.key)}
+      aria-label={aside === 0 ? `Desteyi topla: ${info.caption}` : `Göster: ${info.caption}`}
+      // Modalda kenardaki öndeki kart desteyi toplar; diğerleri açığa çekilir
+      onClick={() => revealDeckCard(aside === 0 ? null : card.key)}
       className="absolute! inset-0 z-10 h-auto! w-auto! min-w-0 rounded-none bg-background/55 p-0 transition-colors duration-[calc(200ms*var(--motion-time,1))] starting:bg-transparent hover:bg-background/20!"
     />
   )
@@ -305,20 +427,21 @@ function DeckCardView({
           ? { x: '110%', transition: slideOut }
           : { opacity: 0, scale: 0.98, y: 12, transition: leave }
       }
-      whileHover={behind && !parked ? lift : undefined}
+      whileHover={lift}
       style={{ zIndex: order }}
       className={cn(
         'absolute inset-0 flex overflow-hidden',
         FLOATING_SURFACE,
         drawer ? 'origin-left' : 'origin-top',
-        depth > step.shown && 'pointer-events-none',
+        (aside !== null ? aside >= step.shown : depth > step.shown && !revealed) &&
+          'pointer-events-none',
       )}
     >
       <Flex
         vertical
         ref={content}
         tabIndex={-1}
-        {...({ inert: behind || parked } as Record<string, unknown>)}
+        {...({ inert: !usable } as Record<string, unknown>)}
         className="min-h-0 flex-1 outline-none"
       >
         <Flex align="center" gap={12} className="shrink-0 px-6 pt-5 pb-4">
@@ -331,6 +454,18 @@ function DeckCardView({
           >
             {info.caption}
           </Typography.Title>
+          {/* Açığa çekilen kart: desteyi toplar (kart arkadaki yerine döner) */}
+          {revealed && (
+            <Tip label={DECK_TEXT.putBack}>
+              <Button
+                type="text"
+                aria-label={DECK_TEXT.putBack}
+                icon={<Undo2 {...IC} size={18} />}
+                onClick={() => revealDeckCard(null)}
+                className="size-9 shrink-0 text-muted"
+              />
+            </Tip>
+          )}
           <Tip label={APP_FORM_TEXT.close}>
             <Button
               type="text"
@@ -365,7 +500,7 @@ function DeckCardView({
       </Flex>
       {/* Arkadaki kart: zemin rengine doğru soluk örtü; görünen kenarına basınca öne gelir. Modalda
           kenar çıkınca başlık satırı görünür; drawer'da ad solda ipucunda (başlık kenarda kalmaz) */}
-      {behind &&
+      {(aside !== null || (behind && !revealed)) &&
         !parked &&
         (drawer ? (
           <Tip label={info.caption} placement="left">

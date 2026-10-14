@@ -10,6 +10,7 @@ import {
   useReducer,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
@@ -33,8 +34,10 @@ import {
   FolderOpen,
   History,
   House,
+  Maximize,
   Megaphone,
   Menu,
+  Minimize,
   MessageCircle,
   Moon,
   Palette,
@@ -811,6 +814,44 @@ const DockApps = memo(function DockApps({ place, onApp }: { place: ChromePlace; 
  * tema ayarları, açık / koyu, kullanıcı. 32px; kompakt gezinmede (`large`, satır 1.3 kat yüksek)
  * 40px. İpuçları ve paneller aşağı açılır.
  */
+/** Tarayıcı tam ekranı açabiliyor mu (iPhone Safari gibi açamayanlarda düğme yok). */
+const FULLSCREEN_SUPPORTED = typeof document !== 'undefined' && document.fullscreenEnabled
+
+/** Sayfa tam ekranda mı (Esc ya da tarayıcının kendi çıkışı da izlenir). */
+function useFullscreen() {
+  return useSyncExternalStore(
+    (l) => {
+      document.addEventListener('fullscreenchange', l)
+      return () => document.removeEventListener('fullscreenchange', l)
+    },
+    () => document.fullscreenElement !== null,
+    () => false,
+  )
+}
+
+/** Tam ekran düğmesi (açık istek üzerine): bütün uygulamayı tam ekrana alır ya da çıkarır. */
+function FullscreenButton({ icon, className }: { icon: number; className: string }) {
+  const full = useFullscreen()
+  const label = full ? 'Tam ekrandan çık' : 'Tam ekran'
+  return (
+    <Tip label={label} placement="bottom">
+      <Button
+        type="text"
+        aria-label={label}
+        aria-pressed={full}
+        onClick={() =>
+          void (full
+            ? document.exitFullscreen()
+            : document.documentElement.requestFullscreen()
+          ).catch(() => {})
+        }
+        icon={full ? <Minimize {...IC} size={icon} /> : <Maximize {...IC} size={icon} />}
+        className={className}
+      />
+    </Tip>
+  )
+}
+
 const ShellActions = memo(function ShellActions({
   panel,
   onPanel,
@@ -864,6 +905,7 @@ const ShellActions = memo(function ShellActions({
           className={button}
         />
       </Tip>
+      {FULLSCREEN_SUPPORTED && <FullscreenButton icon={icon} className={button} />}
       <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement="bottom">
         <UserAvatar
           size={large ? 40 : 32}
@@ -1274,9 +1316,10 @@ function Frame({
               vertical
               role="main"
               className={cn(
-                // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride)
+                // Yanlar kabukla aynı hizada (kabuk kenardan 0.75rem içeride); kompaktta çalışma
+                // alanı ekranın yanlarına ve altına yaslı (boşluk yok, `Workspace` `tall`)
                 'min-w-0 flex-1 gap-3 px-4 sm:pe-3',
-                wide && place === 'compact' ? 'pb-1.5' : 'pb-6',
+                wide && place === 'compact' ? 'sm:px-0 pb-0' : 'pb-6',
                 // Kabuk içeriğin üstünde yüzer; yanına düşen alan kadar boşluk
                 wide && CHROME_SPACE[place],
                 // Yapışkan öğeler (ör. talep şeridi) kabuğun altına yapışsın

@@ -21,7 +21,8 @@ import {
   Wind,
   type LucideIcon,
 } from 'lucide-react'
-import { Button, Card, Flex, Input, Spin, Typography } from 'antd'
+import { Button, Card, Flex, Input, Typography } from 'antd'
+import { Loader } from '@/synergy/ant/Loader'
 import { useBoxCounts } from '@/synergy/shared/decisions'
 import { readJson, writeJson } from '@/synergy/shared/grid'
 import { setColorMode, useIsDark, useSettingsControl } from '@/synergy/shared/themeSettings'
@@ -415,7 +416,7 @@ export function AssistantWidget() {
             ))}
             {typing && (
               <Flex className="self-start rounded-2xl rounded-bl-md bg-surface-secondary px-3 py-2">
-                <Spin size="small" />
+                <Loader size={20} label="Yazıyor" />
               </Flex>
             )}
             {/* `block`: antd'de içi boş `Flex` gizlenir (gizliyken kaydırma hedefi olamaz) */}

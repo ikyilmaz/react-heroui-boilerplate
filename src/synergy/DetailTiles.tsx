@@ -21,7 +21,6 @@ import {
   Alert,
   Avatar,
   Button,
-  Card,
   ConfigProvider,
   Dropdown,
   Empty,
@@ -30,8 +29,6 @@ import {
   Input,
   Menu,
   Popover,
-  Skeleton,
-  Spin,
   Table,
   type TableColumnsType,
   Tag,
@@ -57,11 +54,9 @@ import {
 } from '@/synergy/shared/workflowData'
 import type { HistoryViewOptions } from '@/synergy/shared/historyView'
 import { FLOW_TEXT } from '@/synergy/shared/flowLabels'
-import { CARD, cn, IC, StatusTag, TintIcon, Tip } from '@/synergy/ant/ui'
-import { useLook } from '@/synergy/shared/themeSettings'
+import { cn, IC, StatusTag, TintIcon, Tip } from '@/synergy/ant/ui'
 import { FormField, LongField } from '@/synergy/FormFields'
-import { useOpenChild, useTabScroller } from '@/synergy/tabs/context'
-import { useFillHeight } from '@/synergy/shared/hooks'
+import { useOpenChild } from '@/synergy/tabs/context'
 
 /* Flow Viewer karoları (antd): form (ve child form bağlantıları), ek dosya, akış özellikleri, dokümanlar, akış tarihçesi */
 
@@ -253,140 +248,6 @@ export function FormBody({
 }
 
 /* --- Yükleniyor ------------------------------------------------------------------------------- */
-
-/** İskeletin bir parçası: parıldayan yuvarlak köşeli şerit (antd Skeleton); boyu sınıfla. */
-function Bone({ className, active }: { className?: string; active: boolean }) {
-  return (
-    <Skeleton.Button
-      active={active}
-      block
-      className={cn(
-        '[&_.ant-skeleton-button]:min-w-0! [&_.ant-skeleton-button]:rounded-lg!',
-        className,
-      )}
-    />
-  )
-}
-
-/** İskelette bir form alanı: etiket ve kutu. */
-function BoneField({ active, tall }: { active: boolean; tall?: boolean }) {
-  return (
-    <Flex vertical gap={8} className="min-w-0">
-      <Bone active={active} className="w-24 [&_.ant-skeleton-button]:h-3!" />
-      <Bone
-        active={active}
-        className={cn(
-          '[&_.ant-skeleton-button]:rounded-2xl!',
-          tall ? '[&_.ant-skeleton-button]:h-24!' : '[&_.ant-skeleton-button]:h-9!',
-        )}
-      />
-    </Flex>
-  )
-}
-
-/**
- * Form sunucudan gelene kadar (maket: yeni açılan form bir süre bekler) bölmede duran (tema paneli ›
- * Animasyon › Yüklenirken): sade bir döner simge, iskelet ya da hiçbir şey.
- */
-export function FormLoading() {
-  const { loading } = useLook().anim
-  if (loading === 'skeleton') return <FormSkeleton />
-  if (loading === 'off')
-    return <Flex role="status" aria-busy aria-label="Form yükleniyor" className="block" />
-  return (
-    <Flex
-      role="status"
-      aria-busy
-      aria-label="Form yükleniyor"
-      align="center"
-      justify="center"
-      className="min-h-64 py-24"
-    >
-      <Spin />
-    </Flex>
-  )
-}
-
-/**
- * Form sunucudan gelene kadar (maket: form sekmeleri yeni giren formu bir süre bekletir) yerinde
- * duran iskelet: talep ayrıntısının yerleşimi — başlık bandı, form alanları ve bölme yeterince
- * genişse yan bilgiler. Genişlik bölmeye göre (kap sorgusu). Form gibi kabın altına kadar uzanır
- * (`--fill-h`, aynı ölçüm). Animasyon kapalıysa parıltı yok.
- */
-export function FormSkeleton() {
-  const active = useLook().motion !== 'off'
-  const scroller = useTabScroller()
-  const attachFill = useFillHeight(scroller ? '0.75rem' : '1.5rem', scroller)
-  return (
-    <Flex vertical gap={12} role="status" aria-busy aria-label="Form yükleniyor">
-      {/* Başlık bandı: süreç ikonu, proje ve süreç adı, olaylar */}
-      <Card className={CARD} classNames={{ body: 'flex flex-col gap-5 p-6' }}>
-        <Flex align="center" gap={16}>
-          <Bone
-            active={active}
-            className="w-12 shrink-0 [&_.ant-skeleton-button]:size-12! [&_.ant-skeleton-button]:rounded-2xl!"
-          />
-          <Flex vertical gap={10} className="min-w-0 flex-1">
-            <Bone active={active} className="w-32 [&_.ant-skeleton-button]:h-3!" />
-            <Bone active={active} className="w-full max-w-72 [&_.ant-skeleton-button]:h-6!" />
-          </Flex>
-        </Flex>
-        <Flex wrap gap={8}>
-          {['w-24', 'w-20', 'w-28', 'w-24'].map((w, i) => (
-            <Bone
-              key={i}
-              active={active}
-              className={cn(
-                w,
-                '[&_.ant-skeleton-button]:h-8! [&_.ant-skeleton-button]:rounded-full!',
-              )}
-            />
-          ))}
-        </Flex>
-      </Card>
-      {/* Form ve yan bilgiler (yan bilgiler sütun yerleşimindeki gibi 52rem'den geniş bölmede) */}
-      <Flex
-        ref={attachFill}
-        className="flex flex-col gap-3 @[52rem]:flex-row @[52rem]:items-stretch"
-      >
-        <Card
-          className={cn(CARD, 'min-h-(--fill-h) min-w-0 flex-1 [--fill-h:inherit]')}
-          classNames={{ body: 'flex flex-col gap-6 p-6 @xl:p-8' }}
-        >
-          <BoneField active={active} />
-          <Flex className="grid grid-cols-1 gap-x-6 gap-y-5 @xl:grid-cols-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <BoneField key={i} active={active} />
-            ))}
-          </Flex>
-          <BoneField active={active} tall />
-        </Card>
-        <Flex
-          vertical
-          gap={12}
-          className="hidden w-[calc((100%-0.75rem)/3)] shrink-0 @[52rem]:flex"
-        >
-          <Card className={CARD} classNames={{ body: 'flex flex-col gap-3 p-5' }}>
-            <Bone active={active} className="w-28 [&_.ant-skeleton-button]:h-4!" />
-            {[0, 1].map((i) => (
-              <Bone
-                key={i}
-                active={active}
-                className="[&_.ant-skeleton-button]:h-12! [&_.ant-skeleton-button]:rounded-xl!"
-              />
-            ))}
-          </Card>
-          <Card className={cn(CARD, 'flex-1')} classNames={{ body: 'flex flex-col gap-3 p-5' }}>
-            <Bone active={active} className="[&_.ant-skeleton-button]:h-8!" />
-            {Array.from({ length: 6 }, (_, i) => (
-              <Bone key={i} active={active} className="[&_.ant-skeleton-button]:h-4!" />
-            ))}
-          </Card>
-        </Flex>
-      </Flex>
-    </Flex>
-  )
-}
 
 export function FileBody({ doc, onShowForm }: { doc: FlowDocument; onShowForm: () => void }) {
   return (

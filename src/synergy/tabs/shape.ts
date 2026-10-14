@@ -15,29 +15,27 @@
  * ------------------------------------------------------------------------------------------------- */
 
 /**
- * Sekmenin köşesi ve kavisi: temel yarıçapın 2 katı, en çok 16px (squircle'da tavan da
- * `--corner-scale` kadar büyür; `CARD_RADIUS`'un 32px tavanı gibi).
+ * Sekmenin köşesi ve kavisi: temel yarıçapın 2 katı, en çok 16px. Squircle tema şeritlere
+ * işlemez: her şerit (ve geri / ileri) daire yayı ve yuvarlak temadaki yarıçapla çizilir
+ * (squircle'ın `--corner-scale` büyütmesi geri alınır); kavisler `scoop`.
  */
-export const TAB_RADIUS = 'min(calc(var(--radius) * 2), calc(16px * var(--corner-scale, 1)))'
+export const TAB_RADIUS = 'min(calc(var(--radius) * 2 / var(--corner-scale, 1)), 16px)'
 
 /** Boşluk, komşu köşesi ve kavis (`--tab-gap` / `--tab-nr` / `--tab-f`, yukarıdaki açıklama). */
 const GAP_VARS =
   '[--tab-gap:3px] [--tab-nr:min(var(--tab-r),calc((var(--tab-h)-var(--tab-gap))/2))] [--tab-f:calc(var(--tab-nr)+var(--tab-gap))]'
 
-/** Satırın değişkenleri: yarıçap (yaprak px değerini kendisi yazar) ve sekmenin boyu (`h-10`). */
-export const STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2),calc(16px*var(--corner-scale,1)))] [--tab-h:2.5rem] ${GAP_VARS}`
+/**
+ * Satırın değişkenleri: yarıçap (yaprak px değerini kendisi yazar), sekmenin boyu (`h-10`) ve
+ * yuvarlak köşe biçimi (squircle temada da).
+ */
+export const STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] ${GAP_VARS} [--corner-shape:round] [--corner-concave:scoop]`
 
 /**
- * Yuvarlak şerit (çalışma alanının sekmeleri ve geri / ileri): squircle temada da daire yayı ve
- * yuvarlak temadaki yarıçap (squircle'ın `--corner-scale` büyütmesi geri alınır); kavisler `scoop`.
+ * Kabın (ve seçili yaprağın) rengi: neredeyse beyaz, birincil renkten hafif bir iz; zeminden
+ * (birincil tonlu gri) açık, kartlardan (beyaz) koyu: seçili sekme zeminin önünde açık bir yaprak.
  */
-export const ROUND_TAB_RADIUS = 'min(calc(var(--radius) * 2 / var(--corner-scale, 1)), 16px)'
-/** Yuvarlak şeridin ölçüleri, köşe biçimi olmadan (şeridin yanındaki öğeler `--tab-f` okusun diye). */
-export const ROUND_TAB_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] ${GAP_VARS}`
-export const ROUND_STRIP_VARS = `${ROUND_TAB_VARS} [--corner-shape:round] [--corner-concave:scoop]`
-
-/** Kabın (ve seçili yaprağın) rengi: birincil rengin zemine karışmış çok açık tonu. */
-export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_9%,var(--background))]'
+export const TAB_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_3%,oklch(0.975_0_0))]'
 
 /** Yaprak kabın renginde (çalışma alanı, ajanda), çerçevesiz. */
 export const SHEET = '[--sheet:var(--tab-bg)] [--ring-w:0px]'
@@ -49,8 +47,8 @@ export const SHEET_ON_SURFACE =
 
 /*
  * Yaprak üç parça (yalnızca dönüşümle kayar, ölçeklenen parça köşe taşımaz): başlangıç kapağı,
- * orta ve bitiş kapağı. Kapak `--tab-r` genişliğinde, üst köşesi yuvarlak (genel köşe biçimi:
- * squircle temada squircle), yanında ve üstünde çerçeve; altında kapağın genişliğinde dolgu
+ * orta ve bitiş kapağı. Kapak `--tab-r` genişliğinde, üst köşesi yuvarlak (şerit squircle
+ * temada da yuvarlak yazar), yanında ve üstünde çerçeve; altında kapağın genişliğinde dolgu
  * (`after:`) ve dışa doğru içbükey kavis (`before:`). Orta 100px genişliğinde, `scaleX` ile uzar;
  * yalnızca üst çerçeve taşır (yatay ölçek kalınlığı bozmaz). Kapakların yüksekliği kavisin
  * başladığı yere kadar: çerçeve kavisin içinden kesintisiz iner, hiçbir yerde üst üste binmez
@@ -60,7 +58,7 @@ export const SHEET_ON_SURFACE =
  * Kavis (`before:`): `--tab-r` karelik kutu, köşesinde yarıçapı (`--tab-r` − `--ring-w`) olan
  * saydam çeyrek daire, onun çevresinde çerçeve bandı, dışı yaprağın rengi.
  * - `corner-shape` destekleyen tarayıcı (Chrome / Edge 139+): kutunun köşesi içbükey
- *   (`scoop`; squircle temada içbükey squircle, `--corner-concave`); band gerçek kenarlık
+ *   (`scoop`; şerit squircle temada da `scoop` yazar); band gerçek kenarlık
  *   (kenarlık kavsi sabit uzaklıkla izler), dolgu `bg-clip-padding`.
  * - Diğerleri (Safari, Firefox): kutu kavsin merkezinden içeri doğru büyür, kavsin olduğu köşesi
  *   dışbükey yuvarlak; band bu köşenin kenarlığı, kutunun içi saydam, dışını gölge (`spread`,

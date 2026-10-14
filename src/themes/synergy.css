@@ -27,7 +27,11 @@
     --field-fill: var(--surface-secondary);
     --field-hover: var(--surface-tertiary);
 
-    --background: oklch(0.96 0.003 250);
+    /*
+     * Uygulamanın en arka rengi: birincil rengin karıştığı yumuşak gri. Katmanlar açılarak gelir:
+     * zemin < sekme şeridinin kabı (`TAB_BG`, neredeyse beyaz) < kartlar (beyaz)
+     */
+    --background: color-mix(in oklab, var(--accent) 8%, oklch(0.935 0 0));
     --foreground: oklch(0.21 0.01 260);
     --muted: oklch(0.52 0.01 260);
 

@@ -1,7 +1,7 @@
-import { memo, type CSSProperties, type ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
-import { Button, Divider, Drawer, Flex, Radio, Segmented, Select, Slider, Typography } from 'antd'
-import { cn } from '@/synergy/ant/ui'
+import { Button, Divider, Drawer, Flex, Radio, Segmented, Select, Typography } from 'antd'
+import { CARD, FLOATING_DRAWER, cn } from '@/synergy/ant/ui'
 import {
   COLORS,
   DENSITIES,
@@ -10,22 +10,13 @@ import {
   MINIMAL_MOTION,
   RADII,
   SQUIRCLE_SUPPORTED,
-  backgroundSwatch,
-  lookVars,
-  presetOf,
   same,
-  textureSwatch,
-  useIsDark,
-  type Background,
-  type CardStyle,
+  type CardFill,
   type DetailStyle,
-  type ContentMotion,
   type CornerShape,
   type Density,
-  type LoadingStyle,
   type MotionLevel,
   type Shadow,
-  type Texture,
   type ThemeKit,
   type ThemeSettings,
   type Toggle,
@@ -34,35 +25,10 @@ import {
 const IC = { size: 16, strokeWidth: 1.75, 'aria-hidden': true } as const
 
 /* -------------------------------------------------------------------------------------------------
- * Tema paneli (sağdan çekmece): birincil renk, köşe yuvarlaklığı ve biçimi, zemin ve dokusu, yazı
- * tipi, yoğunluk, gezinme konumu, kart stili, gölge, kontur ve animasyon. Değişiklikler anında
+ * Tema paneli (sağdan yüzen çekmece): birincil renk, köşe yuvarlaklığı ve biçimi, yazı tipi,
+ * yoğunluk, gezinme konumu, kartlar (dolgu, gölge, kontur, kabarık kenar; bir kutuda) ve animasyon. Değişiklikler anında
  * uygulanır ve saklanır (`themeSettings.ts`); varsayılan `theme.ts`'ten gelir (`kit`).
  * ------------------------------------------------------------------------------------------------- */
-
-/** Zeminler; son dördü birincil renge göre uyumlu tonlar (`themeSettings.ts` › `HARMONY`). */
-const BACKGROUNDS: { id: Background; label: string }[] = [
-  { id: 'neutral', label: 'Nötr' },
-  { id: 'cool', label: 'Serin' },
-  { id: 'warm', label: 'Sıcak' },
-  { id: 'white', label: 'Beyaz' },
-  { id: 'analogous', label: 'Benzer' },
-  { id: 'square', label: 'Dörtlü' },
-  { id: 'triadic', label: 'Üçlü' },
-  { id: 'complement', label: 'Zıt' },
-]
-
-/** Zemin dokuları: düz, iki desen, birincil renkten altı geçiş (`themeSettings.ts` › `TEXTURES`). */
-const TEXTURES: { id: Texture; label: string }[] = [
-  { id: 'none', label: 'Düz' },
-  { id: 'dots', label: 'Nokta' },
-  { id: 'grid', label: 'Kareli' },
-  { id: 'top', label: 'Üstten' },
-  { id: 'bottom', label: 'Alttan' },
-  { id: 'corner', label: 'Köşe' },
-  { id: 'spot', label: 'Işık' },
-  { id: 'diagonal', label: 'Çapraz' },
-  { id: 'aurora', label: 'Aurora' },
-]
 
 type Radius = (typeof RADII)[number]
 
@@ -121,12 +87,11 @@ const DETAIL_STYLES: { id: DetailStyle; label: string }[] = [
   { id: 'floating', label: 'Yüzen' },
 ]
 
-const CARD_STYLES: { id: CardStyle; label: string }[] = [
-  { id: 'filled', label: 'Dolu' },
-  { id: 'outlined', label: 'Çerçeveli' },
-  { id: 'elevated', label: 'Yükseltilmiş' },
-  { id: 'tinted', label: 'Tonlu' },
+const CARD_FILLS: { id: CardFill; label: string }[] = [
+  { id: 'surface', label: 'Yüzey' },
+  { id: 'background', label: 'Zemin' },
   { id: 'muted', label: 'Gri' },
+  { id: 'tinted', label: 'Tonlu' },
 ]
 
 const SHADOWS: { id: Shadow; label: string }[] = [
@@ -151,37 +116,16 @@ const MOTIONS: { id: MotionLevel; label: string }[] = [
   { id: 'off', label: 'Kapalı' },
 ]
 
-/** Sekme içeriğinin geçişi (şerit değil, sekmenin içeriği). */
-const CONTENTS: { id: ContentMotion; label: string }[] = [
-  { id: 'full', label: 'Tam' },
-  { id: 'fade', label: 'Solma' },
-  { id: 'off', label: 'Kapalı' },
-]
-
-/** Form yüklenirken. */
-const LOADINGS: { id: LoadingStyle; label: string }[] = [
-  { id: 'skeleton', label: 'İskelet' },
-  { id: 'spinner', label: 'Döner simge' },
-  { id: 'off', label: 'Kapalı' },
-]
-
 const TOGGLES: { id: Toggle; label: string }[] = [
   { id: 'on', label: 'Açık' },
   { id: 'off', label: 'Kapalı' },
 ]
 
-/** "Az"ın yönettiği hareketler: her biri ayrıca açılıp kapanır. */
-const MOVES: { key: 'movement' | 'stripMotion' | 'counting'; title: string }[] = [
-  { key: 'movement', title: 'Kayma ve büyüme' },
-  { key: 'stripMotion', title: 'Sekme şeridi' },
-  { key: 'counting', title: 'Sayılar' },
-]
-
 const { Text } = Typography
 
-/** Seçili bölüm birincil renkte (kayan işaret de). */
+/** Seçili bölüm birincil renkte (kayan işaret de); dar iç boşluk (beş seçenek kart kutusuna sığsın). */
 const SEGMENT =
-  'w-full [&_.ant-segmented-item-selected]:bg-accent! [&_.ant-segmented-item-selected]:text-accent-foreground! [&_.ant-segmented-thumb]:bg-accent!'
+  'w-full [&_.ant-segmented-item-label]:px-1 [&_.ant-segmented-item-selected]:bg-accent! [&_.ant-segmented-item-selected]:text-accent-foreground! [&_.ant-segmented-thumb]:bg-accent!'
 
 /** Çok seçenekli grup: satırlarda ayrı, çerçeveli düğmeler; seçili olan birincil renkte. */
 const GRID_SEGMENT =
@@ -322,70 +266,31 @@ function NavPreview({ side }: { side: keyof typeof NAV_BAR }) {
   )
 }
 
-function Range({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <Slider
-      ariaLabelForHandle={label}
-      value={value}
-      min={min}
-      max={max}
-      step={step}
-      tooltip={{ open: false }}
-      onChange={onChange}
-      className="mx-1.5 my-1"
-    />
-  )
-}
-
 /**
- * Hazır temanın küçük önizlemesi: temanın bütün değişkenleri bu kaba yazılır (`lookVars`), içi o
- * temayla çizilir: zemin ve dokusu, kart (dolgu, kontur, gölge, köşe), başlık yazı tipi, birincil
- * renk.
+ * Kart ayarlarının kutusu: başta o anki kart (sayfanın değişkenleriyle, `CARD`), altında dolgu,
+ * gölge, kontur ve kabarık kenar.
  */
-function PresetPreview({ look, dark }: { look: ThemeSettings; dark: boolean }) {
+function CardBox({ children }: { children: ReactNode }) {
   return (
     <Flex
-      aria-hidden
       vertical
-      // Değişkenler çalışma anında hesaplanır (temanın ayarları, açık / koyu)
-      style={lookVars(look, dark) as CSSProperties}
-      className="h-24 w-full gap-1.5 rounded-xl bg-background bg-(image:--background-texture) bg-size-(--background-texture-size) p-2 font-sans text-foreground ring-1 ring-border"
+      gap={20}
+      role="group"
+      aria-label="Kartlar"
+      className="rounded-2xl p-3 ring-1 ring-border"
     >
-      {/* Üstte ince bir şerit: birincil renkli nokta ve iki çizgi */}
-      <Flex align="center" gap={4} className="px-0.5">
-        <Flex className="block size-2 rounded-full bg-accent" />
-        <Flex className="block h-1 w-8 rounded-full bg-foreground/15" />
-        <Flex className="block h-1 w-5 rounded-full bg-foreground/10" />
-      </Flex>
-      <Flex
-        vertical
-        gap={6}
-        className="min-h-0 flex-1 rounded-lg bg-surface p-2 shadow-(--surface-shadow) ring-(length:--border-width) ring-border"
-      >
-        <Typography.Text className="font-display text-base leading-none font-bold text-current">
-          Aa
-        </Typography.Text>
-        <Flex className="block h-1.5 w-3/4 rounded-full bg-surface-tertiary" />
-        <Flex align="center" gap={4} className="mt-auto">
-          <Flex className="block h-3.5 w-10 rounded-full bg-accent" />
-          {/* Birincil rengin açık tonu (kabın kendi rengiyle; `--accent-soft` kökte çözülür) */}
-          <Flex className="block h-3.5 w-7 rounded-full bg-[color-mix(in_oklab,var(--accent)_18%,transparent)]" />
+      <Text strong className="text-sm">
+        Kartlar
+      </Text>
+      {/* Önizleme: sayfanın zemininde bir kart */}
+      <Flex aria-hidden className="block rounded-xl bg-background p-3">
+        <Flex vertical gap={6} className={cn('rounded-lg bg-surface p-3', CARD)}>
+          <Text className="font-display text-base leading-none font-bold">Aa</Text>
+          <Flex className="block h-1.5 w-3/4 rounded-full bg-surface-tertiary" />
+          <Flex className="block h-1.5 w-1/2 rounded-full bg-surface-tertiary" />
         </Flex>
       </Flex>
+      {children}
     </Flex>
   )
 }
@@ -410,72 +315,23 @@ export const ThemePanel = memo(function ThemePanel({
   reducedBySystem?: boolean
 }) {
   const set = (patch: Partial<ThemeSettings>) => onChange({ ...settings, ...patch })
-  /**
-   * Animasyonun alt ayarı: düzey ona uyar ("Az"ın hazır değerleriyle aynıysa Az, değilse Açık;
-   * kapalıyken alt ayarlar görünmez).
-   */
-  const setAnim = (patch: Partial<ThemeSettings>) => {
-    const next = { ...settings, ...patch }
-    const minimal = (Object.keys(MINIMAL_MOTION) as (keyof typeof MINIMAL_MOTION)[]).every(
-      (k) => next[k] === MINIMAL_MOTION[k],
-    )
-    onChange({ ...next, motion: minimal ? 'reduced' : 'full' })
-  }
-  const dark = useIsDark()
-  const preset = presetOf(kit, settings)
-  const atDefault = same(settings, kit.defaults)
   const color = COLORS.find((c) => c.id === settings.color)
-  const outlined = settings.cardStyle === 'outlined'
+  const onBackground = settings.cardFill === 'background'
   return (
     <Drawer
       open={isOpen}
       onClose={onClose}
       placement="right"
-      size={384}
+      // Yüzen: kutu kenarlardan 12px içeride (genişliğe iki yanın boşluğu eklenir)
+      size="min(calc(384px + 1.5rem), 100vw)"
       closable={{ placement: 'end' }}
       title={<Text className="font-display text-lg font-semibold">Tema</Text>}
-      classNames={{ wrapper: 'max-w-full', body: 'flex flex-col gap-6 pb-6' }}
+      classNames={{
+        ...FLOATING_DRAWER,
+        mask: 'bg-foreground/10',
+        body: 'flex flex-col gap-6 pb-6',
+      }}
     >
-      {kit.presets?.length ? (
-        <>
-          <Section
-            title="Hazır temalar"
-            value={preset ? undefined : atDefault ? 'Varsayılan' : 'Özel'}
-          >
-            <Flex className="grid grid-cols-2 gap-2" role="group" aria-label="Hazır temalar">
-              {kit.presets.map((p) => {
-                const on = preset === p.id
-                return (
-                  <Button
-                    key={p.id}
-                    type="text"
-                    aria-pressed={on}
-                    // Görünüş temadan; gezinme ve animasyon tercihleri olduğu gibi kalır
-                    onClick={() => set(p.look)}
-                    className={cn(
-                      'relative h-auto flex-col items-stretch gap-2 rounded-2xl p-2 text-start font-normal ring-1 ring-border',
-                      on && 'bg-accent-soft! ring-2 ring-accent',
-                    )}
-                  >
-                    <PresetPreview look={{ ...settings, ...p.look }} dark={dark} />
-                    <Flex vertical className="min-w-0 px-0.5 pb-0.5">
-                      <Flex align="center" gap={6}>
-                        <Text className="text-sm font-semibold text-current">{p.label}</Text>
-                        {on && <Check {...IC} size={14} className="text-accent" />}
-                      </Flex>
-                      <Text type="secondary" className="line-clamp-2 text-xs whitespace-normal">
-                        {p.description}
-                      </Text>
-                    </Flex>
-                  </Button>
-                )
-              })}
-            </Flex>
-          </Section>
-          <Separator />
-        </>
-      ) : null}
-
       <Section title="Birincil renk" value={color?.label}>
         <Flex wrap gap={8} role="group" aria-label="Renk örnekleri">
           {COLORS.map((c) => (
@@ -516,46 +372,6 @@ export const ThemePanel = memo(function ThemePanel({
           {SQUIRCLE_SUPPORTED
             ? 'Üst sıra yuvarlak, alt sıra squircle köşe.'
             : 'Üst sıra yuvarlak köşe; bu tarayıcı squircle çizemiyor.'}
-        </Text>
-      </Section>
-
-      <Section title="Zemin">
-        <Segments
-          label="Zemin"
-          value={settings.background}
-          options={BACKGROUNDS.map((b) => ({
-            ...b,
-            dot: backgroundSwatch(b.id, settings.color, dark),
-          }))}
-          onChange={(background) => set({ background })}
-          grid={4}
-        />
-        <Text type="secondary" className="text-xs">
-          Son dördü birincil renge göre: benzer, dörtlü, üçlü ve zıt ton.
-        </Text>
-      </Section>
-
-      <Section title="Zemin dokusu">
-        <Segments
-          label="Zemin dokusu"
-          value={settings.texture}
-          options={TEXTURES.map((t) => ({
-            ...t,
-            icon: (
-              <Flex
-                component="span"
-                aria-hidden
-                // Örnek çalışma anında hesaplanır (zemin, birincil renk, açık / koyu)
-                style={textureSwatch(t.id, settings.background, settings.color, dark)}
-                className="block size-3.5 shrink-0 rounded-[4px] ring-1 ring-border"
-              />
-            ),
-          }))}
-          onChange={(texture) => set({ texture })}
-          grid={3}
-        />
-        <Text type="secondary" className="text-xs">
-          Kartların arkasında; geçişler birincil renkten.
         </Text>
       </Section>
 
@@ -611,39 +427,47 @@ export const ThemePanel = memo(function ThemePanel({
 
       <Separator />
 
-      <Section title="Kart stili">
-        <Segments
-          label="Kart stili"
-          value={settings.cardStyle}
-          options={CARD_STYLES}
-          // Çerçeveli kart konturu olmadan görünmez: kontur yoksa ince olur
-          onChange={(cardStyle) =>
-            set({
-              cardStyle,
-              border: cardStyle === 'outlined' ? Math.max(settings.border, 1) : settings.border,
-            })
-          }
-          grid={3}
-        />
-      </Section>
-
-      <Section title="Kart gölgesi">
-        <Segments
-          label="Kart gölgesi"
-          value={settings.shadow}
-          options={SHADOWS}
-          onChange={(shadow) => set({ shadow })}
-        />
-      </Section>
-
-      <Section title="Kontur" value={`${settings.border}px`}>
-        <Segments
-          label="Kontur"
-          value={settings.border}
-          options={outlined ? BORDERS.filter((b) => b.id >= 1) : BORDERS}
-          onChange={(border) => set({ border })}
-        />
-      </Section>
+      <CardBox>
+        <Section title="Dolgu">
+          <Segments
+            label="Kart dolgusu"
+            value={settings.cardFill}
+            options={CARD_FILLS}
+            // Zemin renkli kart konturu olmadan görünmez: kontur yoksa ince olur
+            onChange={(cardFill) =>
+              set({
+                cardFill,
+                border: cardFill === 'background' ? Math.max(settings.border, 1) : settings.border,
+              })
+            }
+            grid={4}
+          />
+        </Section>
+        <Section title="Gölge">
+          <Segments
+            label="Kart gölgesi"
+            value={settings.shadow}
+            options={SHADOWS}
+            onChange={(shadow) => set({ shadow })}
+          />
+        </Section>
+        <Section title="Kontur" value={`${settings.border}px`}>
+          <Segments
+            label="Kontur"
+            value={settings.border}
+            options={onBackground ? BORDERS.filter((b) => b.id >= 1) : BORDERS}
+            onChange={(border) => set({ border })}
+          />
+        </Section>
+        <Section title="Kabarık kenar">
+          <Segments
+            label="Kabarık kenar"
+            value={settings.raised}
+            options={TOGGLES}
+            onChange={(raised) => set({ raised })}
+          />
+        </Section>
+      </CardBox>
 
       {kit.motion && (
         <>
@@ -667,55 +491,6 @@ export const ThemePanel = memo(function ThemePanel({
               </Text>
             )}
           </Section>
-          {settings.motion !== 'off' && (
-            <>
-              <Section title="Sekme içeriği">
-                <Segments
-                  label="Sekme içeriği"
-                  value={settings.tabContent}
-                  options={CONTENTS}
-                  onChange={(tabContent) => setAnim({ tabContent })}
-                />
-              </Section>
-              {MOVES.map(({ key, title }) => (
-                <Section key={key} title={title}>
-                  <Segments
-                    label={title}
-                    value={settings[key]}
-                    options={TOGGLES}
-                    onChange={(v) => setAnim({ [key]: v })}
-                  />
-                </Section>
-              ))}
-            </>
-          )}
-          <Section title="Yüklenirken">
-            <Segments
-              label="Yüklenirken"
-              value={settings.loading}
-              options={LOADINGS}
-              onChange={(loading) => set({ loading })}
-            />
-          </Section>
-          {settings.motion !== 'off' && (
-            <Section title="Animasyon hızı" value={`${settings.motionSpeed.toFixed(1)}×`}>
-              <Range
-                label="Animasyon hızı"
-                value={settings.motionSpeed}
-                min={0.1}
-                max={3}
-                step={0.1}
-                onChange={(v) => set({ motionSpeed: Math.round(v * 10) / 10 })}
-              />
-              <Flex justify="space-between">
-                {['0.1× yavaş', '1×', '3× hızlı'].map((t) => (
-                  <Text key={t} type="secondary" className="text-[0.6875rem]">
-                    {t}
-                  </Text>
-                ))}
-              </Flex>
-            </Section>
-          )}
         </>
       )}
 

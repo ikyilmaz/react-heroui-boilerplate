@@ -50,7 +50,7 @@ import { useMediaQuery, useRadiusPx } from '@/synergy/shared/hooks'
 import { cn, IC, Tip } from '@/synergy/ant/ui'
 import { QuickOpen } from '@/synergy/QuickOpen'
 import { useNotify } from '@/synergy/ant/hr'
-import { FormLoading } from '@/synergy/DetailTiles'
+import { LoadingLine } from '@/synergy/tabs/LoadingLine'
 import {
   OpenChildContext,
   ScreenContext,
@@ -62,7 +62,7 @@ import { Divider, Pane, type Entered, type PaneSlot } from '@/synergy/tabs/Panes
 import {
   ACCENT_TONE,
   GROUP_TONE,
-  ROUND_STRIP_VARS,
+  STRIP_VARS,
   SHEET,
   SHEET_RING,
   TAB_BG,
@@ -106,8 +106,8 @@ type MenuItem = NonNullable<MenuProps['items']>[number]
 /** Yaprağın köşesi (`rounded-2xl`). */
 const SHEET_RADIUS = 'calc(var(--radius) * 2)'
 
-/** Form gelene kadar bölmede duran (sabit öğe: bölmeler yeniden çizilmesin; türü tema panelinden). */
-const LOADING = <FormLoading />
+/** Form gelene kadar bölmenin üstündeki yükleme çizgisi (sabit öğe: bölmeler yeniden çizilmesin). */
+const LOADING = <LoadingLine label="Form yükleniyor" />
 
 /** Başlangıç'ın sabit sekmesi: yalnızca ikon, ortada; genişliği rem (yoğunluğun boşluk biriminden değil). */
 const PINNED = 'flex-none w-[2.75rem] min-w-[2.75rem] max-w-[2.75rem]'
@@ -641,14 +641,16 @@ export function Workspace({
     // Yapı sabit: sekmeler gelip gidince Başlangıç yeniden takılmaz
     <Flex
       ref={outer}
-      // Ekranın kalanı: alt pay (1.5rem; kompaktta üst payla aynı, 1.5 boşluk birimi)
-      style={{
-        height: `calc(100dvh - ${top}px - ${tall ? 'var(--spacing) * 1.5' : '1.5rem'})`,
-      }}
+      // Ekranın kalanı: alt pay 1.5rem; kompaktta yok (kap ekranın altına ve yanlarına yaslı)
+      style={{ height: tall ? `calc(100dvh - ${top}px)` : `calc(100dvh - ${top}px - 1.5rem)` }}
       className={cn('relative flex flex-col', TAB_BG)}
     >
       {/* Şerit: hep görünür (yalnız Başlangıç açıkken de) */}
-      <Flex ref={strip} className={cn('flex shrink-0 items-end', ROW_H[tall ? 'tall' : 'base'])}>
+      {/* Kompaktta kap kenarlara yaslı: satırın düğmeleri ekran kenarından 12px içeride kalır */}
+      <Flex
+        ref={strip}
+        className={cn('flex shrink-0 items-end', ROW_H[tall ? 'tall' : 'base'], tall && 'px-3')}
+      >
         {/*
          * Eylemler sekmenin ortasından 4px yukarıda (`pb-2`). Geri / ileri üzerine gelince çıkan
          * hap gibi: kabın çizgisinden ve Başlangıç sekmesinden `--tab-gap` uzakta, üstü seçili
@@ -656,14 +658,26 @@ export function Workspace({
          * aradaki kanal her yerde eşit. Şeridin kavis payının üstüne biner (eksi kenar boşluğu;
          * kabın köşesine yetmezse o kadar ileride), üstte (`z-10`), tıklamayı şerit almaz
          */}
-        {lead && <Flex className="h-(--tab-h) shrink-0 items-center pe-2 pb-1">{lead}</Flex>}
+        {/* Başlat düğmesi: geri / ileri hapıyla aynı boy, köşe ve hiza; aradaki kanal `--tab-gap`
+            (hap ile ilk sekme arasındakiyle aynı) */}
+        {lead && (
+          <Flex
+            className={cn(
+              'h-(--tab-h) shrink-0 items-end pe-(--tab-gap) pb-(--tab-gap)',
+              STRIP_VARS,
+              tall && ROW_H.tall,
+            )}
+          >
+            {lead}
+          </Flex>
+        )}
         {start && (
           <Flex
             className={cn(
               'relative z-10 h-(--tab-h) shrink-0 items-end pb-(--tab-gap)',
               '[--hb:min(33px,calc(var(--tab-h)-var(--tab-gap)-4px))] [--hw:calc(var(--hb)*2+4px)]',
               'me-[max(calc(var(--tab-gap)-var(--tab-f)),calc(var(--radius)*3-var(--hw)))]',
-              ROUND_STRIP_VARS,
+              STRIP_VARS,
               tall && ROW_H.tall,
             )}
           >
@@ -680,8 +694,6 @@ export function Workspace({
           // (kırpılmasın; köşe payını geri / ileri sağlar)
           inset={start ? 'ps-(--tab-f) pe-8' : 'ps-[calc(var(--radius)*3+var(--tab-f))] pe-8'}
           onDelete={actions.remove}
-          // Squircle temada da yuvarlak köşeler (geri / ileri de: `ROUND_STRIP_VARS`)
-          round
           className={cn('flex-1', tall && ROW_H.tall)}
         >
           {units.map((u, i) => (
@@ -714,7 +726,9 @@ export function Workspace({
        */}
       <Flex
         className={cn(
-          'group/panes relative flex min-h-0 min-w-0 flex-1 overflow-clip rounded-3xl bg-(--tab-bg)',
+          'group/panes relative flex min-h-0 min-w-0 flex-1 overflow-clip bg-(--tab-bg)',
+          // Kompaktta köşesiz (kap ekranın kenarlarına yaslı)
+          tall ? 'rounded-none' : 'rounded-3xl',
           'data-[resizing]:cursor-col-resize data-[resizing]:select-none [&[data-resizing]_[role=tabpanel]]:pointer-events-none',
         )}
       >
@@ -736,7 +750,8 @@ export function Workspace({
                 dir={step.entered[key]?.n === step.n ? step.dir : 1}
                 paired={split && visible}
                 slide={wide}
-                radius={radius}
+                // Kompaktta bölmeler de köşesiz
+                radius={tall ? 0 : radius}
                 motion={motion}
                 placeholder={form ? LOADING : undefined}
                 onFocus={focusPane}

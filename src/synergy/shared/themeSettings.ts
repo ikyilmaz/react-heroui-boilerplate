@@ -38,10 +38,10 @@ export type FontId = 'synergy' | 'inter' | 'bricolage' | 'jakarta' | 'figtree' |
 /** Yoğunluk: kök yazı boyutu ve boşluk birimi birlikte. */
 export type Density = 'tight' | 'compact' | 'normal' | 'roomy'
 /**
- * Kartın dolgusu: dolu (yüzey), çerçeveli (zemin rengi + çizgi), yükseltilmiş (kabarık alt
- * kenar), tonlu (birincil rengin çok açık tonu), gri (zeminden koyu, gömme).
+ * Kartın dolgusu: yüzey (tema dosyasınınki), zemin (sayfanın rengi; konturla ayrılır, en az 1px),
+ * gri (zeminden koyu, gömme), tonlu (birincil rengin çok açık tonu).
  */
-export type CardStyle = 'filled' | 'outlined' | 'elevated' | 'tinted' | 'muted'
+export type CardFill = 'surface' | 'background' | 'muted' | 'tinted'
 export type Shadow = 'none' | 'subtle' | 'soft' | 'strong' | 'deep'
 /** Köşe biçimi: yuvarlak (daire yayı) ya da squircle (süperelips; CSS `corner-shape`). */
 export type CornerShape = 'round' | 'squircle'
@@ -80,7 +80,9 @@ export interface ThemeSettings {
   /** Kök yazı boyutu (rem'e bağlı tüm ölçüler) ve boşluk birimi (Tailwind `--spacing`). */
   density: Density
   /** Kartların dolgusu (kabuktaki ve sayfalardaki tüm kartlar, `CARD`). */
-  cardStyle: CardStyle
+  cardFill: CardFill
+  /** Kartın kabarık kenarı (üstte ışık, altta koyu dudak; gölgenin üstüne eklenir). */
+  raised: Toggle
   /** Kart gölgesi (her kart stilinde). */
   shadow: Shadow
   /** Kart konturu (px); çerçeveli kartta en az 1. */
@@ -104,10 +106,6 @@ export interface ThemeSettings {
   /** Animasyon hızı çarpanı (0.1–3; 2 = iki kat hızlı, süreler yarıya iner). */
   motionSpeed: number
 }
-
-/** Animasyon bölümünün ayarları (hazır temalar bunlara dokunmaz). */
-export type MotionKey =
-  'motion' | 'motionSpeed' | 'tabContent' | 'loading' | 'movement' | 'stripMotion' | 'counting'
 
 /** "Az" düzeyi: az düzeyinin yönettiği hareketler kapalı, sekme içeriği yalnızca solar. */
 export const MINIMAL_MOTION = {
@@ -135,20 +133,6 @@ export interface ThemeKit {
   navOptions: { id: string; label: string; side?: 'left' | 'top' | 'compact' }[]
   /** Panelde Animasyon bölümü (animasyonlar `--motion-*` / `useLook().motion` ile okuyorsa). */
   motion?: boolean
-  /** Hazır temalar (tema panelinin başında). */
-  presets?: ThemePreset[]
-}
-
-/**
- * Hazır tema: görünüşü belirleyen ayarların bir bileşimi (`look`). Gezinme konumu, köşe biçimi ve
- * animasyon tercih sayılır, hazır tema onlara dokunmaz. Seçilince ayarlara yazılır; sonra her ayar
- * panelden ayrıca değiştirilebilir (eşleşme bozulunca "Özel").
- */
-export interface ThemePreset {
-  id: string
-  label: string
-  description: string
-  look: Partial<Omit<ThemeSettings, 'nav' | 'detail' | 'corner' | MotionKey>>
 }
 
 /** Tarayıcı squircle köşe çizebiliyor mu (`corner-shape`); çizemiyorsa ayar hiçbir şey yazmaz. */
@@ -285,21 +269,20 @@ const FIELD_SHADOWS: Record<Shadow, (dark: boolean) => string> = {
     `0 1px 2px 0 ${ok(0, 0, 0, d ? 0.3 : 0.06)}, 0 6px 14px -6px ${ok(0, 0, 0, d ? 0.55 : 0.2)}`,
 }
 
-/** Yükseltilmiş kart stilinde alanların kabarık alt kenarı. */
+/** Kabarık kartta alanların kabarık alt kenarı. */
 const FIELD_RAISED = (dark: boolean) =>
   dark
     ? `inset 0 1px 0 0 ${ok(1, 0, 0, 0.06)}, 0 1px 0 0 ${ok(0, 0, 0, 0.4)}`
     : `0 1px 0 0 ${ok(0.21, 0.01, 260, 0.12)}`
 
 /**
- * Alanın dolgusu ve üzerine gelince dolgusu, kart stiline göre: dolu kartta tema dosyasınınki (ikinci
- * yüzey), çerçeveli ve yükseltilmişte kartın kendisi (çizgi / kenar ayırır), tonluda birincil rengin
- * açık tonu, gri kartta beyaz alan.
+ * Alanın dolgusu ve üzerine gelince dolgusu, kartın dolgusuna göre: yüzeyde tema dosyasınınki (ikinci
+ * yüzey; kabarık kartta kartın kendisi, kenar ayırır), zeminde kartın kendisi (çizgi ayırır),
+ * tonluda birincil rengin açık tonu, gri kartta beyaz alan.
  */
-const FIELD_FILL: Record<CardStyle, [string, string] | null> = {
-  filled: null,
-  outlined: ['var(--surface)', 'var(--surface-secondary)'],
-  elevated: ['var(--surface)', 'var(--surface-secondary)'],
+const FIELD_FILL: Record<CardFill, [string, string] | null> = {
+  surface: null,
+  background: ['var(--surface)', 'var(--surface-secondary)'],
   tinted: [
     'color-mix(in oklab, var(--accent) 7%, var(--surface))',
     'color-mix(in oklab, var(--accent) 12%, var(--surface))',
@@ -312,14 +295,6 @@ const FIELD_FILL: Record<CardStyle, [string, string] | null> = {
  * dörtlü (dik açı), üçlü (üçte bir tur) ve zıt (tam karşı). Hepsi çok açık / çok koyu, az doygun.
  */
 const HARMONY = { analogous: -30, square: 90, triadic: 120, complement: 180 } as const
-
-export const BACKGROUND_IDS = [
-  'neutral',
-  'cool',
-  'warm',
-  'white',
-  ...(Object.keys(HARMONY) as (keyof typeof HARMONY)[]),
-] as const
 
 /** Zemin: zemin, yüzey, ikinci yüzey, üçüncü yüzey (son dördü birincil tondan). */
 function backgrounds(dark: boolean, h: number): Record<Background, string[]> {
@@ -353,17 +328,12 @@ function backgrounds(dark: boolean, h: number): Record<Background, string[]> {
       }
     : {
         neutral: [ok(0.975, 0, 0), ok(1, 0, 0), ok(0.97, 0, 0), ok(0.95, 0, 0)],
-        cool: [ok(0.96, 0.003, 250), ok(1, 0, 0), ok(0.975, 0.003, 250), ok(0.955, 0.004, 250)],
+        // Varsayılan zemin (tema dosyasıyla aynı): birincil rengin karıştığı yumuşak gri
+        cool: ['color-mix(in oklab, var(--accent) 8%, oklch(0.935 0 0))', ok(1, 0, 0), ok(0.975, 0.003, 250), ok(0.955, 0.004, 250)],
         warm: [ok(0.968, 0.008, 80), ok(1, 0, 0), ok(0.972, 0.006, 80), ok(0.95, 0.008, 80)],
         white: [ok(1, 0, 0), ok(1, 0, 0), ok(0.975, 0.002, 250), ok(0.955, 0.003, 250)],
         ...harmony,
       }
-}
-
-/** Zeminin rengi (tema panelindeki örnek nokta için). */
-export function backgroundSwatch(bg: Background, color: ColorId, dark: boolean) {
-  const { h } = COLORS.find((c) => c.id === color) ?? COLORS[0]
-  return backgrounds(dark, h)[bg][0]
 }
 
 /**
@@ -398,8 +368,6 @@ const TEXTURES: Record<
   ],
 }
 
-export const TEXTURE_IDS = ['none', ...(Object.keys(TEXTURES) as Texture[])] as const
-
 /** Dokunun katmanları ve döşeme boyu (düzde `none`). */
 function textureLayer(texture: Texture, color: ColorId, dark: boolean, mini = false) {
   if (texture === 'none') return { image: 'none', size: 'auto' }
@@ -417,20 +385,10 @@ function textureLayer(texture: Texture, color: ColorId, dark: boolean, mini = fa
   return { image, size }
 }
 
-/** Dokunun panel örneği (zeminin rengi ve dokunun küçültülmüşü). */
-export function textureSwatch(texture: Texture, bg: Background, color: ColorId, dark: boolean) {
-  const { image, size } = textureLayer(texture, color, dark, true)
-  return {
-    backgroundColor: backgroundSwatch(bg, color, dark),
-    backgroundImage: image,
-    backgroundSize: size,
-  }
-}
-
-/** Kartın dolgusu (`surface`: zeminin kendi yüzeyi); dolu kartta yok. */
-function cardFill(style: CardStyle, dark: boolean, surface: string): string | null {
-  switch (style) {
-    case 'outlined':
+/** Kartın dolgusu (`surface`: zeminin kendi yüzeyi); yüzey dolgusunda yok. */
+function cardFill(fill: CardFill, dark: boolean, surface: string): string | null {
+  switch (fill) {
+    case 'background':
       return 'var(--background)'
     case 'tinted':
       return `color-mix(in oklab, var(--accent) ${dark ? 9 : 5}%, ${surface})`
@@ -483,8 +441,8 @@ function variables(
     out['--background-texture-size'] = size
   }
 
-  // Kart stili: dolgu yüzeyin yerine geçer (kartın içindeki tablolar, düğmeler de ona uyar)
-  const fill = cardFill(s.cardStyle, dark, backgrounds(dark, h)[s.background][1])
+  // Kartın dolgusu yüzeyin yerine geçer (kartın içindeki tablolar, düğmeler de ona uyar)
+  const fill = cardFill(s.cardFill, dark, backgrounds(dark, h)[s.background][1])
   if (fill) {
     out['--surface'] = fill
     out['--surface-secondary'] = `color-mix(in oklab, var(--foreground) 3%, ${fill})`
@@ -512,15 +470,15 @@ function variables(
         ? '9999px'
         : `min(${+(14 * f).toFixed(2)}px, ${+(s.radius * 1.5 * f).toFixed(3)}rem)`
   }
-  // Çerçeveli kartta kontur en az 1px; form alanlarının çerçevesi de aynı kalınlıkta (0: çerçevesiz)
-  const border = s.cardStyle === 'outlined' ? Math.max(s.border, 1) : s.border
+  // Zemin renkli kartta kontur en az 1px; form alanlarının çerçevesi de aynı kalınlıkta (0: çerçevesiz)
+  const border = s.cardFill === 'background' ? Math.max(s.border, 1) : s.border
   if (border !== d.border) {
     out['--border-width'] = `${border}px`
     out['--field-border-width'] = `${border}px`
   }
 
-  // Gölge: yükseltilmiş kartın kenarı seçilen gölgenin üstüne eklenir; alanlar küçüğünü alır
-  const raised = s.cardStyle === 'elevated'
+  // Gölge: kabarık kartın kenarı seçilen gölgenin üstüne eklenir; alanlar küçüğünü alır
+  const raised = s.raised === 'on'
   if (s.shadow !== d.shadow || raised) {
     const shadow = SHADOWS[s.shadow](dark)
     const field = FIELD_SHADOWS[s.shadow](dark)
@@ -528,8 +486,9 @@ function variables(
     out['--field-shadow'] = raised ? `${FIELD_RAISED(dark)}, ${field}` : field
   }
 
-  // Alanların dolgusu kart stiline göre
-  const fieldFill = FIELD_FILL[s.cardStyle]
+  // Alanların dolgusu kartın dolgusuna göre (kabarık yüzey kartta kartın kendisi)
+  const fieldFill =
+    FIELD_FILL[s.cardFill] ?? (raised ? ['var(--surface)', 'var(--surface-secondary)'] : null)
   if (fieldFill) [out['--field-fill'], out['--field-hover']] = fieldFill
 
   // Yazı tipi: seçilen tip başlıklarda ve metinde
@@ -550,47 +509,13 @@ function variables(
   return out
 }
 
-/** Her ayarın değişkenini yazdıran karşılaştırma tabanı (hiçbir değer buna eşit değil). */
-const NOTHING = {
-  color: '',
-  radius: -1,
-  corner: '',
-  background: '',
-  texture: '',
-  font: '',
-  density: '',
-  cardStyle: '',
-  shadow: '',
-  border: -1,
-  nav: '',
-  detail: 'embedded',
-  motion: 'full',
-  motionSpeed: 1,
-  tabContent: 'fade',
-  loading: 'spinner',
-  movement: 'on',
-  stripMotion: 'on',
-  counting: 'on',
-} as unknown as ThemeSettings
-
-/**
- * Bir görünüşün bütün değişkenleri: bir kaba satır içi yazılınca o kabın içi o temayla çizilir
- * (tema panelindeki hazır tema önizlemesi; kabuğun o anki ayarlarından bağımsız).
- */
-export function lookVars(look: ThemeSettings, dark: boolean) {
-  const out: Record<string, string> = { ...variables(look, NOTHING, dark, animOf(look, false)) }
-  if (look.font === 'synergy') {
-    out['--font-sans'] = `'Inter', ${SANS}`
-    out['--font-display'] = `'Bricolage Grotesque', ${SANS}`
-  }
-  return out
-}
-
-/** Ayarlar bir hazır temaya uyuyorsa onun kimliği (yalnızca temanın belirlediği ayarlar karşılaştırılır). */
-export function presetOf(kit: ThemeKit, s: ThemeSettings) {
-  const match = (look: ThemePreset['look']) =>
-    (Object.keys(look) as (keyof ThemePreset['look'])[]).every((k) => look[k] === s[k])
-  return kit.presets?.find((p) => match(p.look))?.id ?? null
+/** Kaldırılmış kart stillerinin dolgusu (kayıtlı ayarlar için). */
+const OLD_CARD_STYLE: Record<string, CardFill> = {
+  filled: 'surface',
+  outlined: 'background',
+  elevated: 'surface',
+  tinted: 'tinted',
+  muted: 'muted',
 }
 
 /** Kaldırılmış gezinme konumlarının yeni karşılığı (kayıtlı ayarlar için). */
@@ -604,18 +529,26 @@ function load(kit: ThemeKit): ThemeSettings {
     const saved = JSON.parse(raw) as Partial<ThemeSettings>
     // Kaldırılan gezinme konumları en yakınına: sağdaki sola, alttaki üste
     if (saved.nav && saved.nav in MOVED_NAV) saved.nav = MOVED_NAV[saved.nav]
+    // Kaldırılan kart stili dolguya ve kabarık kenara ayrılır
+    const style = (saved as { cardStyle?: string }).cardStyle
+    if (style && !saved.cardFill) {
+      saved.cardFill = OLD_CARD_STYLE[style] ?? 'surface'
+      saved.raised = style === 'elevated' ? 'on' : 'off'
+    }
     // Seçeneği kaldırılmış değer (ör. eski bir zemin) varsayılana döner
     const valid: Partial<Record<keyof ThemeSettings, readonly unknown[]>> = {
       color: COLORS.map((c) => c.id),
       // Yarıçap üç boydan biri (kaydırıcıdan kalan ara değerler varsayılana döner)
       radius: RADII,
       corner: ['round', 'squircle'],
-      background: BACKGROUND_IDS,
-      texture: TEXTURE_IDS,
+      // Zemin ve dokusu panelden kaldırıldı: kayıtlı değer ne olursa olsun varsayılan
+      background: [kit.defaults.background],
+      texture: [kit.defaults.texture],
       font: FONTS.map((x) => x.id),
       density: Object.keys(DENSITIES),
       shadow: Object.keys(SHADOWS),
-      cardStyle: Object.keys(FIELD_FILL),
+      cardFill: Object.keys(FIELD_FILL),
+      raised: ['on', 'off'],
       // Kaldırılmış gezinme konumu (ör. "İkisi de") varsayılana döner
       nav: kit.navOptions.map((o) => o.id),
       detail: ['embedded', 'floating'],
@@ -627,13 +560,21 @@ function load(kit: ThemeKit): ThemeSettings {
       counting: ['on', 'off'],
     }
     const keys = Object.keys(kit.defaults) as (keyof ThemeSettings)[]
-    return Object.fromEntries(
+    const out = Object.fromEntries(
       keys.map((k) => {
         const v = saved[k]
         const keep = v != null && (valid[k]?.includes(v) ?? true)
         return [k, keep ? v : kit.defaults[k]]
       }),
     ) as unknown as ThemeSettings
+    // Panelde yalnızca animasyon düzeyi var: alt ayarlar düzeyin hazır değerleri, hız ve yükleme
+    // göstergesi varsayılan
+    return {
+      ...out,
+      ...(out.motion === 'reduced' ? MINIMAL_MOTION : FULL_MOTION),
+      motionSpeed: kit.defaults.motionSpeed,
+      loading: kit.defaults.loading,
+    }
   } catch {
     return kit.defaults
   }

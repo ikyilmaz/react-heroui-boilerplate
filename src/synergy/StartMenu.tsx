@@ -70,8 +70,8 @@ import { EmptyNote, SearchField } from '@/synergy/ant/parts'
 import { CARD, CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
 import { boxLink, k, processLink, useOpenApp } from '@/synergy/paths'
-import { SHEET } from '@/synergy/tabs/shape'
 import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
+import { SHEET } from '@/synergy/tabs/shape'
 import { Count } from '@/synergy/ant/motion'
 import { START_LABELS as START_PAGE, defaultSortOf } from '@/synergy/shared/startLabels'
 import {
@@ -187,8 +187,9 @@ const PANEL_RING =
   'pointer-events-none absolute inset-0 block rounded-[inherit] border border-border shadow-(--overlay-shadow)'
 
 /**
- * Başlat kutusunun zemini: sayfanın zemini (`--start-bg` = `--background`; tema paneli › Arka plan
- * ne seçildiyse o). Sekmelerin yaprağı ve bölmesi beyaz (`START_PANE_BG`).
+ * Başlat kutusunun zemini: çalışma alanıyla aynı katmanlar. Kutu uygulamanın zemini (birincil tonlu
+ * gri, `--background`); arama, seçili sekmenin yaprağı ve bölme çalışma alanının şerit rengi
+ * (`tabs/shape.ts` › `TAB_BG`, `START_PANE_BG`); bölmedeki kartlar ve satırlar beyaz / gri.
  */
 const START_BG = '[--start-bg:var(--background)]'
 
@@ -242,10 +243,11 @@ interface Box {
 const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; panel: string }> = {
   left: { ...COLUMN, panel: cn('start-3', SIDE_PANEL) },
   top: { ...BAR, panel: cn('top-3', BAR_PANEL) },
-  // Kompakt: sekme satırındaki 40px düğmeden (satır 1.3 kat yüksek) sol üstte açılan kutu
+  // Kompakt: sekme satırındaki düğmeden sol üstte açılan kutu. Düğme geri / ileri hapıyla aynı boyda
+  // ve köşede (sekme boyu − boşluk, `--tab-nr`; değişkenler satırın kabından, `Workspace` `lead`)
   compact: {
     shell: '',
-    start: 'size-[40px] min-w-[40px]',
+    start: 'size-[calc(var(--tab-h)-var(--tab-gap))] min-w-0',
     icon: 20,
     panel: 'start-3 top-3 h-[85dvh] w-[min(44rem,calc(100vw-1.5rem))]',
   },
@@ -258,8 +260,8 @@ const PLACE: Record<ChromePlace, { shell: string; start: string; icon: number; p
 export const CHROME_SPACE: Record<ChromePlace, string> = {
   left: 'sm:ps-[76px] sm:pt-3',
   top: 'sm:ps-3 sm:pt-[68px]',
-  // Kompakt: üstte yarısı (6px); alt pay da aynı (`Workspace` `tall`, kabuğun `pb`)
-  compact: 'sm:ps-3 sm:pt-1.5',
+  // Kompakt: üstte yarısı (6px); yanlarda ve altta pay yok (çalışma alanı kenarlara yaslı)
+  compact: 'sm:pt-1.5',
 }
 
 /**
@@ -519,16 +521,17 @@ export function StartDock({
         <Button
           ref={trigger}
           type="primary"
-          shape={compact ? 'circle' : 'default'}
+          shape="default"
           aria-label={START_LABELS.start}
           aria-expanded={open}
           onClick={openStart}
           icon={<LayoutDashboard {...IC} size={p.icon} />}
-          // Kompaktta daire; solda / üstte rafla aynı köşe (px, `useRadiusPx`)
+          // Kompaktta şeridin köşesi (geri / ileri ve sekmelerle aynı, yuvarlak); solda / üstte rafla
+          // aynı köşe (px, `useRadiusPx`)
           style={compact ? undefined : radius}
           className={cn(
             'shrink-0 bg-accent p-0 text-accent-foreground hover:bg-accent/90',
-            compact && 'rounded-full',
+            compact && 'rounded-(--tab-nr) [corner-shape:round]',
             p.start,
           )}
         />
@@ -563,7 +566,7 @@ export function StartDock({
           // `contents`: kap yerleşimde yer tutmaz (yoksa kapanırken raf bir an yukarı kayıp inerdi)
           <Flex key="start" className="contents">
             <CloseOnPlace onChange={close} />
-            {/* Dışarı tıklayınca kapanır; zemin hafifçe solar */}
+            {/* Dışarı tıklayınca kapanır; zemin kararır (koyu temada da: siyah, metin rengi değil) */}
             <MotionFlex
               aria-hidden
               initial={{ opacity: 0 }}
@@ -571,7 +574,7 @@ export function StartDock({
               exit={{ opacity: 0 }}
               onPointerDown={() => setOpen(false)}
               // `block`: antd'de içi boş `Flex` gizlenir
-              className="pointer-events-auto block fixed inset-0 z-40 bg-foreground/10"
+              className="pointer-events-auto block fixed inset-0 z-40 bg-black/30"
             />
             <StartBox
               place={place}
@@ -670,10 +673,10 @@ const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
 ]
 
 /**
- * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: beyaz (yüzey), kutunun yumuşak zemininden
- * ayrışır (`--tab-bg`; `SHEET` bunu okur).
+ * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: çalışma alanının şerit rengi (`TAB_BG` ile
+ * aynı değer; aramayla aynı), kutunun zemininden açık (`--tab-bg`; `SHEET` bunu okur).
  */
-const START_PANE_BG = '[--tab-bg:var(--surface)]'
+const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_3%,oklch(0.975_0_0))]'
 
 const START_UI = {
   pin: APPS_LABELS.pin,
@@ -1711,9 +1714,10 @@ function StartPanel({
           // Yer tutucu daktiloyla değişir (`useTypewriter`); bu ad sabit kalır
           label={START_UI.search}
           // Kontursuz, beyaz (kutunun yumuşak zemininde); büyük yazı ve simge. Odak halkası yok: kutu
-          // açılınca odak hep burada, halka kontur gibi görünürdü (imleç yeter)
+          // açılınca odak hep burada, halka kontur gibi görünürdü (imleç yeter). Köşesi sekmelerinki
+          // (`tabs/shape.ts` › `TAB_RADIUS`: yuvarlak, squircle temada da); bölmeyle aynı açık ton
           variant="borderless"
-          className="h-14 min-w-0 flex-1 rounded-full bg-surface! px-5 text-lg [&_.ant-input-prefix_svg]:size-5 [&_input]:text-lg!"
+          className="h-14 min-w-0 flex-1 rounded-[min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] bg-[color-mix(in_oklab,var(--accent)_3%,oklch(0.975_0_0))]! px-5 text-lg [corner-shape:round] [&_.ant-input-prefix_svg]:size-5 [&_input]:text-lg!"
         />
       </Flex>
 
@@ -1724,7 +1728,8 @@ function StartPanel({
        * yukarıdan başlar (yaprağın kavsi bölmenin düz kenarına otursun).
        */}
       <Flex className={cn('flex min-h-0 flex-1 px-3 pb-3', START_PANE_BG)}>
-        <Flex vertical className="w-[calc(11rem+4px)] shrink-0">
+        {/* Şeridin dış kenarındaki 4px satır payı kadar sola: sekmeler aramayla aynı hizada başlar */}
+        <Flex vertical className="-ms-[4px] w-[calc(11rem+4px)] shrink-0">
           <TabStrip
             label={START_LABELS.start}
             orientation="vertical"
@@ -1732,8 +1737,6 @@ function StartPanel({
             sizing="content"
             sheet={SHEET}
             selected={searching ? undefined : section}
-            // Squircle temada da yuvarlak (çalışma alanının şeridi gibi); sekme boyu kavislere yeter
-            round
             // Sekmeler en üstte: ilk sekme bölmenin üst kenarıyla aynı hizada başlar; ilk yaprak
             // seçiliyken bölmenin sol üst köşesi köşesiz, düz bir üst kenar olur (üstteki kavsi
             // şeridin kabı kırpar)
@@ -1759,7 +1762,9 @@ function StartPanel({
                         setQuery('')
                         setSection(sct.id)
                       }}
-                      className="w-full flex-1 gap-3 ps-4"
+                      // Seçili sekme birincil renkte; diğerleri soluk (üzerine gelince koyulaşır), fark belirgin
+                      className={cn('w-full flex-1 gap-3 ps-4', !on && 'text-muted hover:text-foreground!')}
+                      iconClassName={on ? undefined : 'opacity-70 group-hover/tab:opacity-100'}
                     />
                   </Tab>
                 )
@@ -1772,8 +1777,11 @@ function StartPanel({
           aria-label={searching ? START_UI.results : SECTIONS.find((x) => x.id === section)?.label}
           // İçerik doğrudan beyaz bölmede (kart yok). Sol üst köşe yalnızca ilk sekme seçiliyken
           // köşesiz (yaprakla düz bir üst kenar); başka sekmede yuvarlak, yaprakla birlikte geçer
+          // Bölme gri: içindeki ikinci / üçüncü yüzey (hover, kutucuklar) bir kademe koyu, yoksa
+          // bölmenin rengine karışırdı (`--tab-bg` kapta çözüldü, bundan etkilenmez)
           className={cn(
             '@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-4 transition-[border-radius] duration-200',
+            '[--surface-secondary:color-mix(in_oklab,var(--foreground)_6%,var(--surface))] [--surface-tertiary:color-mix(in_oklab,var(--foreground)_10%,var(--surface))]',
             !searching && section === SECTIONS[0].id && 'rounded-ss-none',
           )}
         >

@@ -44,8 +44,6 @@ import {
   SHEET_LAYER_V,
   SHEET_MIDDLE,
   STRIP_VARS,
-  ROUND_STRIP_VARS,
-  ROUND_TAB_RADIUS,
   TAB_RADIUS,
 } from '@/synergy/tabs/shape'
 import {
@@ -206,7 +204,6 @@ export function TabStrip({
   inset,
   onDelete,
   end,
-  round = false,
   orientation = 'horizontal',
   side = 'start',
   className,
@@ -237,8 +234,6 @@ export function TabStrip({
   onDelete?: (tab: HTMLElement) => void
   /** Şeridin sonunda, kaymayan alan (ör. yan yana sekmenin düğmeleri). */
   end?: ReactNode
-  /** Squircle temada da yuvarlak köşeler (`ROUND_STRIP_VARS`; çalışma alanının şeridi). */
-  round?: boolean
   /** Kapsayıcının sınıfı (sekme boyu `--tab-h`, renk değişkenleri). */
   className?: string
   /** `TabGroup` öğeleri. */
@@ -246,7 +241,7 @@ export function TabStrip({
 }) {
   const motion = useTabMotion()
   const vertical = orientation === 'vertical'
-  const radius = useRadiusPx(round ? ROUND_TAB_RADIUS : TAB_RADIUS)
+  const radius = useRadiusPx(TAB_RADIUS)
   const R = radius === undefined ? undefined : Math.round(radius)
   const scroller = useRef<HTMLElement | null>(null)
   const row = useRef<HTMLElement | null>(null)
@@ -801,7 +796,7 @@ export function TabStrip({
         vertical
           ? cn('relative flex min-h-0 flex-col', toEnd ? 'items-end' : 'items-start')
           : 'relative flex min-w-0 items-end',
-        round ? ROUND_STRIP_VARS : STRIP_VARS,
+        STRIP_VARS,
         className,
       )}
     >

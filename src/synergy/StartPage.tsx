@@ -22,7 +22,6 @@ import {
   Select,
   type MenuProps,
   Skeleton,
-  Spin,
   Table,
   type TableColumnsType,
   Tag,
@@ -103,6 +102,7 @@ import {
   compareBy,
 } from '@/synergy/ant/parts'
 import { CARD, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { Loader } from '@/synergy/ant/Loader'
 import { GRID_ROW, GRID_TABLE } from '@/synergy/ant/grid'
 import { Count, Indicator } from '@/synergy/ant/motion'
 import { SHEET_ON_SURFACE } from '@/synergy/tabs/shape'
@@ -170,13 +170,15 @@ function SkeletonRows({ rows = 6, className }: { rows?: number; className?: stri
   if (loading === 'off') return null
   if (loading === 'spinner')
     return (
+      // Listenin yerini doldurur, yükleyici tam ortada
       <Flex
         role="status"
         aria-label="Yükleniyor"
+        align="center"
         justify="center"
-        className={cn('py-10', className)}
+        className={cn('min-h-48 flex-1 py-6', className)}
       >
-        <Spin />
+        <Loader size={36} />
       </Flex>
     )
   return (
@@ -295,6 +297,9 @@ export function StartPage() {
   )
 }
 
+/** İş Akışları widget'ında yenilenen listenin yüklenme süresi (ms). */
+const WORK_LOAD_MS = 5000
+
 /**
  * İş Akışları widget'ı: kategori sekmeleri ve altında süreç grupları ↔ talepler (kabını doldurur).
  * Başlat kutusunun İş Akış Yönetimi bölümü de bunu gösterir (`StartMenu.tsx`); ikisi aynı anda
@@ -309,8 +314,9 @@ export function WorkBlock({ refreshing = false }: { refreshing?: boolean }) {
   const [sorts, setSorts] = useState<Partial<Record<BoxId, GroupSort>>>(() =>
     readJson(SORT_KEY, {}),
   )
-  const [groupsLoading, reloadGroups] = useBriefPending()
-  const [requestsLoading, reloadRequests] = useBriefPending()
+  // Yenilenen liste 5 saniye yükleniyor görünür (maket sunucu gecikmesi; açık istek üzerine)
+  const [groupsLoading, reloadGroups] = useBriefPending(WORK_LOAD_MS)
+  const [requestsLoading, reloadRequests] = useBriefPending(WORK_LOAD_MS)
 
   const box = findBox(category)!
   const sort = validSort(box, sorts[category])
@@ -1103,18 +1109,18 @@ function GroupList({
   return (
     <Flex vertical gap={12} className="flex-1">
       <Flex wrap align="center" gap={4}>
-        <Title level={2} className={cn(H2, 'me-auto')}>
+        <Title level={2} className={H2}>
           {caption}
         </Title>
         <SortMenu box={box} sort={sort} onSort={onSort} />
         <Refresh pending={loading} onPress={onReload} />
         {SHOW_ALL_BOXES.includes(box.id) && (
-          // Yalnızca ikon; ad ipucunda ve erişilebilir adda
+          // Yalnızca ikon; ad ipucunda ve erişilebilir adda. Satırın en sağında
           <Tip label={START_LABELS.showAll}>
             <Link
               to={boxLink(box.id)}
               aria-label={START_LABELS.showAll}
-              className="inline-grid size-9 place-items-center rounded-lg bg-accent-soft text-accent-soft-foreground transition-colors hover:bg-accent/20 hover:text-accent-soft-foreground focus-visible:outline-2 focus-visible:outline-focus"
+              className="ms-auto inline-grid size-9 place-items-center rounded-lg bg-accent-soft text-accent-soft-foreground transition-colors hover:bg-accent/20 hover:text-accent-soft-foreground focus-visible:outline-2 focus-visible:outline-focus"
             >
               <ExternalLink {...IC} />
             </Link>
@@ -1284,7 +1290,8 @@ function RequestsTile({
   ]
 
   return (
-    <Flex vertical gap={12}>
+    // Sütunun kalanını doldurur (yüklenirken yükleyici tam ortada)
+    <Flex vertical gap={12} className="min-h-0 flex-1">
       <Flex wrap align="center" className="gap-x-3 gap-y-2">
         <Flex vertical className="min-w-0 flex-1">
           <Title level={2} className={H2}>
