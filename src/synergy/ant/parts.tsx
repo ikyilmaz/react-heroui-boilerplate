@@ -138,22 +138,49 @@ export function CellValue({ r, col }: { r: WorkRequest; col: Column }) {
   return <Text className="text-current [font:inherit]">{String(v)}</Text>
 }
 
-/** Boş durum: kısa metin, isteğe bağlı ikon. */
+/** Hayalet satırların çubuk genişlikleri (sabit: her çizimde aynı görünür). */
+const GHOST_ROWS = ['w-3/5', 'w-2/5', 'w-1/2', 'w-1/3']
+
+/**
+ * Boş durum: kısa metin, isteğe bağlı ikon. `ghost`: altında seçimden sonra gelecek listeyi
+ * sezdiren durağan, soluk satır iskeleti (seçim bekleyen alanlar).
+ */
 export function EmptyNote({
   text,
   icon,
+  ghost = false,
   className,
 }: {
   text: string
   icon?: LucideIcon
+  ghost?: boolean
   className?: string
 }) {
   return (
     <Flex vertical align="center" gap={12} className={cn('px-4 py-12', className)}>
       {icon && <TintIcon icon={icon} />}
-      <Text type="secondary" className="max-w-xs text-center text-sm">
+      {/* `text-pretty`: son kelime tek başına alt satıra düşmez */}
+      <Text type="secondary" className="max-w-sm text-center text-sm text-pretty">
         {text}
       </Text>
+      {ghost && (
+        <Flex vertical gap={10} aria-hidden className="mt-4 w-full max-w-md opacity-60">
+          {GHOST_ROWS.map((w, i) => (
+            <Flex
+              key={i}
+              align="center"
+              gap={12}
+              className="rounded-xl bg-surface-secondary/60 p-3"
+            >
+              <Flex className="block size-6 shrink-0 rounded-lg bg-surface-secondary" />
+              <Flex vertical gap={6} className="min-w-0 flex-1">
+                <Flex className={cn('block h-2.5 rounded-full bg-surface-secondary', w)} />
+                <Flex className="block h-2 w-1/4 rounded-full bg-surface-secondary" />
+              </Flex>
+            </Flex>
+          ))}
+        </Flex>
+      )}
     </Flex>
   )
 }
@@ -287,8 +314,8 @@ const BANDS = {
 } satisfies Record<string, BandStyle>
 
 /**
- * Bandın görünüşü. `hero` (karşılama, kutu bandı, İK bandı): dolu birincil renk; `record` (talep
- * başlığı): beyaz.
+ * Bandın görünüşü. `hero` (karşılama, kutu bandı): dolu birincil renk; `record` (talep başlığı, İK
+ * bandı): beyaz.
  */
 export function useBand(kind: 'hero' | 'record' = 'hero'): BandStyle {
   return kind === 'record' ? BANDS.white : BANDS.accent

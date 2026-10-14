@@ -23,7 +23,10 @@ import type { WidgetSize } from '@/synergy/dashboard/model'
  * geniş boyutlarda iki sütun, kısa boyutlarda satır sayısı kadar.
  */
 
-/** Satır: solda ikon ya da avatar, ortada ad ve not, sağda zaman. */
+/**
+ * Satır: solda ikon ya da avatar, ortada ad ve not, sağda zaman. İkonsuz satırda (Duyurular: her
+ * satırda aynı ikon tekrar ederdi) solda yalnızca okunmamış noktasının sabit oluğu; zaman ada hizalı.
+ */
 function Row({
   lead,
   icon: Icon,
@@ -42,28 +45,42 @@ function Row({
   extra?: ReactNode
   unread?: boolean
 }) {
+  const bare = !lead && !Icon
   return (
     <Flex
       role="listitem"
-      align="center"
-      gap={10}
-      className="min-h-11 shrink-0 rounded-xl px-1.5 py-1 hover:bg-surface-secondary"
+      align={bare ? 'start' : 'center'}
+      gap={bare ? 8 : 10}
+      className={cn(
+        'min-h-11 shrink-0 rounded-xl px-1.5 py-1 hover:bg-surface-secondary',
+        bare && 'py-1.5',
+      )}
     >
-      {lead ?? (
-        <Flex
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-soft-foreground"
-        >
-          {Icon && <Icon {...IC} size={16} />}
+      {bare ? (
+        // Okunmamış noktasının oluğu: nokta olsa da olmasa da adlar aynı hizada
+        <Flex aria-hidden className="block w-2 shrink-0 pt-1.5">
+          {unread && <Flex className="block size-1.5 rounded-full bg-accent" />}
         </Flex>
+      ) : (
+        (lead ?? (
+          <Flex
+            aria-hidden
+            className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-soft-foreground"
+          >
+            {Icon && <Icon {...IC} size={16} />}
+          </Flex>
+        ))
       )}
       <Flex vertical className="min-w-0 flex-1">
         <Flex align="center" gap={6} className="min-w-0">
-          {unread && (
+          {unread && !bare && (
             <Flex aria-hidden className="block size-1.5 shrink-0 rounded-full bg-accent" />
           )}
           <Typography.Text
-            className={cn('block min-w-0 truncate text-sm leading-snug', unread && 'font-medium')}
+            className={cn(
+              'block min-w-0 truncate text-sm leading-snug',
+              unread ? 'font-semibold' : bare && 'text-foreground/80',
+            )}
           >
             {label}
           </Typography.Text>
@@ -131,7 +148,6 @@ export function AnnouncementsWidget({ size }: { size: WidgetSize }) {
         {announcements.map((a) => (
           <Row
             key={a.id}
-            icon={Bell}
             label={a.title}
             note={a.summary}
             time={relative(a.date)}

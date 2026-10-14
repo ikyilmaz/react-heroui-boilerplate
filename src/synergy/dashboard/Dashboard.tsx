@@ -327,17 +327,17 @@ function Toolbar({
   onAdd: (kind: WidgetKind) => void
 }) {
   const [adding, setAdding] = useState(false)
-  // Görüntü modunda yer kaplamaz: sağ altta yüzen düzenle düğmesi
+  // Görüntü modunda yer kaplamaz: sağ alt köşede, son kartın yuvarlak köşesine oturan küçük, sakin
+  // düzenle düğmesi (dolu ve büyükken kartın içeriğini örtüyordu); üzerine gelince birincil renk
   if (!editing)
     return canEdit ? (
-      <Flex className="fixed end-6 bottom-6 z-40">
+      <Flex className="fixed end-3 bottom-3 z-40">
         <Tip label="Panoyu düzenle" placement="left">
           <Button
-            type="primary"
             aria-label="Panoyu düzenle"
             onClick={() => onEdit(true)}
-            icon={<Pencil {...IC} size={18} />}
-            className="size-12 animate-pop rounded-full bg-accent text-accent-foreground shadow-(--overlay-shadow) hover:bg-accent/90"
+            icon={<Pencil {...IC} size={16} />}
+            className="size-9 animate-pop rounded-full border-0 bg-surface text-muted ring-1 ring-border hover:bg-accent! hover:text-accent-foreground!"
           />
         </Tip>
       </Flex>

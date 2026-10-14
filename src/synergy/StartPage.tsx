@@ -436,6 +436,12 @@ function Greeting({
         body: cn('flex h-full flex-col justify-center gap-2 p-5', small && 'gap-1.5 p-4'),
       }}
     >
+      {/* Tarih başlığın üstünde küçük bir üst satır */}
+      {!small && (
+        <Text className="text-xs font-medium tracking-wide text-current! uppercase opacity-80">
+          {formatLongDate(now)} · {formatWeekday(now)}
+        </Text>
+      )}
       <Flex align="center" gap={12}>
         <Icon {...IC_BLOCK} className="size-6 shrink-0" />
         <Title
@@ -450,19 +456,17 @@ function Greeting({
         <Refresh
           pending={refreshing}
           onPress={onRefresh}
-          className="text-current! hover:bg-current/10!"
+          className="text-current! opacity-60 hover:bg-current/10! hover:opacity-100 focus-visible:opacity-100"
         />
       </Flex>
       <Paragraph className={cn('m-0! text-current!', small && 'line-clamp-2 text-sm')}>
         {before}
-        <Count value={pending} className="font-semibold" />
+        <Count
+          value={pending}
+          className={cn('font-display font-semibold tabular-nums', !small && 'text-lg')}
+        />
         {after}
       </Paragraph>
-      {!small && (
-        <Text className="text-sm text-current! opacity-75">
-          {formatLongDate(now)} · {formatWeekday(now)}
-        </Text>
-      )}
     </Card>
   )
 }
@@ -944,8 +948,8 @@ const CATEGORY =
 /**
  * Kategori sekmeleri: ortak sekme şeridi (`tabs/TabStrip.tsx`), iş bloğu kartının üstünde. Seçili
  * sekme kartla aynı yüzeyde ve kartın konturuyla (`SHEET_ON_SURFACE`): kontur içbükey kavisler
- * boyunca kartın üst çizgisine kesintisiz iner; sekmeler şeridi eşit paylaşır. Birincil renk ikon ve
- * sayıda.
+ * boyunca kartın üst çizgisine kesintisiz iner; sekmeler şeridi eşit paylaşır. Sırası ikon, ad,
+ * sayı (sayı adın hemen arkasında); birincil renk yalnızca seçili sekmenin ikon ve sayısında.
  */
 function Categories({
   selected,
@@ -991,6 +995,13 @@ function Categories({
                 onClick={() => onSelect(b.id)}
                 className={cn(CATEGORY, isSel ? 'text-foreground' : 'text-foreground/70')}
               >
+                <Icon
+                  {...IC_BLOCK}
+                  className={cn(
+                    'size-5 shrink-0',
+                    isSel ? 'text-accent-soft-foreground' : 'text-muted',
+                  )}
+                />
                 {/* Dar blokta (48rem altı) etiket sığmıyor ("Bekle…"); orada ikon + sayı, ad aria-label'da */}
                 <Text
                   className={cn(
@@ -1000,8 +1011,13 @@ function Categories({
                 >
                   {b.label}
                 </Text>
-                <Icon {...IC_BLOCK} className="size-5 shrink-0 text-accent-soft-foreground" />
-                <Text className="ms-auto font-display text-2xl leading-none font-bold text-accent-soft-foreground!">
+                {/* Sayı etiketin hemen arkasında: seçili sekmede birincil, diğerlerinde soluk */}
+                <Text
+                  className={cn(
+                    'ms-0.5 font-display text-xl leading-none font-bold tabular-nums',
+                    isSel ? 'text-accent-soft-foreground!' : 'text-muted!',
+                  )}
+                >
                   <Count value={n} />
                 </Text>
               </Button>
@@ -1320,6 +1336,7 @@ function RequestsTile({
         <EmptyNote
           icon={MousePointerClick}
           text={isDraft ? START_LABELS.pickDraft : START_LABELS.pickProcess}
+          ghost
           className="py-16"
         />
       ) : loading && !phone ? (

@@ -30,7 +30,7 @@ import { tone } from '@/synergy/shared/tokens'
 import { CURRENT_USER, mainBoxes, type BoxId } from '@/synergy/shared/workflowData'
 import { CARD, IC, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { boxLink } from '@/synergy/paths'
-import type { WidgetSize } from '@/synergy/dashboard/model'
+import { WIDGETS, type WidgetSize } from '@/synergy/dashboard/model'
 
 /*
  * Başlangıç panosunun yeni widget'ları: saat, hava durumu, asistan, takvim, denetimler, notlar.
@@ -121,8 +121,12 @@ export function ClockWidget({ size }: { size: WidgetSize }) {
       </WidgetCard>
     )
   return (
-    <WidgetCard className={size.id === 'l' ? 'justify-between' : 'justify-center'}>
-      <Flex className="flex flex-col gap-1">
+    // Başlık (Duyurular gibi) Orta ve Büyük'te; Küçük ve Şerit başlıksız
+    <WidgetCard>
+      {!small && <WidgetTitle icon={WIDGETS.clock.icon}>{WIDGETS.clock.title}</WidgetTitle>}
+      <Flex
+        className={cn('flex flex-col gap-1', size.id === 'l' ? 'flex-1' : 'flex-1 justify-center')}
+      >
         <Text className="flex items-baseline gap-1 font-display leading-none font-bold text-current tabular-nums">
           <Text className={cn('text-current', small ? 'text-4xl' : 'text-5xl')}>{hm}</Text>
           {!small && <Text className="text-base text-muted">{sec}</Text>}
@@ -220,11 +224,27 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
     )
   // Dar (3 sütun): bugün ve iki gün
   const days = data.days.slice(0, size.id === 'l' ? 5 : size.id === 'n' ? 2 : 3)
+  // Orta, Dar ve Büyük'te başlık satırı var (şehir onun sağında); Küçük'te şehir sıcaklığın üstünde
+  const titled = size.id !== 's'
+  const title = (
+    <WidgetTitle
+      icon={WIDGETS.weather.icon}
+      extra={
+        <Text tone="muted" className="shrink-0 text-xs">
+          {CITY.name}
+        </Text>
+      }
+    >
+      {WIDGETS.weather.title}
+    </WidgetTitle>
+  )
   const current = (
     <Flex className="flex min-w-0 flex-col justify-between gap-1">
-      <Text tone="muted" className="truncate text-xs">
-        {CITY.name}
-      </Text>
+      {!titled && (
+        <Text tone="muted" className="truncate text-xs">
+          {CITY.name}
+        </Text>
+      )}
       <Flex className="flex items-center gap-2">
         <now.icon {...IC} size={size.id === 's' ? 26 : 32} className="shrink-0 text-accent" />
         <Text className="font-display text-4xl leading-none font-bold text-current tabular-nums">
@@ -273,6 +293,7 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
   )
   return size.id === 'l' ? (
     <WidgetCard>
+      {title}
       <Flex className="flex items-start justify-between gap-3">
         {current}
         <Flex className="flex flex-col gap-1 text-xs text-muted">
@@ -289,9 +310,12 @@ export function WeatherWidget({ size }: { size: WidgetSize }) {
       <Flex className="block border-t border-border pt-3">{forecast}</Flex>
     </WidgetCard>
   ) : (
-    <WidgetCard className="flex-row items-center gap-4">
-      {current}
-      {forecast}
+    <WidgetCard>
+      {title}
+      <Flex className="flex min-h-0 flex-1 items-center gap-4">
+        {current}
+        {forecast}
+      </Flex>
     </WidgetCard>
   )
 }

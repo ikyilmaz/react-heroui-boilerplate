@@ -137,6 +137,7 @@ function BoxView({ box, processId }: { box: WorkBox; processId: string | undefin
                 <EmptyNote
                   icon={MousePointerClick}
                   text={box.id === 'taslaklar' ? START_LABELS.pickDraft : START_LABELS.pickProcess}
+                  ghost
                   className="py-16"
                 />
               </Card>
@@ -177,9 +178,10 @@ function ProcessList({
       )}
       classNames={{ body: 'flex flex-col gap-1 p-2 @4xl:min-h-0 @4xl:flex-1' }}
     >
-      {/* Üstte süzgeçler: arama ve sıralama (geçmiş kutularında tarih aralığı da) */}
-      <Flex className="flex shrink-0 flex-col gap-2 p-1 pb-2">
-        <Flex className="flex items-center gap-1.5">
+      {/* Üstte süzgeçler: arama ve sıralama (geçmiş kutularında tarih aralığı da). Satır ızgara
+          kartının başlık satırıyla aynı hizada: üstten 16px, 40px yüksek, ortalı */}
+      <Flex className="flex shrink-0 flex-col gap-2 p-1 pt-2 pb-2">
+        <Flex className="flex min-h-10 items-center gap-1.5">
           <SearchField
             value={settings.search}
             onChange={(search) => onChange({ ...settings, search })}

@@ -269,32 +269,35 @@ function ModuleSwitcher({ current, className }: { current: ModuleDef; className?
           </Flex>
         ),
       }))}
-      className={cn('w-56 bg-surface @6xl:hidden', className)}
+      className={cn('w-56 @6xl:hidden', className)}
     />
   )
 }
 
 /* --- Band -------------------------------------------------------------------------------------- */
 
-/** Modül bandı: simge, ad, kayıt sayısı; sağda modülün denetimleri. Dolu birincil renkte. */
+/**
+ * Modül bandı: simge, ad, kayıt sayısı; sağda modülün denetimleri. Talep bandı gibi yüzey renginde;
+ * birincil renk yalnızca simge kutusunda ve Yeni düğmesinde.
+ */
 function Band({ def, count, children }: { def: ModuleDef; count: number; children?: ReactNode }) {
-  const band = useBand()
+  const band = useBand('record')
   const Icon = def.icon
   const parent = def.parent ? PARENTS[def.parent].label : null
   return (
-    <Card className={cn('shrink-0', band.band)} classNames={{ body: 'p-5' }}>
+    <Card className={cn(CARD, 'shrink-0', band.band)} classNames={{ body: 'p-5' }}>
       <Flex wrap align="center" gap={12}>
         <ModuleSwitcher current={def} />
         <Flex
           aria-hidden
           align="center"
           justify="center"
-          className="hidden size-11 shrink-0 rounded-xl bg-current/10 @6xl:flex"
+          className="hidden size-11 shrink-0 rounded-xl bg-accent-soft text-accent-soft-foreground @6xl:flex"
         >
           <Icon {...IC} size={22} />
         </Flex>
         <Flex vertical className="min-w-48 flex-1">
-          <Typography.Text className="text-xs text-current opacity-75">
+          <Typography.Text className="text-xs text-muted">
             {parent ? `${HR_LABELS.title} · ${parent}` : HR_LABELS.title}
           </Typography.Text>
           <Flex align="baseline" gap={12} className="min-w-0">
@@ -304,7 +307,7 @@ function Band({ def, count, children }: { def: ModuleDef; count: number; childre
             >
               {def.label}
             </Typography.Title>
-            <Typography.Text className="font-display text-lg font-semibold text-current opacity-70">
+            <Typography.Text className="font-display text-lg font-semibold text-muted tabular-nums">
               {count}
             </Typography.Text>
           </Flex>
@@ -326,7 +329,6 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
   const [st, setSt] = useRemembered<ListState>(`hr:${def.id}`, initial)
   const set = (patch: Partial<ListState>) => setSt((s) => ({ ...s, ...patch }))
   const [deleting, setDeleting] = useState<HrRecord | null>(null)
-  const onBand = useBand().on
   // Düzenleme kartı yanda mı (bölme `@6xl`'den geniş: 72rem) yoksa altta
   const wide = usePaneMin(72, useTabScroller())
   const slide = useTransition({ duration: 0.3, ease: [0.22, 1, 0.36, 1] })
@@ -438,7 +440,7 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
         <SearchField
           value={st.search}
           onChange={(search) => set({ search, page: 1 })}
-          className="w-64 bg-surface"
+          className="w-64"
         />
         {def.company && (
           <Select
@@ -451,7 +453,7 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
               { value: 'Atanmamış', label: HR_LABELS.unassigned },
               ...companies.map((c) => ({ value: c.id, label: c.description as string })),
             ]}
-            className="w-56 bg-surface"
+            className="w-56"
           />
         )}
         <Tip label={HR_LABELS.clearFilters}>
@@ -463,13 +465,13 @@ function ModuleView({ def, recordId }: { def: ModuleDef; recordId: string | unde
             onClick={() =>
               set({ search: '', sort: null, status: 'Aktif', company: 'Tümü', page: 1 })
             }
-            className="text-current hover:bg-current/10! disabled:text-current/40!"
+            className="text-muted hover:text-foreground!"
           />
         </Tip>
         <Button
+          type="primary"
           onClick={() => navigate(hrLink(def.id, 'yeni'))}
           icon={<Plus {...IC} />}
-          className={cn('border-0', onBand)}
         >
           {HR_LABELS.new}
         </Button>

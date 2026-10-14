@@ -163,7 +163,7 @@ function UserAvatar({ size, className }: { size: number; className?: string }) {
       size={size}
       aria-label={CURRENT_USER.name}
       className={cn(
-        'inline-flex! shrink-0 items-center justify-center bg-accent font-semibold text-accent-foreground',
+        'inline-flex! shrink-0 items-center justify-center bg-accent-soft font-semibold text-accent-soft-foreground',
         className,
       )}
     >
@@ -887,6 +887,8 @@ const ShellActions = memo(function ShellActions({
         isOpen={panel === 'news'}
         onOpenChange={(o) => onPanel(o ? 'news' : null)}
       />
+      {/* İletişim | görünüm ayracı */}
+      <Divider orientation="vertical" className="top-0 mx-1 h-4" />
       <Tip label="Tema ayarları" placement="bottom">
         <Button
           type="text"
@@ -909,7 +911,7 @@ const ShellActions = memo(function ShellActions({
       <Tip label={`${CURRENT_USER.name} · ${CURRENT_USER.department}`} placement="bottom">
         <UserAvatar
           size={large ? 40 : 32}
-          className={cn('ms-1', large ? 'text-sm' : 'text-[0.8125rem]')}
+          className={cn('ms-2', large ? 'text-sm' : 'text-[0.8125rem]')}
         />
       </Tip>
     </Flex>

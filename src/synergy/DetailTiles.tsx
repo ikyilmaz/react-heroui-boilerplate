@@ -50,6 +50,7 @@ import {
   type HistoryEntry,
   type ChildLink,
   type LineItem,
+  type RequestStatus,
   type WorkRequest,
 } from '@/synergy/shared/workflowData'
 import type { HistoryViewOptions } from '@/synergy/shared/historyView'
@@ -66,11 +67,22 @@ const TITLE = 'm-0 font-display text-lg'
 
 /* --- Form -------------------------------------------------------------------------------------- */
 
+/**
+ * Form bölümü: başlık alan etiketlerinden bir kademe güçlü (koyu, kalın); ilki dışındaki bölümlerin
+ * üstünde ince bir ayraç, böylece bölümler alan ızgarasından ayrışır. Form görününce bölümler sırayla
+ * 40ms arayla yükselir (CSS `rise`, yalnızca takılınca; hız `--motion-time` ile, Kapalı'da anında).
+ */
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
   return (
-    <Flex vertical gap={12} role="group" aria-labelledby={id}>
-      <Title level={3} id={id} className="m-0 text-sm font-medium text-muted">
+    <Flex
+      vertical
+      gap={12}
+      role="group"
+      aria-labelledby={id}
+      className="animate-rise border-t border-border pt-6 first:border-t-0 first:pt-0 nth-2:[animation-delay:calc(40ms*var(--motion-time,1))] nth-3:[animation-delay:calc(80ms*var(--motion-time,1))] nth-4:[animation-delay:calc(120ms*var(--motion-time,1))] nth-5:[animation-delay:calc(160ms*var(--motion-time,1))]"
+    >
+      <Title level={3} id={id} className="m-0 text-sm font-semibold text-foreground">
         {title}
       </Title>
       {children}
@@ -263,14 +275,25 @@ export function FileBody({ doc, onShowForm }: { doc: FlowDocument; onShowForm: (
 
 /* --- Akış özellikleri -------------------------------------------------------------------------- */
 
+/** Durum özelliğinin değeri bilinen bir talep durumu mu (öyleyse durum etiketiyle gösterilir). */
+const STATUSES: readonly string[] = [
+  'Onay bekliyor',
+  'Devam ediyor',
+  'Tamamlandı',
+  'Reddedildi',
+  'Taslak',
+] satisfies RequestStatus[]
+const isStatus = (v: string | null): v is RequestStatus => !!v && STATUSES.includes(v)
+
 /**
- * Özellikler: ad solda soluk, değer sağda tam renk; arada noktalı kılavuz (içindekiler tablosu
- * gibi), satırlar arasında çizgi yok. Uzun değer sağa yaslı sarar.
+ * Özellikler: ad solda soluk, değer sağda tam renk ve orta kalınlıkta; arada noktalı kılavuz
+ * (içindekiler tablosu gibi), satırlar arasında çizgi yok. Uzun değer sağa yaslı sarar. Durum
+ * değeri durum etiketiyle (`StatusTag`, listedeki gibi).
  */
 export function PropertiesList({ items }: { items: FlowProperty[] }) {
   if (!items.length) return <Text type="secondary">{VIEWER_LABELS.propertiesEmpty}</Text>
   return (
-    <Flex vertical role="list" aria-label="Özellikler" className="gap-3">
+    <Flex vertical role="list" aria-label="Özellikler" className="gap-4">
       {items.map((it) => (
         <Flex key={it.name} role="listitem" align="baseline" gap={8} className="min-w-0">
           <Text type="secondary" className="shrink-0 text-sm leading-5">
@@ -281,9 +304,13 @@ export function PropertiesList({ items }: { items: FlowProperty[] }) {
             aria-hidden
             className="block min-w-4 flex-1 self-end border-b-2 border-dotted border-border mb-[0.3em]"
           />
-          <Text className="max-w-[60%] text-end text-[0.9375rem] leading-5 break-words">
-            {it.value ?? '-'}
-          </Text>
+          {isStatus(it.value) ? (
+            <StatusTag status={it.value} />
+          ) : (
+            <Text className="max-w-[60%] text-end text-[0.9375rem] leading-5 font-medium break-words">
+              {it.value ?? '-'}
+            </Text>
+          )}
         </Flex>
       ))}
     </Flex>

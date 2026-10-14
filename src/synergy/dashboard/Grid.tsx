@@ -196,6 +196,10 @@ export function Grid({
   const shown = view ? view.layout : items
   const rows = Math.max(1, ...shown.map((p) => p.y + p.h))
   const ghost = view && boxOf(view.target)
+  // Giriş sırası (yukarıdan aşağı, soldan sağa): hücreler ilk takıldığında 40ms arayla yükselir
+  const order = new Map(
+    [...items].sort((a, b) => a.y - b.y || a.x - b.x).map((p, i) => [p.kind, i]),
+  )
 
   return (
     <Flex className={cn('relative block', className)} style={{ height: rows * yStep + GAP }}>
@@ -221,7 +225,8 @@ export function Grid({
             data-grid-cell
             onPointerDown={edit ? (e) => begin(e, p, 'move') : undefined}
             className={cn(
-              'absolute top-0 left-0 block',
+              // `animate-rise` yalnızca takılınca oynar (sınıf hep durur: düzenle / bitti yeniden oynatmaz)
+              'absolute top-0 left-0 block animate-rise',
               edit && 'touch-none',
               active
                 ? 'z-30'
@@ -231,6 +236,7 @@ export function Grid({
               transform: `translate(${b.left}px, ${b.top}px)`,
               width: b.width,
               height: b.height,
+              animationDelay: `calc(${(order.get(p.kind) ?? 0) * 40}ms * var(--motion-time, 1))`,
             }}
           >
             {renderCell(p)}

@@ -4,17 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { MENU_LABELS } from '@/synergy/shared/menuTree'
 import { LayoutGroup, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, FileText, History, Info, Trash2, X } from 'lucide-react'
-import {
-  Avatar,
-  Button,
-  Card,
-  Flex,
-  Popover,
-  Table,
-  Tag,
-  Typography,
-  type TableColumnsType,
-} from 'antd'
+import { Button, Card, Flex, Popover, Table, Tag, Typography, type TableColumnsType } from 'antd'
 import {
   deleteDraft,
   isRead,
@@ -847,19 +837,14 @@ function Actions({
           type={isDefault ? 'primary' : 'default'}
           disabled={!enable}
           onClick={() => onRun(id)}
-          className={isDefault ? on : outline}
-          icon={
-            kind === 'reject' ? (
-              <Avatar
-                aria-hidden
-                size={20}
-                icon={<Icon {...IC} size={14} />}
-                className="inline-flex! items-center justify-center bg-danger text-danger-foreground"
-              />
-            ) : (
-              <Icon {...IC} />
-            )
+          // Reddet: diğerleri gibi çerçeveli, yalnızca ikon ve yazı tehlike renginde (dolu kırmızı
+          // kare yok); şeritte (birincil zemin) okunurluk için şeridin yazı renginde kalır
+          className={
+            isDefault
+              ? on
+              : cn(outline, kind === 'reject' && !onStrip && 'text-danger hover:text-danger!')
           }
+          icon={<Icon {...IC} />}
         >
           {description}
         </Button>
@@ -1073,7 +1058,7 @@ function NavTrail({
                           ? 'invisible h-2.5'
                           : id === hovered
                             ? 'h-3.5 bg-current/70'
-                            : 'h-2.5 bg-current/25 group-hover:bg-current/45',
+                            : 'h-2.5 bg-current/35 group-hover:bg-current/55',
                       )}
                     />
                   )}
@@ -1083,7 +1068,7 @@ function NavTrail({
             {/* Sıra: listedeki yeri (ör. 2 / 8); ekran okuyucu düğmenin adından okur */}
             <Typography.Text
               aria-hidden
-              className="text-[0.6875rem] leading-none text-current tabular-nums opacity-60"
+              className="text-xs leading-none font-medium text-current tabular-nums opacity-75"
             >
               {index + 1} / {ids.length}
             </Typography.Text>

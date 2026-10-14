@@ -95,13 +95,13 @@ export function CompanyAdmins({
   )
   const controls = (
     <>
-      <SearchField value={query} onChange={setQuery} className="w-64 bg-surface" />
+      <SearchField value={query} onChange={setQuery} className="w-64" />
       <Select
         aria-label={HR_LABELS.company}
         value={company}
         onChange={(v) => v && setCompany(String(v))}
         options={companies.map((c) => ({ value: c.id, label: c.description as string }))}
-        className="w-60 bg-surface"
+        className="w-60"
       />
     </>
   )
@@ -233,7 +233,7 @@ export function PropertyRelations({
       list.map((r, i) => ({ ...r, order: i })),
     )
 
-  const controls = <SearchField value={query} onChange={setQuery} className="w-64 bg-surface" />
+  const controls = <SearchField value={query} onChange={setQuery} className="w-64" />
   const box = cn(CARD, 'shrink-0')
   const boxBody = { body: 'flex flex-col gap-1 p-3' }
   return (

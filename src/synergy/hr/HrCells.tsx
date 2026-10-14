@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import { Avatar, Flex, Tag, Typography } from 'antd'
-import { avatarColor, initials } from '@/synergy/shared/workflowData'
+import { initials } from '@/synergy/shared/workflowData'
 import {
   formatDay,
   formatMoney,
@@ -22,13 +22,8 @@ const { Text } = Typography
 const userOf = (r: HrRecord, col: Column) =>
   col.key === 'userId' ? hrRecord('kullanicilar', r.userId) : r
 
-/** Avatar boyutları (px) ve isme göre sabit renkleri. */
+/** Avatar boyutları (px); renk tek: yumuşak birincil (kişi başına renk yok). */
 const AVATAR_SIZE = { sm: 32, md: 40, lg: 48 } as const
-const AVATAR_TONE = {
-  success: 'bg-success/15 text-success',
-  accent: 'bg-accent-soft text-accent-soft-foreground',
-  default: 'bg-default text-default-foreground',
-} as const
 
 /** Boş değer. */
 const Dash = () => <Text type="secondary">-</Text>
@@ -49,7 +44,7 @@ export function UserAvatar({
         // `!`: antd sayı boyutlu avatarda yazı boyutunu satır içi yazar (boyutun yarısı)
         'shrink-0 text-xs! font-semibold',
         size === 'lg' && 'text-base!',
-        AVATAR_TONE[avatarColor(name)],
+        'bg-accent-soft text-accent-soft-foreground',
       )}
     >
       {initials(name)}

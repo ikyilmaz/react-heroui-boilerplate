@@ -201,7 +201,8 @@ export function RequestGrid({
       className={cn(CARD, '@4xl:flex @4xl:min-h-0 @4xl:flex-1 @4xl:flex-col')}
       classNames={{ body: 'flex flex-col gap-3 p-4 @4xl:min-h-0 @4xl:flex-1' }}
     >
-      <Flex wrap align="center" gap={8} className="shrink-0 px-1">
+      {/* 40px yüksek: soldaki süreç listesinin arama satırıyla aynı hizada */}
+      <Flex wrap align="center" gap={8} className="min-h-10 shrink-0 px-1">
         {/* `min-w-48`: telefonda araçların yanında tek harfe ("S") sıkışıyordu; sığmazsa alt satıra iner */}
         <Typography.Title level={2} className="m-0 min-w-48 flex-1 font-display text-lg truncate">
           {label}

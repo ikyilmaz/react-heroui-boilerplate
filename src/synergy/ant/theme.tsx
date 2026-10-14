@@ -283,7 +283,13 @@ export function tokensOf(v: Resolved, dark: boolean, motion: boolean, speed: num
       Cascader: field,
       TreeSelect: field,
       Mentions: field,
-      Form: { labelColor: v.muted, verticalLabelPadding: '0 0 6px', itemMarginBottom: 0 },
+      // Alan etiketi bölüm başlığından bir kademe küçük ve soluk (bölüm başlığı: `Section`)
+      Form: {
+        labelColor: v.muted,
+        labelFontSize: Math.round(px * 0.8125),
+        verticalLabelPadding: '0 0 6px',
+        itemMarginBottom: 0,
+      },
       Menu: {
         itemBg: 'transparent',
         itemSelectedBg: v.accent,
@@ -344,9 +350,13 @@ const FIELD = {
 
 /**
  * Çerçeveli düğmenin çerçevesi kontur kalınlığında (yalnızca o; `lineWidth` tokenı metin ve ikon
- * düğmelerinin saydam çerçevesini de kalınlaştırırdı).
+ * düğmelerinin saydam çerçevesini de kalınlaştırırdı). Basınca hafifçe küçülür (antd'nin `all`
+ * geçişiyle, hareket hızına bağlı; Kapalı'da anında); sekmeler hariç (yaprak ayrı katmanda kalır).
  */
-const BUTTON = { className: '[&.ant-btn-variant-outlined]:border-(length:--field-border-width)' }
+const BUTTON = {
+  className:
+    '[&.ant-btn-variant-outlined]:border-(length:--field-border-width) not-disabled:not-[[role=tab]]:active:scale-[0.97]',
+}
 
 /** Dalga yok, kartlar çerçevesiz (sabit nesneler: ConfigProvider bağlamı her çizimde değişmesin). */
 const WAVE = { disabled: true }
