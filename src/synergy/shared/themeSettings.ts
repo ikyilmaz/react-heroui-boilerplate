@@ -149,6 +149,13 @@ export const RADII = [0.25, 0.5, 1] as const
  */
 export const SQUIRCLE_SCALE = 1.6
 
+/**
+ * İç içe köşelerin çarpanı (`--corner-k`): içteki kutunun köşesi = dıştakinin köşesi − k × aradaki
+ * boşluk. Yuvarlakta 1; squircle'da (`superellipse(2)`, üs 4) eğri köşeden daha az kestiği için boşluk
+ * 45°'de de aynı kalsın diye (1 − 1/√2) / (1 − 2^(−1/4)) ≈ 1.84.
+ */
+export const SQUIRCLE_K = +((1 - Math.SQRT1_2) / (1 - 2 ** -0.25)).toFixed(3)
+
 /** Birincil renkler (OKLCH); `cls` önizleme sınıfı (sabit metin; Tailwind görsün). */
 export const COLORS: {
   id: ColorId
@@ -207,11 +214,11 @@ const VARS = [
   '--background-texture-size',
   '--default',
   '--radius',
-  '--field-radius',
   '--pill-radius',
   '--corner-shape',
   '--corner-concave',
   '--corner-scale',
+  '--corner-k',
   '--border-width',
   '--surface-shadow',
   '--field-fill',
@@ -458,11 +465,11 @@ function variables(
     // İçbükey kavisler (sekmelerin kaba bağlandığı köşeler): squircle'ın içbükeyi (yoksa `scoop`)
     out['--corner-concave'] = 'superellipse(-2)'
     out['--corner-scale'] = String(SQUIRCLE_SCALE)
+    out['--corner-k'] = String(SQUIRCLE_K)
   }
   if (s.radius !== d.radius || squircle) {
     const f = squircle ? SQUIRCLE_SCALE : 1
     out['--radius'] = `${+(s.radius * f).toFixed(3)}rem`
-    out['--field-radius'] = `${+(Math.min(s.radius * 2, 1.25) * f).toFixed(3)}rem`
     // Daire ve haplar: en büyük boyda tam yuvarlak, diğerlerinde alanların yarıçapı (AntTheme'deki
     // `borderRadius` ile aynı hesap; tema dosyasındaki karşılığı hesabı köke yazdığı için açık değer)
     out['--pill-radius'] =

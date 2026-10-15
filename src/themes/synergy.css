@@ -20,7 +20,6 @@
     /* Kenarlık kalınlığı ve boşluk birimi (tema paneli değiştirir) */
     --border-width: 1px;
     --spacing: 0.25rem;
-    --field-radius: 1rem;
     /* Form alanları (antd teması okur): çerçeve kalınlığı kartın konturuyla aynı (0: dolgulu,
        çerçevesiz), dolgu ve üzerine gelince dolgu, gölge (tema paneli › kart stili / gölge) */
     --field-border-width: 1px;

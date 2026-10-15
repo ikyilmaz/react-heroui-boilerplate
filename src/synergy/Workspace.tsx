@@ -62,6 +62,7 @@ import { Divider, Pane, type Entered, type PaneSlot } from '@/synergy/tabs/Panes
 import {
   ACCENT_TONE,
   GROUP_TONE,
+  STRIP_GEOMETRY,
   STRIP_VARS,
   SHEET,
   SHEET_RING,
@@ -659,12 +660,13 @@ export function Workspace({
          * kabın köşesine yetmezse o kadar ileride), üstte (`z-10`), tıklamayı şerit almaz
          */}
         {/* Başlat düğmesi: geri / ileri hapıyla aynı boy, köşe ve hiza; aradaki kanal `--tab-gap`
-            (hap ile ilk sekme arasındakiyle aynı) */}
+            (hap ile ilk sekme arasındakiyle aynı). Yalnızca ölçüler: düğme yuvarlağı kendi yazar,
+            buradan açılan başlat kutusu temanın köşe biçimini (squircle) korur */}
         {lead && (
           <Flex
             className={cn(
               'h-(--tab-h) shrink-0 items-end pe-(--tab-gap) pb-(--tab-gap)',
-              STRIP_VARS,
+              STRIP_GEOMETRY,
               tall && ROW_H.tall,
             )}
           >

@@ -101,7 +101,7 @@ import {
   SortMenu,
   compareBy,
 } from '@/synergy/ant/parts'
-import { CARD, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { CARD, CARD_INNER_P4, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { Loader } from '@/synergy/ant/Loader'
 import { GRID_ROW, GRID_TABLE } from '@/synergy/ant/grid'
 import { Count, Indicator } from '@/synergy/ant/motion'
@@ -493,11 +493,13 @@ function AppTile({
       align="center"
       gap={6}
       className={cn(
-        'group/app relative h-full min-w-0 rounded-2xl px-2 py-2 transition duration-200 hover:-translate-y-0.5 hover:bg-surface-secondary',
+        // Köşe kartınkiyle eş merkezli (kartın `p-4` gövdesinde)
+        'group/app relative h-full min-w-0 px-2 py-2 transition duration-200 hover:-translate-y-0.5 hover:bg-surface-secondary',
+        CARD_INNER_P4,
         // Dolu karo (yatay widget): hücrenin yüksekliğini kaplayan yumuşak zeminli kart, ikon büyük
         fill && 'justify-center gap-2.5 bg-surface-secondary/60',
         // Basık çip: ikon solda, ad yanında, yıldız sağ uçta ortalı
-        chip && 'flex-row justify-start gap-2 rounded-xl bg-surface-secondary/60 px-2 py-1 pe-7',
+        chip && 'flex-row justify-start gap-2 bg-surface-secondary/60 px-2 py-1 pe-7',
       )}
     >
       {/* Yıldız karonun sağ üst köşesinde; bağlantı karoyu kaplar, yıldız onun üstünde */}
@@ -928,8 +930,9 @@ function AddApps({ group, all, chip }: { group: AppGroup; all: MenuApp[]; chip: 
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          'flex h-full w-full min-w-0 items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-transparent text-muted hover:bg-surface-secondary! hover:text-foreground!',
-          chip ? 'flex-row rounded-xl px-2 py-1' : 'flex-col px-2 py-2',
+          'flex h-full w-full min-w-0 items-center justify-center gap-2 border border-dashed border-border bg-transparent text-muted hover:bg-surface-secondary! hover:text-foreground!',
+          CARD_INNER_P4,
+          chip ? 'flex-row px-2 py-1' : 'flex-col px-2 py-2',
         )}
       >
         <Plus {...IC} size={chip ? 16 : 20} />

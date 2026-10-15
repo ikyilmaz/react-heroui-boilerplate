@@ -719,12 +719,17 @@ export function SidePanel({
  * (antd `Card` `relative`, kırpmaz).
  */
 /**
- * Kesiğin köşe yarıçapı = kartın köşesi (`CARD_RADIUS`; Tailwind için düz metin), en çok 20px: kavis
- * ve iç köşe kesiğin boyunu paylaşır, büyük yarıçapta üst üste binmesin; rafın kartının köşesi de bu.
- * Kontur kalınlığı, kart ile kesik arasındaki boşluk (`--ng`).
+ * Kavsin yarıçapı = kartın köşesi (`CARD_RADIUS`; Tailwind için düz metin), en çok 20px: kavis ve
+ * iç köşe kesiğin boyunu paylaşır, büyük yarıçapta üst üste binmesin. Kontur kalınlığı, kart ile
+ * kesik arasındaki boşluk (`--ng`). Kesiğin iç köşesi (`--nc`) kavis + k × (boşluk + kontur)
+ * (`--corner-k`: yuvarlakta 1, squircle'da ≈ 1.84), en çok 40px + boşluk − kavis: iki yay üst üste
+ * binmez. Rafın kartı (`--nr`) kesikle, düğmeleri kartla eş merkezli (iç köşe = dış köşe − k ×
+ * boşluk); kesik tavana takılmadıkça kartın köşesi kavisle aynı.
  */
 const NOTCH_VARS =
-  '[--nf:min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3),20px)] [--bw:var(--border-width)] [--ng:0.5rem] [--page:var(--tab-bg,var(--background))]'
+  '[--nf:min(calc(32px*var(--corner-scale,1)),calc(var(--radius)*3),20px)] [--bw:var(--border-width)] [--ng:0.5rem] [--page:var(--tab-bg,var(--background))] [--nc:min(calc(var(--nf)+var(--corner-k,1)*(var(--ng)+var(--bw))),calc(40px+var(--ng)-var(--nf)))] [--nr:max(0.375rem*var(--corner-scale,1),calc(var(--nc)-var(--corner-k,1)*(var(--ng)+var(--bw))))]'
+/** Rafın düğmeleri: kartın `p-1` payı kadar içeride, köşesi kartınkiyle eş merkezli. */
+const NOTCH_BUTTON = 'rounded-[max(0.25rem*var(--corner-scale,1),calc(var(--nr)-var(--corner-k,1)*var(--spacing)))]!'
 /*
  * Kavis kutusu (f + bw kare): bandın dışbükey köşesinin yayı, konturu bandın halkası gibi bandın
  * dışında (yarıçap f..f + bw). Sol üst köşesi yayın merkezinde. corner-shape yolunda sayfa renginde,
@@ -751,10 +756,7 @@ export const NOTCH_GAP = 'mb-[calc(0.5rem-12px)]'
 
 /**
  * Bandın köşesindeki raf (sütun düzeni, açık ya da katlı): kendi kartında açma / katlama düğmesi
- * ve sekmelerin ikonları. Kart
- * kesikten `--ng` boşlukla ayrılır; kesiğin iç köşesi kartın köşesi + boşluk (eş merkezli), ama
- * kesiğin boyu (40px kart + boşluk) kavisle paylaşıldığından en çok 40px + boşluk − kavis: iki yay
- * üst üste binmez.
+ * ve sekmelerin ikonları. Kart kesikten `--ng` boşlukla ayrılır; köşeler eş merkezli (`NOTCH_VARS`).
  */
 export function SideNotch({
   side,
@@ -775,7 +777,7 @@ export function SideNotch({
       aria-label="Yan bilgiler"
       className={cn(
         NOTCH_VARS,
-        'absolute -bottom-(--bw) -end-(--bw) z-20 block rounded-tl-[min(calc(var(--nf)+var(--ng)+var(--bw)),calc(40px+var(--ng)-var(--nf)))] border-s-(length:--bw) border-t-(length:--bw) border-border bg-(--page) ps-(--ng) pt-(--ng) pb-(--bw) pe-(--bw)',
+        'absolute -bottom-(--bw) -end-(--bw) z-20 block rounded-tl-(--nc) border-s-(length:--bw) border-t-(length:--bw) border-border bg-(--page) ps-(--ng) pt-(--ng) pb-(--bw) pe-(--bw)',
         warning && 'animate-shake',
       )}
     >
@@ -784,11 +786,11 @@ export function SideNotch({
       <Flex aria-hidden className={cn(NOTCH_FLARE, 'bottom-0 end-full')} />
       <Flex aria-hidden className={cn(NOTCH_FLARE, 'bottom-full end-0')} />
       {/* Rafın kendi kartı: sağ ve alt kenarı bandınkiyle hizalı (kontur ve gölge kartlarınki gibi
-          kutunun dışında), köşesi kavisle aynı; kesiğin iç köşesi ona eş merkezli (+ boşluk) */}
+          kutunun dışında), köşesi kesiğin iç köşesiyle eş merkezli (`--nr`) */}
       <Flex
         align="center"
         gap={4}
-        className={cn(CARD, 'rounded-(--nf) bg-surface p-1', warning && 'ring-2 ring-warning')}
+        className={cn(CARD, 'rounded-(--nr) bg-surface p-1', warning && 'ring-2 ring-warning')}
       >
         {/* Sütunu açar / katlar; raf sütun açıkken de yerinde kalır */}
         <Tip label={foldLabel} placement="bottom">
@@ -798,7 +800,7 @@ export function SideNotch({
             aria-expanded={side.open}
             icon={<FoldIcon {...IC} size={18} />}
             onClick={() => side.setOpen(!side.open)}
-            className={FOLD_BUTTON}
+            className={cn(FOLD_BUTTON, NOTCH_BUTTON)}
           />
         </Tip>
         <Divider orientation="vertical" className="mx-1 h-5" />
@@ -810,6 +812,7 @@ export function SideNotch({
               icon={<Icon {...IC} size={18} />}
               onClick={() => onOpen(id)}
               className={cn(
+                NOTCH_BUTTON,
                 id === tab && 'bg-accent/12! text-accent-soft-foreground! hover:bg-accent/18!',
                 warning && id === 'docs' && 'ring-2 ring-warning',
               )}

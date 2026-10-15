@@ -66,7 +66,7 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   `STRIP_VARS` writes `--corner-shape: round`, flares `scoop`), and circles / pills (`--pill-radius`: the field radius, full only at Çok); squircle writes
   `--corner-shape: squircle`, `--corner-concave: superellipse(-2)` (the side notch flares) and `--corner-scale`
   (radius and the radius caps — card 32px, field 14px… — × 1.6 so corners stay as full; caps read
-  in `AntTheme` and the CSS card radius); squircle options disabled with a note and nothing
+  in `AntTheme` and the CSS card radius) and `--corner-k` (1.84; round: 1): nested corners are concentric, inner = outer − k × gap (`CARD_INNER_P4` / `CARD_INNER_P3` in `ant/ui.tsx`, start pane tiles `PANE_TILE`, the `SideNotch` cut / card / buttons `--nc` / `--nr`, `AgendaTabs` items; floors scale with `--corner-scale`; checked by `scripts/perf/corners.mjs`); squircle options disabled with a note and nothing
   written when the browser can't draw it (`SQUIRCLE_SUPPORTED`)), no background
   or background texture options (Zemin / Zemin dokusu removed on request: always the defaults Serin /
   Düz, stored values fall back; the `HARMONY` / `TEXTURES` machinery and the
@@ -89,7 +89,8 @@ framer-motion). Everything lives in `src/synergy/`. Code comments are written in
   contour 0 → `filled`; field shadow is a scaled-down card shadow (ConfigProvider `className`).
   Every tab strip (the workspace, Başlangıç categories) is the shared `tabs/` module (see
   below); strips start container corner + tab radius in, so the selected sheet's flare lands on the
-  container's straight edge. Only the variables of changed settings are written
+  container's straight edge. `STRIP_VARS` = `STRIP_GEOMETRY` + round shape; the compact start button's slot uses only
+  `STRIP_GEOMETRY`, so the start box opened from it keeps the theme's squircle. Only the variables of changed settings are written
   inline on `<html>` while the shell is mounted; all are removed on unmount. Nav position and
   motion reach pages through `LookContext` / `useLook()`. The side info scroll fade is always on. No
   other runtime theming.
@@ -594,7 +595,8 @@ tab's address plus the other tabs (`?sekmeler=`, `shared/workspaceUrl.ts`).
   (correctness: interruptions, child forms, back / forward, open paths, drag, keyboard, divider,
   closing freeze, widths, address restore, limit, nav positions, all animation levels),
   `node --test scripts/tabs/widths.test.mjs scripts/tabs/workspace.test.mjs`,
-  `node scripts/perf/shots.mjs` (strip screenshots, both flare paths). Shared parts in
+  `node scripts/perf/shots.mjs` (strip screenshots, both flare paths), `node scripts/perf/corners.mjs`
+  (nested corner concentricity across corner themes and screens). Shared parts in
   `scripts/perf/harness.mjs`. Never report dev-server numbers.
 - A context value that changes on a tab switch re-renders every form: keep `LookContext`,
   `SettingsContext`, antd `ConfigProvider` props (memoized config, constant `wave` / `card`),

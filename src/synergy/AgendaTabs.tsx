@@ -43,9 +43,13 @@ function blocks(tabs: AgendaTab[]) {
 /** Ray: kart yüzeyi ve konturu, içinde kutular. */
 const RAIL = 'flex min-w-0 items-center gap-1 overflow-x-auto rounded-2xl bg-surface p-1 [scrollbar-width:none]'
 
-/** Kutu: simge ve ad; seçili olanın zemini kayan gösterge. */
+/**
+ * Kutu: simge ve ad; seçili olanın zemini kayan gösterge. Köşesi rayınkiyle eş merkezli: rayın
+ * köşesi (`rounded-2xl`, ray `h-10` + `p-1` yüksekliğinin yarısını aşamaz) − k × `p-1`
+ * (`--corner-k`: yuvarlakta 1, squircle'da ≈ 1.84).
+ */
 const ITEM =
-  'relative flex h-10 items-center justify-center gap-2 rounded-xl px-3.5 text-sm font-medium whitespace-nowrap no-underline transition-colors duration-[calc(150ms*var(--motion-time,1))] outline-none hover:no-underline focus-visible:[box-shadow:0_0_0_2px_var(--focus)]'
+  'relative flex h-10 items-center justify-center gap-2 rounded-[max(0.25rem*var(--corner-scale,1),calc(min(var(--radius)*2,var(--spacing)*6)-var(--corner-k,1)*var(--spacing)))] px-3.5 text-sm font-medium whitespace-nowrap no-underline transition-colors duration-[calc(150ms*var(--motion-time,1))] outline-none hover:no-underline focus-visible:[box-shadow:0_0_0_2px_var(--focus)]'
 const ITEM_ON = 'text-accent-foreground hover:text-accent-foreground'
 const ITEM_OFF = 'text-foreground/75 hover:bg-surface-secondary hover:text-foreground'
 

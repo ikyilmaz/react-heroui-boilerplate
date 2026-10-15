@@ -190,7 +190,8 @@ function HrNav({ current, always = false }: { current?: ModuleDef; always?: bool
       )}
       classNames={{ body: 'flex min-h-0 flex-1 flex-col p-0' }}
     >
-      <Scroll className="min-h-0 flex-1 gap-0.5 p-2">
+      {/* Kartın köşesine yetecek pay: ilk / son öğenin hap köşesi kartınkiyle eş merkezli kalır */}
+      <Scroll className="min-h-0 flex-1 gap-0.5 p-3">
         {MENU.map((item, i) => {
           if (item === '-')
             return (

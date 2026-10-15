@@ -283,7 +283,11 @@ function CardBox({ children }: { children: ReactNode }) {
         Kartlar
       </Text>
       {/* Önizleme: sayfanın zemininde bir kart */}
-      <Flex aria-hidden className="block rounded-xl bg-background p-3">
+      {/* Zeminin köşesi önizleme kartınınkiyle eş merkezli: kartın köşesi + k × boşluk (`--corner-k`) */}
+      <Flex
+        aria-hidden
+        className="block rounded-[calc(var(--radius)+var(--corner-k,1)*var(--spacing)*3)] bg-background p-3"
+      >
         <Flex vertical gap={6} className={cn('rounded-lg bg-surface p-3', CARD)}>
           <Text className="font-display text-base leading-none font-bold">Aa</Text>
           <Flex className="block h-1.5 w-3/4 rounded-full bg-surface-tertiary" />

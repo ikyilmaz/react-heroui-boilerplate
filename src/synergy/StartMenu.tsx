@@ -67,7 +67,7 @@ import {
 import { Highlight, SORT_KEY } from '@/synergy/AllApps'
 import { useTransition } from '@/synergy/motion'
 import { EmptyNote, SearchField } from '@/synergy/ant/parts'
-import { CARD, CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
+import { CARD, CARD_INNER_P3, CARD_RADIUS, IC, MotionFlex, Scroll, Tip, cn } from '@/synergy/ant/ui'
 import { useRadiusPx } from '@/synergy/shared/hooks'
 import { boxLink, k, processLink, useOpenApp } from '@/synergy/paths'
 import { Tab, TabButton, TabGroup, TabStrip } from '@/synergy/tabs/TabStrip'
@@ -676,6 +676,16 @@ const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
  * Sekme bölmesinin (ve ona kaynaşan yaprağın) zemini: çalışma alanının şerit rengi (`TAB_BG` ile
  * aynı değer; aramayla aynı), kutunun zemininden açık (`--tab-bg`; `SHEET` bunu okur).
  */
+/**
+ * Bölmedeki karoların köşesi (kutular, Favoriler, Yönetim Araçları): bölmenin köşesiyle eş merkezli.
+ * Bölme kutunun `p-3` payında (`CARD_INNER_P3`), karolar bölmenin `p-4` payında: kutunun köşesi −
+ * k × 7 boşluk birimi (`--corner-k`). Pay yarıçaptan büyükse bu sıfıra iner; alt sınır temel yarıçap,
+ * ama en çok 0.5rem (squircle'da `--corner-scale` katı: küçük squircle köşe sivri durur). antd
+ * düğmesini de ezsin diye `!`.
+ */
+const PANE_TILE =
+  'rounded-[max(min(var(--radius),0.5rem*var(--corner-scale,1)),calc(min(32px*var(--corner-scale,1),var(--radius)*3)-var(--corner-k,1)*var(--spacing)*7))]!'
+
 const START_PANE_BG = '[--tab-bg:color-mix(in_oklab,var(--accent)_3%,oklch(0.975_0_0))]'
 
 const START_UI = {
@@ -759,7 +769,10 @@ function AppTile({ app, active, onPress }: { app: MenuApp; active: boolean; onPr
         onClick={onPress}
         aria-current={active ? 'page' : undefined}
         // `whitespace-normal`: antd düğmesi tek satır; ad iki satıra sarabilsin
-        className="h-auto w-full flex-col gap-2 rounded-2xl! px-1.5 pt-3 pb-2 font-normal whitespace-normal text-foreground hover:bg-surface-secondary! focus-visible:[box-shadow:0_0_0_2px_var(--focus)]"
+        className={cn(
+          PANE_TILE,
+          'h-auto w-full flex-col gap-2 px-1.5 pt-3 pb-2 font-normal whitespace-normal text-foreground hover:bg-surface-secondary! focus-visible:[box-shadow:0_0_0_2px_var(--focus)]',
+        )}
       >
         <IconBox
           icon={app.icon}
@@ -1011,7 +1024,8 @@ function WorkPane({ onGo }: { onGo: (href: string) => void }) {
               onClick={() => setBoxId(b.id)}
               aria-label={`${b.label}, ${n}`}
               className={cn(
-                'h-auto flex-col items-start gap-2.5 rounded-2xl! p-3 text-start font-normal whitespace-normal',
+                PANE_TILE,
+                'h-auto flex-col items-start gap-2.5 p-3 text-start font-normal whitespace-normal',
                 on
                   ? 'bg-accent text-accent-foreground hover:bg-accent/90! hover:text-accent-foreground!'
                   : 'bg-surface-secondary/70 text-foreground hover:bg-surface-secondary!',
@@ -1293,7 +1307,7 @@ function AdminToolsPane() {
             vertical
             align="center"
             gap={8}
-            className="rounded-2xl px-2 pt-4 pb-3 hover:bg-surface-secondary"
+            className={cn(PANE_TILE, 'px-2 pt-4 pb-3 hover:bg-surface-secondary')}
           >
             <IconBox icon={t.icon} label={t.label} />
             <Text className="line-clamp-2 w-full text-center text-sm leading-[1.3] text-foreground">
@@ -1780,7 +1794,9 @@ function StartPanel({
           // Bölme gri: içindeki ikinci / üçüncü yüzey (hover, kutucuklar) bir kademe koyu, yoksa
           // bölmenin rengine karışırdı (`--tab-bg` kapta çözüldü, bundan etkilenmez)
           className={cn(
-            '@container relative flex min-h-0 min-w-0 flex-1 flex-col rounded-3xl bg-(--tab-bg) p-4 transition-[border-radius] duration-200',
+            '@container relative flex min-h-0 min-w-0 flex-1 flex-col bg-(--tab-bg) p-4 transition-[border-radius] duration-200',
+            // Köşe kutunun köşesiyle eş merkezli (kutunun `p-3` payı kadar içeride)
+            CARD_INNER_P3,
             '[--surface-secondary:color-mix(in_oklab,var(--foreground)_6%,var(--surface))] [--surface-tertiary:color-mix(in_oklab,var(--foreground)_10%,var(--surface))]',
             !searching && section === SECTIONS[0].id && 'rounded-ss-none',
           )}

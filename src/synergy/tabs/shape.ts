@@ -26,10 +26,14 @@ const GAP_VARS =
   '[--tab-gap:3px] [--tab-nr:min(var(--tab-r),calc((var(--tab-h)-var(--tab-gap))/2))] [--tab-f:calc(var(--tab-nr)+var(--tab-gap))]'
 
 /**
- * Satırın değişkenleri: yarıçap (yaprak px değerini kendisi yazar), sekmenin boyu (`h-10`) ve
- * yuvarlak köşe biçimi (squircle temada da).
+ * Satırın ölçüleri: yarıçap (yaprak px değerini kendisi yazar), sekmenin boyu (`h-10`), boşluk ve
+ * kavis; köşe biçimine dokunmaz (içinde şerit dışı bir şey açılan yuvalar: Başlat düğmesinin
+ * yuvasındaki başlat kutusu temanın köşe biçimini korur).
  */
-export const STRIP_VARS = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] ${GAP_VARS} [--corner-shape:round] [--corner-concave:scoop]`
+export const STRIP_GEOMETRY = `[--tab-r:min(calc(var(--radius)*2/var(--corner-scale,1)),16px)] [--tab-h:2.5rem] ${GAP_VARS}`
+
+/** Satırın değişkenleri: ölçüler ve yuvarlak köşe biçimi (squircle temada da). */
+export const STRIP_VARS = `${STRIP_GEOMETRY} [--corner-shape:round] [--corner-concave:scoop]`
 
 /**
  * Kabın (ve seçili yaprağın) rengi: neredeyse beyaz, birincil renkten hafif bir iz; zeminden

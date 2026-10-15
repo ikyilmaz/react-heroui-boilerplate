@@ -141,3 +141,15 @@ export const FLOATING_DRAWER = { wrapper: 'p-3 shadow-none', section: FLOATING_S
  * 32px; squircle'da tavan da `--corner-scale` kadar büyür). Raf ve başlat kutusu da bunu kullanır.
  */
 export const CARD_RADIUS = 'min(calc(32px * var(--corner-scale, 1)), calc(var(--radius) * 3))'
+
+/**
+ * İç içe köşe: kartın (`CARD_RADIUS`) içinde `p-4` boşlukla duran kutunun köşesi, kartınkiyle eş
+ * merkezli: kartın köşesi − k × boşluk (`--corner-k`: yuvarlakta 1, squircle'da ≈ 1.84; aradaki
+ * boşluk köşede de aynı kalır). En az 0.375rem (squircle'da `--corner-scale` katı; köşeden uzaktaki kutular da köşesiz kalmasın).
+ * Tailwind düz metni görür: başka boşluk için aynı biçimde ayrı sabit.
+ */
+export const CARD_INNER_P4 =
+  'rounded-[max(0.375rem*var(--corner-scale,1),calc(min(32px*var(--corner-scale,1),var(--radius)*3)-var(--corner-k,1)*var(--spacing)*4))]'
+/** Aynısı `p-3` boşlukla (başlat kutusunun bölmesi). */
+export const CARD_INNER_P3 =
+  'rounded-[max(0.375rem*var(--corner-scale,1),calc(min(32px*var(--corner-scale,1),var(--radius)*3)-var(--corner-k,1)*var(--spacing)*3))]'
